@@ -45,6 +45,8 @@ npm run build            # must succeed; the PWA precache must include the .wasm
 npm run screenshots      # phone-sized PNGs of every main screen in ./screenshots (visual check after UI work)
 ```
 
+- CI (`.github/workflows/ci.yml`) runs exactly these commands plus `npm run format:check`; keep
+  them green rather than adding new validation entry points.
 - Unit tests run against real sql.js databases in Node (`tests/unit`), no browser needed.
 - After changing anything under `src/db`, run `npm run inspect-backup -- <real backup>` if a real
   `.fitnotes` file is available and compare with [doc/fitnotes-format.md](doc/fitnotes-format.md).

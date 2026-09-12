@@ -73,6 +73,10 @@ npm run make-icons                                   # regenerate public/icons
 npm run screenshots                                  # build, serve and screenshot the main screens into ./screenshots
 ```
 
+GitHub Actions run the same checks on every push (`.github/workflows/ci.yml`) and publish the
+build to GitHub Pages on pushes to `main` once Pages is enabled for the repository
+(`.github/workflows/deploy-pages.yml`).
+
 Documentation for contributors and coding agents:
 
 - [AGENTS.md](AGENTS.md): invariants, where things live, how to validate a change.
