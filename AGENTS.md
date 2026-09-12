@@ -31,7 +31,7 @@ memory by sql.js and persisted to IndexedDB. Read this file, then only the doc t
 | Shared widgets and styles                                    | `src/ui/components/*.tsx`, `src/ui/styles.css` (all CSS lives here)                                                |
 | Persistence, snapshots, backup/restore, CSV                  | `src/db/persistence.ts`, `src/backup/*.ts`; contract in [doc/storage.md](doc/storage.md)                           |
 | Start-up, PWA, service worker                                | `src/app/bootstrap.ts`, `src/main.tsx`, `vite.config.ts`                                                           |
-| Scripts (inspect a real backup, fixtures, icons)             | `scripts/*.ts` (run with `npm run <name>`)                                                                         |
+| Scripts (inspect a real backup, fixtures, icons, clean)      | `scripts/*` (run with `npm run <name>`); `npm run clean` removes node_modules and generated output                 |
 
 Data flow: screen -> `useQuery(db => repo.x(db))` (re-runs after every mutation) -> repo SQL ->
 sql.js. Writes: screen -> repo function -> `db.mutate()` -> subscribers re-query -> debounced persist.

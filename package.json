@@ -19,7 +19,8 @@
     "inspect-backup": "tsx scripts/inspect-backup.ts",
     "make-fixture": "tsx scripts/make-fixture.ts",
     "make-icons": "tsx scripts/make-icons.ts",
-    "screenshots": "tsx scripts/screenshots.ts"
+    "screenshots": "tsx scripts/screenshots.ts",
+    "clean": "node scripts/clean.mjs"
   },
   "dependencies": {
     "react": "^19.3.0",

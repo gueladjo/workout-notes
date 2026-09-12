@@ -71,6 +71,7 @@ npm run inspect-backup -- path/to/backup.fitnotes   # print schema and counts of
 npm run make-fixture                                 # write tests/fixtures/generated/sample.fitnotes
 npm run make-icons                                   # regenerate public/icons
 npm run screenshots                                  # build, serve and screenshot the main screens into ./screenshots
+npm run clean                                        # delete node_modules and generated output (`-- --keep-deps` keeps node_modules)
 ```
 
 GitHub Actions run the same checks on every push (`.github/workflows/ci.yml`) and publish the
