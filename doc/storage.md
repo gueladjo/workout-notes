@@ -2,12 +2,12 @@
 
 ## Where data lives
 
-| What | Where | Notes |
-| --- | --- | --- |
-| Live database | IndexedDB `workoutnotes` / store `blobs`, key `main` | Full SQLite file as `Uint8Array` |
-| Rollback snapshots | same store, keys `snapshot:<ISO time>` | Kept: newest `MAX_SNAPSHOTS` (5) |
-| Metadata | store `meta` | `{ key, savedAt, label, size }`, lets the UI list snapshots without loading bytes |
-| Last backup time | `localStorage` `workoutnotes.lastBackupAt` | Cosmetic only |
+| What               | Where                                                | Notes                                                                             |
+| ------------------ | ---------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Live database      | IndexedDB `workoutnotes` / store `blobs`, key `main` | Full SQLite file as `Uint8Array`                                                  |
+| Rollback snapshots | same store, keys `snapshot:<ISO time>`               | Kept: newest `MAX_SNAPSHOTS` (5)                                                  |
+| Metadata           | store `meta`                                         | `{ key, savedAt, label, size }`, lets the UI list snapshots without loading bytes |
+| Last backup time   | `localStorage` `workoutnotes.lastBackupAt`           | Cosmetic only                                                                     |
 
 Everything else (settings included) is inside the SQLite database.
 
@@ -41,19 +41,19 @@ home-screen apps; Chrome grants it to installed apps and engaged sites.
      modified; the app works on a copy.
   3. The current database is written to a snapshot labelled "Before restore".
   4. The new database replaces the live one and is persisted immediately.
-  A `RestoreSummary` (counts plus the schema report) is shown to the user.
+     A `RestoreSummary` (counts plus the schema report) is shown to the user.
 - **Rollback**: Settings lists snapshots; restoring one snapshots the current database first.
 - **Delete workout history** snapshots first, too.
 
 ## Failure modes and mitigations
 
-| Risk | Mitigation |
-| --- | --- |
-| Browser evicts storage | persistent storage request; prominent Backup buttons and "last backup" note |
-| Tab killed before debounce fires | flush on hide/pagehide; at most a few hundred ms of work lost |
-| Corrupt or wrong file restored | header/table validation, transaction-wrapped reconciliation, snapshot before swap |
-| Bug in a migration | `ensureSchema` only adds; unknown data untouched; snapshots for rollback |
-| Two tabs open | not supported; the last writer wins. The installed PWA is single-instance. |
+| Risk                             | Mitigation                                                                        |
+| -------------------------------- | --------------------------------------------------------------------------------- |
+| Browser evicts storage           | persistent storage request; prominent Backup buttons and "last backup" note       |
+| Tab killed before debounce fires | flush on hide/pagehide; at most a few hundred ms of work lost                     |
+| Corrupt or wrong file restored   | header/table validation, transaction-wrapped reconciliation, snapshot before swap |
+| Bug in a migration               | `ensureSchema` only adds; unknown data untouched; snapshots for rollback          |
+| Two tabs open                    | not supported; the last writer wins. The installed PWA is single-instance.        |
 
 ## Size expectations
 

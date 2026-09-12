@@ -3,13 +3,33 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useSettings } from '@/app/hooks';
 import {
-  addRecord, createMeasurement, createMeasurementUnit, deleteMeasurement, deleteRecord, getMeasurement, latestRecord, listMeasurementUnits,
-  listMeasurements, listRecords, reorderMeasurements, resetMeasurement, updateMeasurement, updateRecord,
+  addRecord,
+  createMeasurement,
+  createMeasurementUnit,
+  deleteMeasurement,
+  deleteRecord,
+  getMeasurement,
+  latestRecord,
+  listMeasurementUnits,
+  listMeasurements,
+  listRecords,
+  reorderMeasurements,
+  resetMeasurement,
+  updateMeasurement,
+  updateRecord,
 } from '@/db/repo/measurements';
 import { MeasurementGoalType } from '@/db/constants';
 import { updateSettings } from '@/db/repo/settings';
 import type { MeasurementRecord, MeasurementWithUnit } from '@/db/types';
-import { daysBetween, formatLongDate, formatShortDate, formatTimeShort, nowTime, relativeDays, todayIso } from '@/domain/dates';
+import {
+  daysBetween,
+  formatLongDate,
+  formatShortDate,
+  formatTimeShort,
+  nowTime,
+  relativeDays,
+  todayIso,
+} from '@/domain/dates';
 import { fmt } from '@/domain/units';
 import { trendLine } from '@/domain/graphs';
 import { TopBar } from '@/ui/components/TopBar';
@@ -32,8 +52,27 @@ export function BodyTrackerScreen() {
   const tab = (search.get('tab') as Tab) || 'track';
   return (
     <div className="screen">
-      <TopBar back title="Body Tracker" actions={<IconButton icon="edit" label="Configure measurements" primary onClick={() => navigate('/body/measurements')} />} />
-      <Tabs tabs={[{ id: 'track', label: 'Track' }, { id: 'history', label: 'History' }, { id: 'graph', label: 'Graph' }]} value={tab} onChange={(t) => setSearch({ tab: t }, { replace: true })} />
+      <TopBar
+        back
+        title="Body Tracker"
+        actions={
+          <IconButton
+            icon="edit"
+            label="Configure measurements"
+            primary
+            onClick={() => navigate('/body/measurements')}
+          />
+        }
+      />
+      <Tabs
+        tabs={[
+          { id: 'track', label: 'Track' },
+          { id: 'history', label: 'History' },
+          { id: 'graph', label: 'Graph' },
+        ]}
+        value={tab}
+        onChange={(t) => setSearch({ tab: t }, { replace: true })}
+      />
       {tab === 'track' && <TrackTab />}
       {tab === 'history' && <HistoryTab />}
       {tab === 'graph' && <GraphTab />}
@@ -43,19 +82,29 @@ export function BodyTrackerScreen() {
 
 function deltaColour(delta: number, goalType: number): string {
   if (delta === 0) return 'var(--color-text-muted)';
-  if (goalType === MeasurementGoalType.INCREASE) return delta > 0 ? 'var(--color-success)' : 'var(--color-danger)';
-  if (goalType === MeasurementGoalType.DECREASE) return delta < 0 ? 'var(--color-success)' : 'var(--color-danger)';
+  if (goalType === MeasurementGoalType.INCREASE)
+    return delta > 0 ? 'var(--color-success)' : 'var(--color-danger)';
+  if (goalType === MeasurementGoalType.DECREASE)
+    return delta < 0 ? 'var(--color-success)' : 'var(--color-danger)';
   return 'var(--color-text-muted)';
 }
 
 function TrackTab() {
   const measurements = useQuery((d) => listMeasurements(d, true));
-  const latest = useQuery((d) => new Map(measurements.map((m) => [m.id, listRecords(d, m.id).slice(-2)])), [measurements]);
+  const latest = useQuery(
+    (d) => new Map(measurements.map((m) => [m.id, listRecords(d, m.id).slice(-2)])),
+    [measurements],
+  );
   const [recording, setRecording] = useState<MeasurementWithUnit | null>(null);
   return (
     <div className="screen__content">
       <div className="container">
-        {measurements.length === 0 && <EmptyState title="No measurements enabled" message="Tap the pencil to enable or create measurements." />}
+        {measurements.length === 0 && (
+          <EmptyState
+            title="No measurements enabled"
+            message="Tap the pencil to enable or create measurements."
+          />
+        )}
         <div className="list">
           {measurements.map((m) => {
             const recs = latest.get(m.id) ?? [];
@@ -70,8 +119,14 @@ function TrackTab() {
                 </div>
                 {last && (
                   <div style={{ textAlign: 'right' }}>
-                    <div className="stat-row__value">{fmt(last.value)} {m.unitShort}</div>
-                    {prev && <div style={{ fontSize: 12, color: deltaColour(delta, m.goalType) }}>{delta > 0 ? '▲' : delta < 0 ? '▼' : '='} {fmt(Math.abs(delta))} {m.unitShort}</div>}
+                    <div className="stat-row__value">
+                      {fmt(last.value)} {m.unitShort}
+                    </div>
+                    {prev && (
+                      <div style={{ fontSize: 12, color: deltaColour(delta, m.goalType) }}>
+                        {delta > 0 ? '▲' : delta < 0 ? '▼' : '='} {fmt(Math.abs(delta))} {m.unitShort}
+                      </div>
+                    )}
                   </div>
                 )}
                 <Icon name="chevronRight" className="faint" />
@@ -85,7 +140,17 @@ function TrackTab() {
   );
 }
 
-function RecordDialog({ open, onClose, measurement, record }: { open: boolean; onClose: () => void; measurement: MeasurementWithUnit | null; record?: MeasurementRecord }) {
+function RecordDialog({
+  open,
+  onClose,
+  measurement,
+  record,
+}: {
+  open: boolean;
+  onClose: () => void;
+  measurement: MeasurementWithUnit | null;
+  record?: MeasurementRecord;
+}) {
   const db = useDb();
   const toast = useToast();
   const last = useQuery((d) => (measurement ? latestRecord(d, measurement.id) : undefined), [measurement]);
@@ -112,15 +177,66 @@ function RecordDialog({ open, onClose, measurement, record }: { open: boolean; o
     onClose();
   };
   return (
-    <Dialog open={open} onClose={onClose} title={measurement.name} actions={<>
-      {record && <Button variant="danger-text" onClick={() => { deleteRecord(db, record.id); onClose(); }}>Delete</Button>}
-      <Button variant="text" onClick={onClose}>Cancel</Button><Button onClick={save}>Save</Button></>}>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={measurement.name}
+      actions={
+        <>
+          {record && (
+            <Button
+              variant="danger-text"
+              onClick={() => {
+                deleteRecord(db, record.id);
+                onClose();
+              }}
+            >
+              Delete
+            </Button>
+          )}
+          <Button variant="text" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={save}>Save</Button>
+        </>
+      }
+    >
       <div className="grid-2">
-        <label className="field"><span className="field__label">Date</span><input className="input" type="date" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} /></label>
-        <label className="field"><span className="field__label">Time</span><input className="input" type="time" value={time.slice(0, 5)} onChange={(e) => e.target.value && setTime(e.target.value)} /></label>
+        <label className="field">
+          <span className="field__label">Date</span>
+          <input
+            className="input"
+            type="date"
+            value={date}
+            onChange={(e) => e.target.value && setDate(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Time</span>
+          <input
+            className="input"
+            type="time"
+            value={time.slice(0, 5)}
+            onChange={(e) => e.target.value && setTime(e.target.value)}
+          />
+        </label>
       </div>
-      <label className="field"><span className="field__label">Value ({measurement.unitShort || 'no unit'})</span><input className="input" inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} autoFocus onFocus={(e) => e.target.select()} style={{ fontSize: 22, textAlign: 'center' }} /></label>
-      <label className="field"><span className="field__label">Comment</span><input className="input" value={comment} onChange={(e) => setComment(e.target.value)} /></label>
+      <label className="field">
+        <span className="field__label">Value ({measurement.unitShort || 'no unit'})</span>
+        <input
+          className="input"
+          inputMode="decimal"
+          value={value}
+          onChange={(e) => setValue(e.target.value)}
+          autoFocus
+          onFocus={(e) => e.target.select()}
+          style={{ fontSize: 22, textAlign: 'center' }}
+        />
+      </label>
+      <label className="field">
+        <span className="field__label">Comment</span>
+        <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} />
+      </label>
     </Dialog>
   );
 }
@@ -128,7 +244,13 @@ function RecordDialog({ open, onClose, measurement, record }: { open: boolean; o
 function HistoryTab() {
   const measurements = useQuery((d) => listMeasurements(d, true));
   const [filter, setFilter] = useState<number | 'all'>('all');
-  const records = useQuery((d) => (filter === 'all' ? listRecords(d).filter((r) => measurements.some((m) => m.id === r.measurementId)) : listRecords(d, filter)), [filter, measurements]);
+  const records = useQuery(
+    (d) =>
+      filter === 'all'
+        ? listRecords(d).filter((r) => measurements.some((m) => m.id === r.measurementId))
+        : listRecords(d, filter),
+    [filter, measurements],
+  );
   const [editing, setEditing] = useState<MeasurementRecord | null>(null);
   const byDate = useMemo(() => {
     const m = new Map<string, MeasurementRecord[]>();
@@ -143,9 +265,19 @@ function HistoryTab() {
   return (
     <div className="screen__content">
       <div className="container">
-        <select className="select" value={filter} onChange={(e) => setFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))} style={{ marginBottom: 12 }} aria-label="Measurement">
+        <select
+          className="select"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+          style={{ marginBottom: 12 }}
+          aria-label="Measurement"
+        >
           <option value="all">All measurements</option>
-          {measurements.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+          {measurements.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
         </select>
         {byDate.length === 0 && <EmptyState title="No measurements recorded" />}
         {byDate.map(([date, recs]) => (
@@ -157,10 +289,23 @@ function HistoryTab() {
               const delta = prev ? r.value - prev.value : 0;
               return (
                 <button key={r.id} className="stat-row" onClick={() => setEditing(r)}>
-                  <span><div>{m?.name}</div><div className="stat-row__date">{formatTimeShort(r.time)}{r.comment ? ` · ${r.comment}` : ''}</div></span>
+                  <span>
+                    <div>{m?.name}</div>
+                    <div className="stat-row__date">
+                      {formatTimeShort(r.time)}
+                      {r.comment ? ` · ${r.comment}` : ''}
+                    </div>
+                  </span>
                   <span style={{ textAlign: 'right' }}>
-                    <div className="stat-row__value">{fmt(r.value)} {m?.unitShort}</div>
-                    {prev && <div style={{ fontSize: 12, color: deltaColour(delta, m?.goalType ?? 0) }}>{delta >= 0 ? '+' : ''}{fmt(delta)} {m?.unitShort}</div>}
+                    <div className="stat-row__value">
+                      {fmt(r.value)} {m?.unitShort}
+                    </div>
+                    {prev && (
+                      <div style={{ fontSize: 12, color: deltaColour(delta, m?.goalType ?? 0) }}>
+                        {delta >= 0 ? '+' : ''}
+                        {fmt(delta)} {m?.unitShort}
+                      </div>
+                    )}
                   </span>
                 </button>
               );
@@ -168,7 +313,12 @@ function HistoryTab() {
           </div>
         ))}
       </div>
-      <RecordDialog open={editing !== null} onClose={() => setEditing(null)} measurement={measurements.find((m) => m.id === editing?.measurementId) ?? null} record={editing ?? undefined} />
+      <RecordDialog
+        open={editing !== null}
+        onClose={() => setEditing(null)}
+        measurement={measurements.find((m) => m.id === editing?.measurementId) ?? null}
+        record={editing ?? undefined}
+      />
     </div>
   );
 }
@@ -182,39 +332,134 @@ function GraphTab() {
   const records = useQuery((d) => (measurement ? listRecords(d, measurement.id) : []), [measurement?.id]);
   const [selected, setSelected] = useState<number | null>(null);
   const [showDay, setShowDay] = useState<string | null>(null);
-  const dayRecords = useQuery((d) => (showDay ? listRecords(d).filter((r) => r.date === showDay) : []), [showDay]);
+  const dayRecords = useQuery(
+    (d) => (showDay ? listRecords(d).filter((r) => r.date === showDay) : []),
+    [showDay],
+  );
   const origin = records[0]?.date ?? todayIso();
-  const points = records.map((r) => ({ x: daysBetween(origin, r.date) + (Number(r.time.slice(0, 2)) || 0) / 24, y: r.value, label: formatShortDate(r.date) }));
-  const trend = settings.graphShowTrendLine ? trendLine(records.map((r) => ({ date: r.date, value: r.value })), (d) => daysBetween(origin, d)) : null;
+  const points = records.map((r) => ({
+    x: daysBetween(origin, r.date) + (Number(r.time.slice(0, 2)) || 0) / 24,
+    y: r.value,
+    label: formatShortDate(r.date),
+  }));
+  const trend = settings.graphShowTrendLine
+    ? trendLine(
+        records.map((r) => ({ date: r.date, value: r.value })),
+        (d) => daysBetween(origin, d),
+      )
+    : null;
   const sel = selected !== null ? records[selected] : undefined;
   if (!measurement) return <EmptyState title="No measurements enabled" />;
   return (
     <div className="screen__content">
       <div className="row" style={{ padding: '10px 12px 8px' }}>
-        <select className="select" value={measurement.id} onChange={(e) => { setId(Number(e.target.value)); setSelected(null); }} aria-label="Measurement" style={{ flex: 1 }}>
-          {measurements.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
+        <select
+          className="select"
+          value={measurement.id}
+          onChange={(e) => {
+            setId(Number(e.target.value));
+            setSelected(null);
+          }}
+          aria-label="Measurement"
+          style={{ flex: 1 }}
+        >
+          {measurements.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}
+            </option>
+          ))}
         </select>
-        <MenuButton items={[
-          { label: 'Graph Points', checked: settings.graphShowPoints, onSelect: () => updateSettings(db, { graphShowPoints: !settings.graphShowPoints }) },
-          { label: 'Trend Line', checked: settings.graphShowTrendLine, onSelect: () => updateSettings(db, { graphShowTrendLine: !settings.graphShowTrendLine }) },
-          { label: 'Y-Axis From 0', checked: settings.graphStartAtZero, onSelect: () => updateSettings(db, { graphStartAtZero: !settings.graphStartAtZero }) },
-        ]} />
+        <MenuButton
+          items={[
+            {
+              label: 'Graph Points',
+              checked: settings.graphShowPoints,
+              onSelect: () => updateSettings(db, { graphShowPoints: !settings.graphShowPoints }),
+            },
+            {
+              label: 'Trend Line',
+              checked: settings.graphShowTrendLine,
+              onSelect: () => updateSettings(db, { graphShowTrendLine: !settings.graphShowTrendLine }),
+            },
+            {
+              label: 'Y-Axis From 0',
+              checked: settings.graphStartAtZero,
+              onSelect: () => updateSettings(db, { graphStartAtZero: !settings.graphStartAtZero }),
+            },
+          ]}
+        />
       </div>
       <div className="container" style={{ paddingTop: 0 }}>
-        <LineChart points={points} selectedIndex={selected} onSelect={setSelected} showPoints={settings.graphShowPoints} trend={trend} yFromZero={settings.graphStartAtZero} goal={measurement.goalType === MeasurementGoalType.SPECIFIC ? measurement.goalValue : null} formatY={(v) => fmt(v, 1)} />
+        <LineChart
+          points={points}
+          selectedIndex={selected}
+          onSelect={setSelected}
+          showPoints={settings.graphShowPoints}
+          trend={trend}
+          yFromZero={settings.graphStartAtZero}
+          goal={measurement.goalType === MeasurementGoalType.SPECIFIC ? measurement.goalValue : null}
+          formatY={(v) => fmt(v, 1)}
+        />
         {records.length > 0 && (
           <div className="point-details">
-            <IconButton icon="chevronLeft" label="Previous point" onClick={() => setSelected((i) => (i === null ? records.length - 1 : Math.max(0, i - 1)))} />
-            <button className="point-details__body" onClick={() => sel && setShowDay(sel.date)} disabled={!sel}>
-              {sel ? <><div className="point-details__value">{fmt(sel.value)} {measurement.unitShort}</div><div className="muted" style={{ fontSize: 13 }}>{formatLongDate(sel.date)} {formatTimeShort(sel.time)}</div></> : <div className="muted">Tap a point for details · {records.length} records</div>}
+            <IconButton
+              icon="chevronLeft"
+              label="Previous point"
+              onClick={() => setSelected((i) => (i === null ? records.length - 1 : Math.max(0, i - 1)))}
+            />
+            <button
+              className="point-details__body"
+              onClick={() => sel && setShowDay(sel.date)}
+              disabled={!sel}
+            >
+              {sel ? (
+                <>
+                  <div className="point-details__value">
+                    {fmt(sel.value)} {measurement.unitShort}
+                  </div>
+                  <div className="muted" style={{ fontSize: 13 }}>
+                    {formatLongDate(sel.date)} {formatTimeShort(sel.time)}
+                  </div>
+                </>
+              ) : (
+                <div className="muted">Tap a point for details · {records.length} records</div>
+              )}
             </button>
-            <IconButton icon="chevronRight" label="Next point" onClick={() => setSelected((i) => (i === null ? 0 : Math.min(records.length - 1, i + 1)))} />
+            <IconButton
+              icon="chevronRight"
+              label="Next point"
+              onClick={() => setSelected((i) => (i === null ? 0 : Math.min(records.length - 1, i + 1)))}
+            />
           </div>
         )}
-        {measurement.goalType === MeasurementGoalType.SPECIFIC && <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>Goal: {fmt(measurement.goalValue)} {measurement.unitShort} (dashed line)</div>}
+        {measurement.goalType === MeasurementGoalType.SPECIFIC && (
+          <div className="muted" style={{ fontSize: 13, marginTop: 8 }}>
+            Goal: {fmt(measurement.goalValue)} {measurement.unitShort} (dashed line)
+          </div>
+        )}
       </div>
-      <Dialog open={showDay !== null} onClose={() => setShowDay(null)} title={showDay ? formatLongDate(showDay) : ''} flush actions={<Button variant="text" onClick={() => setShowDay(null)}>Close</Button>}>
-        {dayRecords.map((r) => { const m = measurements.find((x) => x.id === r.measurementId); return <div key={r.id} className="stat-row"><span>{m?.name ?? '?'}</span><span className="stat-row__value">{fmt(r.value)} {m?.unitShort}</span></div>; })}
+      <Dialog
+        open={showDay !== null}
+        onClose={() => setShowDay(null)}
+        title={showDay ? formatLongDate(showDay) : ''}
+        flush
+        actions={
+          <Button variant="text" onClick={() => setShowDay(null)}>
+            Close
+          </Button>
+        }
+      >
+        {dayRecords.map((r) => {
+          const m = measurements.find((x) => x.id === r.measurementId);
+          return (
+            <div key={r.id} className="stat-row">
+              <span>{m?.name ?? '?'}</span>
+              <span className="stat-row__value">
+                {fmt(r.value)} {m?.unitShort}
+              </span>
+            </div>
+          );
+        })}
       </Dialog>
     </div>
   );
@@ -227,19 +472,61 @@ export function MeasurementsScreen() {
   const measurements = useQuery((d) => listMeasurements(d));
   return (
     <div className="screen">
-      <TopBar back title="Measurements" actions={<IconButton icon="add" label="New measurement" primary onClick={() => navigate('/body/measurement/new')} />} />
+      <TopBar
+        back
+        title="Measurements"
+        actions={
+          <IconButton
+            icon="add"
+            label="New measurement"
+            primary
+            onClick={() => navigate('/body/measurement/new')}
+          />
+        }
+      />
       <div className="screen__content">
         <div className="container">
           <div className="list">
             {measurements.map((m, i) => (
               <div key={m.id} className="list__item" style={{ padding: '4px 6px 4px 14px' }}>
-                <button className="list__text" style={{ textAlign: 'left', padding: '8px 0' }} onClick={() => navigate(`/body/measurement/${m.id}`)}>
+                <button
+                  className="list__text"
+                  style={{ textAlign: 'left', padding: '8px 0' }}
+                  onClick={() => navigate(`/body/measurement/${m.id}`)}
+                >
                   <div className="list__primary">{m.name}</div>
-                  <div className="list__secondary">{m.unitLong || 'No unit'}{m.custom ? ' · custom' : ''}</div>
+                  <div className="list__secondary">
+                    {m.unitLong || 'No unit'}
+                    {m.custom ? ' · custom' : ''}
+                  </div>
                 </button>
-                <IconButton icon="arrowUp" label="Move up" small disabled={i === 0} onClick={() => { const ids = measurements.map((x) => x.id); [ids[i - 1], ids[i]] = [ids[i]!, ids[i - 1]!]; reorderMeasurements(db, ids); }} />
-                <IconButton icon="arrowDown" label="Move down" small disabled={i === measurements.length - 1} onClick={() => { const ids = measurements.map((x) => x.id); [ids[i + 1], ids[i]] = [ids[i]!, ids[i + 1]!]; reorderMeasurements(db, ids); }} />
-                <Checkbox checked={m.enabled} onChange={(v) => updateMeasurement(db, m.id, { enabled: v })} label={`Enable ${m.name}`} />
+                <IconButton
+                  icon="arrowUp"
+                  label="Move up"
+                  small
+                  disabled={i === 0}
+                  onClick={() => {
+                    const ids = measurements.map((x) => x.id);
+                    [ids[i - 1], ids[i]] = [ids[i]!, ids[i - 1]!];
+                    reorderMeasurements(db, ids);
+                  }}
+                />
+                <IconButton
+                  icon="arrowDown"
+                  label="Move down"
+                  small
+                  disabled={i === measurements.length - 1}
+                  onClick={() => {
+                    const ids = measurements.map((x) => x.id);
+                    [ids[i + 1], ids[i]] = [ids[i]!, ids[i + 1]!];
+                    reorderMeasurements(db, ids);
+                  }}
+                />
+                <Checkbox
+                  checked={m.enabled}
+                  onChange={(v) => updateMeasurement(db, m.id, { enabled: v })}
+                  label={`Enable ${m.name}`}
+                />
               </div>
             ))}
           </div>
@@ -268,54 +555,165 @@ export function MeasurementEditorScreen() {
   const save = () => {
     if (!name.trim() && !isDefault) return toast('Enter a name');
     const gv = goalType === MeasurementGoalType.SPECIFIC ? Number(goalValue) || 0 : 0;
-    if (id) updateMeasurement(db, id, { name: isDefault ? undefined : name, unitId, goalType, goalValue: gv });
+    if (id)
+      updateMeasurement(db, id, { name: isDefault ? undefined : name, unitId, goalType, goalValue: gv });
     else createMeasurement(db, { name, unitId, goalType, goalValue: gv });
     navigate(-1);
   };
   return (
     <div className="screen">
-      <TopBar back title={id ? 'Edit Measurement' : 'New Measurement'} actions={<IconButton icon="save" label="Save" primary onClick={save} />} />
-      <div className="screen__content"><div className="container">
-        <div className="card" style={{ padding: 14 }}>
-          <label className="field"><span className="field__label">Name</span><input className="input" value={name} onChange={(e) => setName(e.target.value)} disabled={isDefault} autoFocus={!id} /></label>
-          <div className="field"><span className="field__label">Unit</span>
-            <div className="row">
-              <select className="select" value={unitId} onChange={(e) => setUnitId(Number(e.target.value))}>
-                <option value={0}>None</option>
-                {units.filter((u) => u.longName).map((u) => <option key={u.id} value={u.id}>{u.longName} ({u.shortName})</option>)}
-              </select>
-              <IconButton icon="add" label="Custom unit" onClick={() => setUnitDialog(true)} />
+      <TopBar
+        back
+        title={id ? 'Edit Measurement' : 'New Measurement'}
+        actions={<IconButton icon="save" label="Save" primary onClick={save} />}
+      />
+      <div className="screen__content">
+        <div className="container">
+          <div className="card" style={{ padding: 14 }}>
+            <label className="field">
+              <span className="field__label">Name</span>
+              <input
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                disabled={isDefault}
+                autoFocus={!id}
+              />
+            </label>
+            <div className="field">
+              <span className="field__label">Unit</span>
+              <div className="row">
+                <select className="select" value={unitId} onChange={(e) => setUnitId(Number(e.target.value))}>
+                  <option value={0}>None</option>
+                  {units
+                    .filter((u) => u.longName)
+                    .map((u) => (
+                      <option key={u.id} value={u.id}>
+                        {u.longName} ({u.shortName})
+                      </option>
+                    ))}
+                </select>
+                <IconButton icon="add" label="Custom unit" onClick={() => setUnitDialog(true)} />
+              </div>
             </div>
+            <label className="field">
+              <span className="field__label">Goal</span>
+              <select
+                className="select"
+                value={goalType}
+                onChange={(e) => setGoalType(Number(e.target.value))}
+              >
+                <option value={MeasurementGoalType.NONE}>None</option>
+                <option value={MeasurementGoalType.INCREASE}>Increase</option>
+                <option value={MeasurementGoalType.DECREASE}>Decrease</option>
+                <option value={MeasurementGoalType.SPECIFIC}>Specific value</option>
+              </select>
+            </label>
+            {goalType === MeasurementGoalType.SPECIFIC && (
+              <label className="field">
+                <span className="field__label">Target value</span>
+                <input
+                  className="input"
+                  inputMode="decimal"
+                  value={goalValue}
+                  onChange={(e) => setGoalValue(e.target.value)}
+                />
+              </label>
+            )}
           </div>
-          <label className="field"><span className="field__label">Goal</span>
-            <select className="select" value={goalType} onChange={(e) => setGoalType(Number(e.target.value))}>
-              <option value={MeasurementGoalType.NONE}>None</option><option value={MeasurementGoalType.INCREASE}>Increase</option><option value={MeasurementGoalType.DECREASE}>Decrease</option><option value={MeasurementGoalType.SPECIFIC}>Specific value</option>
-            </select>
-          </label>
-          {goalType === MeasurementGoalType.SPECIFIC && <label className="field"><span className="field__label">Target value</span><input className="input" inputMode="decimal" value={goalValue} onChange={(e) => setGoalValue(e.target.value)} /></label>}
+          <Button block large onClick={save}>
+            Save
+          </Button>
+          {id && (
+            <div className="stack" style={{ marginTop: 16 }}>
+              <Button block variant="outline" onClick={() => setConfirm('reset')}>
+                Reset (delete all values)
+              </Button>
+              {!isDefault && (
+                <Button block variant="danger" onClick={() => setConfirm('delete')}>
+                  Delete measurement
+                </Button>
+              )}
+            </div>
+          )}
         </div>
-        <Button block large onClick={save}>Save</Button>
-        {id && (
-          <div className="stack" style={{ marginTop: 16 }}>
-            <Button block variant="outline" onClick={() => setConfirm('reset')}>Reset (delete all values)</Button>
-            {!isDefault && <Button block variant="danger" onClick={() => setConfirm('delete')}>Delete measurement</Button>}
-          </div>
-        )}
-      </div></div>
+      </div>
       <UnitDialog open={unitDialog} onClose={() => setUnitDialog(false)} onCreated={setUnitId} />
-      <ConfirmDialog open={confirm !== null} onClose={() => setConfirm(null)} title={confirm === 'delete' ? 'Delete measurement?' : 'Reset measurement?'} message={confirm === 'delete' ? 'The measurement and all recorded values will be deleted.' : 'All recorded values will be deleted.'} confirmLabel={confirm === 'delete' ? 'Delete' : 'Reset'} danger onConfirm={() => { if (!id) return; if (confirm === 'delete') { deleteMeasurement(db, id); navigate(-1); } else resetMeasurement(db, id); }} />
+      <ConfirmDialog
+        open={confirm !== null}
+        onClose={() => setConfirm(null)}
+        title={confirm === 'delete' ? 'Delete measurement?' : 'Reset measurement?'}
+        message={
+          confirm === 'delete'
+            ? 'The measurement and all recorded values will be deleted.'
+            : 'All recorded values will be deleted.'
+        }
+        confirmLabel={confirm === 'delete' ? 'Delete' : 'Reset'}
+        danger
+        onConfirm={() => {
+          if (!id) return;
+          if (confirm === 'delete') {
+            deleteMeasurement(db, id);
+            navigate(-1);
+          } else resetMeasurement(db, id);
+        }}
+      />
     </div>
   );
 }
 
-function UnitDialog({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated: (id: number) => void }) {
+function UnitDialog({
+  open,
+  onClose,
+  onCreated,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onCreated: (id: number) => void;
+}) {
   const db = useDb();
   const [long, setLong] = useState('');
   const [short, setShort] = useState('');
   return (
-    <Dialog open={open} onClose={onClose} title="Custom unit" actions={<><Button variant="text" onClick={onClose}>Cancel</Button><Button disabled={!long.trim()} onClick={() => { onCreated(createMeasurementUnit(db, long, short || long)); onClose(); }}>Save</Button></>}>
-      <label className="field"><span className="field__label">Name</span><input className="input" value={long} onChange={(e) => setLong(e.target.value)} placeholder="Kilocalories" /></label>
-      <label className="field"><span className="field__label">Short name</span><input className="input" value={short} onChange={(e) => setShort(e.target.value)} placeholder="kcal" /></label>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Custom unit"
+      actions={
+        <>
+          <Button variant="text" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            disabled={!long.trim()}
+            onClick={() => {
+              onCreated(createMeasurementUnit(db, long, short || long));
+              onClose();
+            }}
+          >
+            Save
+          </Button>
+        </>
+      }
+    >
+      <label className="field">
+        <span className="field__label">Name</span>
+        <input
+          className="input"
+          value={long}
+          onChange={(e) => setLong(e.target.value)}
+          placeholder="Kilocalories"
+        />
+      </label>
+      <label className="field">
+        <span className="field__label">Short name</span>
+        <input
+          className="input"
+          value={short}
+          onChange={(e) => setShort(e.target.value)}
+          placeholder="kcal"
+        />
+      </label>
     </Dialog>
   );
 }

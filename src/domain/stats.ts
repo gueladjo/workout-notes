@@ -41,8 +41,19 @@ export function exerciseStats(sets: readonly TrainingSet[], typeId: number): Sta
   }
   if (w && r) {
     const b = maxBy((s) => estimatedOneRepMax(s.metricWeight, s.reps));
-    if (b) items.push({ label: 'Max Estimated 1RM', value: estimatedOneRepMax(b.metricWeight, b.reps), kind: 'weight', date: b.date, set: b });
-    items.push({ label: 'Total Volume', value: sets.reduce((a, s) => a + s.metricWeight * s.reps, 0), kind: 'weight' });
+    if (b)
+      items.push({
+        label: 'Max Estimated 1RM',
+        value: estimatedOneRepMax(b.metricWeight, b.reps),
+        kind: 'weight',
+        date: b.date,
+        set: b,
+      });
+    items.push({
+      label: 'Total Volume',
+      value: sets.reduce((a, s) => a + s.metricWeight * s.reps, 0),
+      kind: 'weight',
+    });
     const byDate = new Map<string, number>();
     for (const s of sets) byDate.set(s.date, (byDate.get(s.date) ?? 0) + s.metricWeight * s.reps);
     let bestDate = '';
@@ -61,9 +72,14 @@ export function exerciseStats(sets: readonly TrainingSet[], typeId: number): Sta
     if (b) items.push({ label: 'Max Reps', value: b.reps, kind: 'reps', date: b.date, set: b });
   }
   if (d) {
-    items.push({ label: 'Total Distance', value: sets.reduce((a, s) => a + s.distanceMetres, 0), kind: 'distance' });
+    items.push({
+      label: 'Total Distance',
+      value: sets.reduce((a, s) => a + s.distanceMetres, 0),
+      kind: 'distance',
+    });
     const b = maxBy((s) => s.distanceMetres);
-    if (b) items.push({ label: 'Max Distance', value: b.distanceMetres, kind: 'distance', date: b.date, set: b });
+    if (b)
+      items.push({ label: 'Max Distance', value: b.distanceMetres, kind: 'distance', date: b.date, set: b });
   }
   if (t) {
     items.push({ label: 'Total Time', value: sets.reduce((a, s) => a + s.durationSeconds, 0), kind: 'time' });
@@ -73,7 +89,13 @@ export function exerciseStats(sets: readonly TrainingSet[], typeId: number): Sta
   if (d && t) {
     const b = maxBy((s) => (s.durationSeconds > 0 ? s.distanceMetres / s.durationSeconds : -1));
     if (b && b.durationSeconds > 0)
-      items.push({ label: 'Max Speed', value: b.distanceMetres / b.durationSeconds, kind: 'speed', date: b.date, set: b });
+      items.push({
+        label: 'Max Speed',
+        value: b.distanceMetres / b.durationSeconds,
+        kind: 'speed',
+        date: b.date,
+        set: b,
+      });
   }
   return items;
 }
@@ -95,7 +117,8 @@ export function goalProgress(goal: Goal, sets: readonly TrainingSet[]): GoalProg
   for (const s of relevant) byDate.set(s.date, [...(byDate.get(s.date) ?? []), s]);
   const max = (f: (s: TrainingSet) => number) => relevant.reduce((m, s) => Math.max(m, f(s)), 0);
   const sum = (f: (s: TrainingSet) => number) => relevant.reduce((m, s) => m + f(s), 0);
-  const maxWorkout = (f: (day: TrainingSet[]) => number) => [...byDate.values()].reduce((m, day) => Math.max(m, f(day)), 0);
+  const maxWorkout = (f: (day: TrainingSet[]) => number) =>
+    [...byDate.values()].reduce((m, day) => Math.max(m, f(day)), 0);
   let current = 0;
   let target = 0;
   let kind: StatItem['kind'] = 'weight';

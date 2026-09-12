@@ -2,12 +2,12 @@
 
 ## Commands
 
-| Command | What it runs |
-| --- | --- |
-| `npm run check` | `tsc --noEmit`, `eslint .`, `vitest run` — the pre-commit gate |
-| `npm test` / `npm run test:watch` | unit tests only |
-| `npm run test:e2e` | Playwright against `vite preview` of a fresh production build (mobile Chromium profile) |
-| `npm run build` | production build; fails loudly if the PWA plugin or WASM asset is misconfigured |
+| Command                           | What it runs                                                                            |
+| --------------------------------- | --------------------------------------------------------------------------------------- |
+| `npm run check`                   | `tsc --noEmit`, `eslint .`, `vitest run` — the pre-commit gate                          |
+| `npm test` / `npm run test:watch` | unit tests only                                                                         |
+| `npm run test:e2e`                | Playwright against `vite preview` of a fresh production build (mobile Chromium profile) |
+| `npm run build`                   | production build; fails loudly if the PWA plugin or WASM asset is misconfigured         |
 
 Playwright needs a browser once: `npx playwright install chromium` (add `--with-deps` on a bare
 Linux box).
@@ -17,13 +17,13 @@ Linux box).
 They run in Node against real sql.js databases created by `createEmptyDatabase()`; no browser, no
 mocks of the database. `fake-indexeddb` stands in for IndexedDB in persistence/backup tests.
 
-| File | Covers |
-| --- | --- |
-| `schema.test.ts` | DDL matches the canonical column lists, seeds, `ensureSchema` upgrade of an old-shaped backup (added columns, BodyWeight and legacy comment migrations, version stamp), idempotence, never downgrading, backup validation |
-| `workouts.test.ts` | repositories: sets/comments/PR flags, pre-fill, workout dates, re-ordering keeps comments, copy/move/delete, supersets, exercises (type change, unit change), categories, settings round trip, routines (planned sets, logging, copy), measurements |
-| `backup.test.ts` | export -> open -> export byte identity, restore with snapshot, rejection of non-backups, file naming, CSV layout, snapshot pruning |
-| `store.test.ts` | transaction rollback, `run()` outside `mutate()` refused, single notification per outer mutation, debounced persist, retry after failure |
-| `records.test.ts`, `dates.test.ts` | domain maths: Brzycki, PR selection, actual/estimated rep maxes, date arithmetic and week starts, durations |
+| File                               | Covers                                                                                                                                                                                                                                              |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `schema.test.ts`                   | DDL matches the canonical column lists, seeds, `ensureSchema` upgrade of an old-shaped backup (added columns, BodyWeight and legacy comment migrations, version stamp), idempotence, never downgrading, backup validation                           |
+| `workouts.test.ts`                 | repositories: sets/comments/PR flags, pre-fill, workout dates, re-ordering keeps comments, copy/move/delete, supersets, exercises (type change, unit change), categories, settings round trip, routines (planned sets, logging, copy), measurements |
+| `backup.test.ts`                   | export -> open -> export byte identity, restore with snapshot, rejection of non-backups, file naming, CSV layout, snapshot pruning                                                                                                                  |
+| `store.test.ts`                    | transaction rollback, `run()` outside `mutate()` refused, single notification per outer mutation, debounced persist, retry after failure                                                                                                            |
+| `records.test.ts`, `dates.test.ts` | domain maths: Brzycki, PR selection, actual/estimated rep maxes, date arithmetic and week starts, durations                                                                                                                                         |
 
 Sample data comes from `tests/helpers/sample.ts` (`seedSampleWorkouts`), which is also what
 `npm run make-fixture` writes to `tests/fixtures/generated/sample.fitnotes`.
@@ -36,6 +36,13 @@ The journeys that matter for a local-first app:
 2. restore the generated `.fitnotes` fixture through the file chooser, verify counts and a
    restored workout, then export a backup and check it is a SQLite file with FitNotes' file name,
 3. reload offline after the service worker is active.
+
+## Visual checks
+
+`npm run screenshots` builds the app, serves it on port 4174, restores the generated fixture and
+writes phone-sized screenshots of every main screen (light and dark) to `./screenshots`
+(git-ignored). Look at them after UI changes; the script is also the quickest way to see a screen
+with data without clicking through the app.
 
 ## Manual checks on devices
 

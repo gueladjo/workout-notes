@@ -31,7 +31,9 @@ export function openBackup(SQL: SqlJsStatic, bytes: Uint8Array): { db: Database;
     // Force a read so corrupt files fail here rather than later.
     scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'");
   } catch (err) {
-    throw new BackupError(`The file could not be opened as a database: ${err instanceof Error ? err.message : String(err)}`);
+    throw new BackupError(
+      `The file could not be opened as a database: ${err instanceof Error ? err.message : String(err)}`,
+    );
   }
   const problem = validateBackupDatabase(db);
   if (problem) {
@@ -53,7 +55,11 @@ export function summarize(db: AppDatabase): Omit<RestoreSummary, 'schema'> {
 }
 
 /** Replace the live database with the backup. Snapshots the current database first. */
-export async function restoreBackup(app: AppDatabase, SQL: SqlJsStatic, bytes: Uint8Array): Promise<RestoreSummary> {
+export async function restoreBackup(
+  app: AppDatabase,
+  SQL: SqlJsStatic,
+  bytes: Uint8Array,
+): Promise<RestoreSummary> {
   const { db, schema } = openBackup(SQL, bytes);
   await app.flush();
   await saveSnapshot(app.export(), 'Before restore');
@@ -69,7 +75,10 @@ export function backupFileName(now = new Date()): string {
 
 export function exportBackupBlob(app: AppDatabase): Blob {
   const bytes = app.export();
-  return new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer], {
-    type: 'application/octet-stream',
-  });
+  return new Blob(
+    [bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer],
+    {
+      type: 'application/octet-stream',
+    },
+  );
 }

@@ -22,9 +22,23 @@ export function ExerciseOverviewScreen() {
     <div className="screen">
       <TopBar back title={exercise.name} subtitle={exercise.categoryName} />
       <Tabs
-        tabs={[{ id: 'history', label: 'History' }, { id: 'graph', label: 'Graph' }, { id: 'records', label: 'Records' }, { id: 'stats', label: 'Stats' }, { id: 'goals', label: 'Goals' }]}
+        tabs={[
+          { id: 'history', label: 'History' },
+          { id: 'graph', label: 'Graph' },
+          { id: 'records', label: 'Records' },
+          { id: 'stats', label: 'Stats' },
+          { id: 'goals', label: 'Goals' },
+        ]}
         value={tab}
-        onChange={(t) => setSearch((p) => { p.set('tab', t); return p; }, { replace: true })}
+        onChange={(t) =>
+          setSearch(
+            (p) => {
+              p.set('tab', t);
+              return p;
+            },
+            { replace: true },
+          )
+        }
       />
       {tab === 'history' && <HistoryTab exercise={exercise} date={date} />}
       {tab === 'graph' && <GraphTab exercise={exercise} />}

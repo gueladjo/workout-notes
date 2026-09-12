@@ -4,7 +4,14 @@ import { useDb, useQuery } from '@/app/db-context';
 import { useRouteDate, useSettings } from '@/app/hooks';
 import { addDays, formatLongDate, relativeDays, todayIso, weekdayName } from '@/domain/dates';
 import { androidColourToHex } from '@/domain/colour';
-import { allWorkoutDates, copySets, deleteWorkoutExercises, getWorkout, moveWorkout, reorderWorkoutExercises } from '@/db/repo/workouts';
+import {
+  allWorkoutDates,
+  copySets,
+  deleteWorkoutExercises,
+  getWorkout,
+  moveWorkout,
+  reorderWorkoutExercises,
+} from '@/db/repo/workouts';
 import { setWorkoutComment } from '@/db/repo/comments';
 import { HomeScreenCategoryVisibility, HomeScreenSetLimitType } from '@/db/constants';
 import { formatSet, weightUnitFor } from '@/ui/format';
@@ -29,7 +36,9 @@ export function HomeScreen() {
   const workout = useQuery((d) => getWorkout(d, date), [date]);
   const dates = useQuery((d) => allWorkoutDates(d));
   const [selected, setSelected] = useState<Set<number> | null>(null);
-  const [dialog, setDialog] = useState<'none' | 'copyPick' | 'copySelect' | 'movePick' | 'comment' | 'share' | 'deleteConfirm'>('none');
+  const [dialog, setDialog] = useState<
+    'none' | 'copyPick' | 'copySelect' | 'movePick' | 'comment' | 'share' | 'deleteConfirm'
+  >('none');
   const [copySource, setCopySource] = useState<Workout | null>(null);
 
   const goTo = (iso: string) => {
@@ -61,6 +70,7 @@ export function HomeScreen() {
   };
 
   const previousWorkoutDate = useMemo(() => [...dates].reverse().find((d) => d < date), [dates, date]);
+  const totalSets = workout.exercises.reduce((n, e) => n + e.sets.length, 0);
 
   const openCopyFrom = (iso: string) => {
     setCopySource(getWorkout(db, iso));
@@ -84,9 +94,19 @@ export function HomeScreen() {
 
   const menuItems = [
     { label: 'Copy Workout', icon: 'copy' as const, onSelect: () => setDialog('copyPick') },
-    { label: 'Move Workout', icon: 'swap' as const, onSelect: () => setDialog('movePick'), disabled: workout.exercises.length === 0 },
+    {
+      label: 'Move Workout',
+      icon: 'swap' as const,
+      onSelect: () => setDialog('movePick'),
+      disabled: workout.exercises.length === 0,
+    },
     { label: 'Comment Workout', icon: 'commentOutline' as const, onSelect: () => setDialog('comment') },
-    { label: 'Share Workout', icon: 'share' as const, onSelect: () => setDialog('share'), disabled: workout.exercises.length === 0 },
+    {
+      label: 'Share Workout',
+      icon: 'share' as const,
+      onSelect: () => setDialog('share'),
+      disabled: workout.exercises.length === 0,
+    },
     { label: '', divider: true, onSelect: () => {} },
     { label: 'Routines', icon: 'routine' as const, onSelect: () => navigate(`/routines?date=${date}`) },
     { label: 'Body Tracker', icon: 'body' as const, onSelect: () => navigate('/body') },
@@ -125,8 +145,16 @@ export function HomeScreen() {
           primary
           actions={
             <>
-              <IconButton icon="calendar" label="Calendar" onClick={() => navigate(`/calendar?date=${date}`)} />
-              <IconButton icon="add" label="Add exercise" onClick={() => navigate(`/exercises?date=${date}`)} />
+              <IconButton
+                icon="calendar"
+                label="Calendar"
+                onClick={() => navigate(`/calendar?date=${date}`)}
+              />
+              <IconButton
+                icon="add"
+                label="Add exercise"
+                onClick={() => navigate(`/exercises?date=${date}`)}
+              />
               <MenuButton items={menuItems} />
             </>
           }
@@ -138,7 +166,7 @@ export function HomeScreen() {
           <div className="home-nav__title">{weekdayName(date)}</div>
           <div className="home-nav__sub">
             {workout.exercises.length
-              ? `${workout.exercises.length} exercise${workout.exercises.length === 1 ? '' : 's'} · ${workout.exercises.reduce((n, e) => n + e.sets.length, 0)} sets`
+              ? `${plural(workout.exercises.length, 'exercise')} · ${plural(totalSets, 'set')}`
               : 'No workout'}
           </div>
         </div>
@@ -156,7 +184,12 @@ export function HomeScreen() {
                   Start New Workout
                 </Button>
                 {previousWorkoutDate && (
-                  <Button variant="outline" large icon="copy" onClick={() => openCopyFrom(previousWorkoutDate)}>
+                  <Button
+                    variant="outline"
+                    large
+                    icon="copy"
+                    onClick={() => openCopyFrom(previousWorkoutDate)}
+                  >
                     Copy Previous Workout
                   </Button>
                 )}
@@ -166,7 +199,9 @@ export function HomeScreen() {
             workout.exercises.map((we) => {
               const wu = weightUnitFor(we.exercise, settings);
               const setsToShow =
-                settings.homeScreenLimitType === HomeScreenSetLimitType.LAST ? we.sets.slice(-limit) : we.sets.slice(0, limit);
+                settings.homeScreenLimitType === HomeScreenSetLimitType.LAST
+                  ? we.sets.slice(-limit)
+                  : we.sets.slice(0, limit);
               const hidden = we.sets.length - setsToShow.length;
               const complete = we.sets.filter((s) => s.isComplete).length;
               const isSelected = selected?.has(we.exercise.id) ?? false;
@@ -184,24 +219,41 @@ export function HomeScreen() {
                     } else navigate(`/train/${date}/${we.exercise.id}`);
                   }}
                 >
-                  <span className="exercise-card__bar" style={{ background: we.group ? androidColourToHex(we.group.colour) : 'transparent' }} />
+                  <span
+                    className="exercise-card__bar"
+                    style={{ background: we.group ? androidColourToHex(we.group.colour) : 'transparent' }}
+                  />
                   <div className="exercise-card__main">
                     <div className="exercise-card__name">
-                      {showColour && <span className="dot" style={{ background: androidColourToHex(we.exercise.categoryColour) }} />}
-                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>{we.exercise.name}</span>
+                      {showColour && (
+                        <span
+                          className="dot"
+                          style={{ background: androidColourToHex(we.exercise.categoryColour) }}
+                        />
+                      )}
+                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {we.exercise.name}
+                      </span>
                       {settings.markSetsComplete && (
                         <span className="exercise-card__progress">
                           {complete}/{we.sets.length}
                         </span>
                       )}
                     </div>
-                    {showCategory && <div className="exercise-card__category">{we.exercise.categoryName}</div>}
+                    {showCategory && (
+                      <div className="exercise-card__category">{we.exercise.categoryName}</div>
+                    )}
                     {!selected && (
                       <ul className="exercise-card__sets">
                         {setsToShow.map((s) => (
-                          <li key={s.id} className={s.isComplete && settings.markSetsComplete ? 'faint' : undefined}>
+                          <li
+                            key={s.id}
+                            className={s.isComplete && settings.markSetsComplete ? 'faint' : undefined}
+                          >
                             <span>{formatSet(s, we.exercise.typeId, wu, settings)}</span>
-                            {s.isPersonalRecord && settings.trackPersonalRecords && <Icon name="trophy" size={15} className="trophy" />}
+                            {s.isPersonalRecord && settings.trackPersonalRecords && (
+                              <Icon name="trophy" size={15} className="trophy" />
+                            )}
                             {s.comment && <Icon name="comment" size={15} className="faint" />}
                           </li>
                         ))}
@@ -277,6 +329,10 @@ export function HomeScreen() {
       />
     </div>
   );
+}
+
+function plural(n: number, noun: string): string {
+  return `${n} ${noun}${n === 1 ? '' : 's'}`;
 }
 
 function SelectionBar({
@@ -418,7 +474,13 @@ export function CommentDialog({
         </>
       }
     >
-      <textarea className="textarea" value={text} onChange={(e) => setText(e.target.value)} placeholder="Comment" autoFocus />
+      <textarea
+        className="textarea"
+        value={text}
+        onChange={(e) => setText(e.target.value)}
+        placeholder="Comment"
+        autoFocus
+      />
     </Dialog>
   );
 }
@@ -471,7 +533,16 @@ function ShareDialog({ open, onClose, workout }: { open: boolean; onClose: () =>
         <ToggleRow label="Total Workout Volume" checked={includeVolume} onChange={setIncludeVolume} />
         <ToggleRow label="Total Sets" checked={includeSets} onChange={setIncludeSets} />
       </div>
-      <pre className="mono" style={{ whiteSpace: 'pre-wrap', fontSize: 13, background: 'var(--color-surface-2)', padding: 12, borderRadius: 8 }}>
+      <pre
+        className="mono"
+        style={{
+          whiteSpace: 'pre-wrap',
+          fontSize: 13,
+          background: 'var(--color-surface-2)',
+          padding: 12,
+          borderRadius: 8,
+        }}
+      >
         {text}
       </pre>
     </Dialog>

@@ -1,6 +1,12 @@
 import type { AppDatabase } from '../store';
 import type { ExerciseWithCategory } from '../types';
-import { ExerciseWeightUnit, exerciseTypeHas, isExerciseTypeId, KG_PER_LB, type ExerciseTypeId } from '../constants';
+import {
+  ExerciseWeightUnit,
+  exerciseTypeHas,
+  isExerciseTypeId,
+  KG_PER_LB,
+  type ExerciseTypeId,
+} from '../constants';
 import { recalculatePersonalRecords } from './records';
 
 export interface ExerciseRow {

@@ -127,27 +127,27 @@ export function ensureSchema(db: Database): SchemaReport {
       Number(scalar(db, 'SELECT COUNT(*) FROM BodyWeight')) > 0 &&
       Number(scalar(db, 'SELECT COUNT(*) FROM MeasurementRecord')) === 0
     ) {
-      const rows = all<{ date: string; body_weight_metric: number; body_fat: number; comments: string | null }>(
-        db,
-        'SELECT date, body_weight_metric, body_fat, comments FROM BodyWeight ORDER BY _id ASC',
-      );
+      const rows = all<{
+        date: string;
+        body_weight_metric: number;
+        body_fat: number;
+        comments: string | null;
+      }>(db, 'SELECT date, body_weight_metric, body_fat, comments FROM BodyWeight ORDER BY _id ASC');
       for (const r of rows) {
         const [date, time = '12:00:00'] = String(r.date).split(' ');
         if (r.body_weight_metric > 0) {
-          run(db, 'INSERT INTO MeasurementRecord (measurement_id, date, time, value, comment) VALUES (1, ?, ?, ?, ?)', [
-            date ?? '',
-            time,
-            r.body_weight_metric,
-            r.comments ?? null,
-          ]);
+          run(
+            db,
+            'INSERT INTO MeasurementRecord (measurement_id, date, time, value, comment) VALUES (1, ?, ?, ?, ?)',
+            [date ?? '', time, r.body_weight_metric, r.comments ?? null],
+          );
         }
         if (r.body_fat > 0) {
-          run(db, 'INSERT INTO MeasurementRecord (measurement_id, date, time, value, comment) VALUES (2, ?, ?, ?, ?)', [
-            date ?? '',
-            time,
-            r.body_fat,
-            null,
-          ]);
+          run(
+            db,
+            'INSERT INTO MeasurementRecord (measurement_id, date, time, value, comment) VALUES (2, ?, ?, ?, ?)',
+            [date ?? '', time, r.body_fat, null],
+          );
         }
       }
       report.migrations.push(`BodyWeight -> MeasurementRecord (${rows.length} rows)`);
@@ -167,7 +167,10 @@ export function ensureSchema(db: Database): SchemaReport {
     const uncoloured = all<{ _id: number }>(db, 'SELECT _id FROM Category WHERE colour = 0 ORDER BY _id ASC');
     if (uncoloured.length > 0) {
       uncoloured.forEach((c, i) =>
-        run(db, 'UPDATE Category SET colour = ? WHERE _id = ?', [CATEGORY_COLOURS[i % CATEGORY_COLOURS.length]!, c._id]),
+        run(db, 'UPDATE Category SET colour = ? WHERE _id = ?', [
+          CATEGORY_COLOURS[i % CATEGORY_COLOURS.length]!,
+          c._id,
+        ]),
       );
       report.migrations.push(`assigned colours to ${uncoloured.length} categories`);
     }
@@ -215,7 +218,8 @@ export function createEmptyDatabase(SQL: SqlJsStatic, options: { metric?: boolea
 /** Validate that a database looks like a FitNotes backup; returns a human-readable problem or null. */
 export function validateBackupDatabase(db: Database): string | null {
   for (const t of REQUIRED_TABLES) {
-    if (!hasTable(db, t)) return `The file is a SQLite database but has no "${t}" table, so it is not a FitNotes backup.`;
+    if (!hasTable(db, t))
+      return `The file is a SQLite database but has no "${t}" table, so it is not a FitNotes backup.`;
   }
   return null;
 }

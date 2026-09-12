@@ -3,7 +3,11 @@
  * with a download-link fallback.
  */
 
-export async function shareOrDownload(blob: Blob, fileName: string, title: string): Promise<'shared' | 'downloaded'> {
+export async function shareOrDownload(
+  blob: Blob,
+  fileName: string,
+  title: string,
+): Promise<'shared' | 'downloaded'> {
   const file = new File([blob], fileName, { type: blob.type });
   const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
   if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {

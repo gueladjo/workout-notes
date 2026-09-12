@@ -40,7 +40,10 @@ for (const name of names) {
 for (const name of Object.keys(TABLES)) if (!names.includes(name)) console.log(`\n${name}: TABLE MISSING`);
 if (names.includes('training_log') && names.includes('exercise')) {
   console.log('\ndistance unit usage by exercise type (training_log.unit):');
-  for (const r of all(db, 'SELECT e.exercise_type_id AS type, t.unit AS unit, COUNT(*) AS n FROM training_log t JOIN exercise e ON e._id = t.exercise_id GROUP BY 1, 2 ORDER BY 1, 2')) {
+  for (const r of all(
+    db,
+    'SELECT e.exercise_type_id AS type, t.unit AS unit, COUNT(*) AS n FROM training_log t JOIN exercise e ON e._id = t.exercise_id GROUP BY 1, 2 ORDER BY 1, 2',
+  )) {
     console.log('  ', JSON.stringify(r));
   }
 }

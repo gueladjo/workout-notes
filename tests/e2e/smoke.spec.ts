@@ -25,8 +25,8 @@ test('logs a set and keeps it after a reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Chest' }).click();
   await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
   await expect(page.getByRole('tab', { name: 'Track' })).toBeVisible();
-  await page.getByLabel('Weight (kg)').fill('100');
-  await page.getByLabel('Reps').fill('5');
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
   await page.getByTestId('save-set').click();
   await expect(page.getByTestId('set-list')).toContainText('100 kg × 5 reps');
   // The trophy shows because it is the first (record) set.
@@ -38,8 +38,8 @@ test('logs a set and keeps it after a reload', async ({ page }) => {
   // Home screen shows the exercise.
   await page.getByRole('button', { name: 'Navigation panel' }).click();
   await page.getByRole('button', { name: 'Home' }).click();
-  await expect(page.getByText('Flat Barbell Bench Press')).toBeVisible();
-  await expect(page.getByText('100 kg × 5 reps')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Flat Barbell Bench Press 100 kg × 5 reps' })).toBeVisible();
+  await expect(page.getByText('1 exercise · 1 set')).toBeVisible();
 });
 
 test('restores a FitNotes backup and exports one', async ({ page }) => {
@@ -49,9 +49,9 @@ test('restores a FitNotes backup and exports one', async ({ page }) => {
   const chooser = page.waitForEvent('filechooser');
   await page.getByRole('button', { name: 'Restore Backup…' }).click();
   await (await chooser).setFiles(FIXTURE);
-  await page.getByRole('button', { name: 'Restore' }).click();
+  await page.getByRole('button', { name: 'Restore', exact: true }).click();
   await expect(page.getByText('Backup restored')).toBeVisible({ timeout: 30_000 });
-  await expect(page.getByText('10', { exact: true })).toBeVisible(); // sets
+  await expect(page.getByRole('dialog').getByText('10', { exact: true })).toBeVisible(); // sets
   await page.getByRole('button', { name: 'OK' }).click();
   // The restored workout of 2026-09-08 is visible from the calendar.
   await page.goto('/#/workout/2026-09-08');

@@ -86,9 +86,14 @@ export function LineChart({
       </div>
     );
   }
-  const path = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${scale.x(p.x).toFixed(1)},${scale.y(p.y).toFixed(1)}`).join(' ');
+  const path = points
+    .map((p, i) => `${i === 0 ? 'M' : 'L'}${scale.x(p.x).toFixed(1)},${scale.y(p.y).toFixed(1)}`)
+    .join(' ');
   const ticks = 4;
-  const yTicks = Array.from({ length: ticks + 1 }, (_, i) => scale.minY + ((scale.maxY - scale.minY) * i) / ticks);
+  const yTicks = Array.from(
+    { length: ticks + 1 },
+    (_, i) => scale.minY + ((scale.maxY - scale.minY) * i) / ticks,
+  );
   const sel = selectedIndex !== null ? points[selectedIndex] : undefined;
 
   const pick = (clientX: number) => {
@@ -108,7 +113,15 @@ export function LineChart({
   };
 
   return (
-    <svg ref={ref} className="chart" width="100%" height={height} viewBox={`0 0 ${width} ${height}`} onClick={(e) => pick(e.clientX)} role="img">
+    <svg
+      ref={ref}
+      className="chart"
+      width="100%"
+      height={height}
+      viewBox={`0 0 ${width} ${height}`}
+      onClick={(e) => pick(e.clientX)}
+      role="img"
+    >
       {yTicks.map((t, i) => (
         <g key={i}>
           <line x1={pad.l} x2={width - pad.r} y1={scale.y(t)} y2={scale.y(t)} className="chart__grid" />
@@ -132,9 +145,22 @@ export function LineChart({
       <path d={path} className="chart__line" />
       {showPoints &&
         points.map((p, i) => (
-          <circle key={i} cx={scale.x(p.x)} cy={scale.y(p.y)} r={i === selectedIndex ? 6 : 3.5} className={`chart__point${i === selectedIndex ? ' chart__point--selected' : ''}`} />
+          <circle
+            key={i}
+            cx={scale.x(p.x)}
+            cy={scale.y(p.y)}
+            r={i === selectedIndex ? 6 : 3.5}
+            className={`chart__point${i === selectedIndex ? ' chart__point--selected' : ''}`}
+          />
         ))}
-      {sel && !showPoints && <circle cx={scale.x(sel.x)} cy={scale.y(sel.y)} r={6} className="chart__point chart__point--selected" />}
+      {sel && !showPoints && (
+        <circle
+          cx={scale.x(sel.x)}
+          cy={scale.y(sel.y)}
+          r={6}
+          className="chart__point chart__point--selected"
+        />
+      )}
       <text x={pad.l} y={height - 8} className="chart__tick">
         {points[0]?.label}
       </text>

@@ -2,14 +2,33 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useSettings } from '@/app/hooks';
+import { useKeepScreenOn } from '@/app/wake-lock';
 import { getExercise } from '@/db/repo/exercises';
-import { addSet, deleteSet, getWorkout, listSets, previousWorkoutSets, reorderSets, setSetComplete, updateSet } from '@/db/repo/workouts';
+import {
+  addSet,
+  deleteSet,
+  getWorkout,
+  listSets,
+  previousWorkoutSets,
+  reorderSets,
+  setSetComplete,
+  updateSet,
+} from '@/db/repo/workouts';
 import { setSetComment } from '@/db/repo/comments';
 import { groupForExercise, type GroupWithExercises } from '@/db/repo/groups';
 import type { Settings } from '@/db/repo/settings';
 import { exerciseTypeFields } from '@/db/constants';
 import { formatSet, weightUnitFor } from '@/ui/format';
-import { displayToKg, displayToMetres, kgToDisplay, metresToDisplay, resolveDistanceUnit, ALL_DISTANCE_UNITS, distanceUnitShort, type WeightUnit } from '@/domain/units';
+import {
+  displayToKg,
+  displayToMetres,
+  kgToDisplay,
+  metresToDisplay,
+  resolveDistanceUnit,
+  ALL_DISTANCE_UNITS,
+  distanceUnitShort,
+  type WeightUnit,
+} from '@/domain/units';
 import { formatDuration, parseDuration, formatShortDate } from '@/domain/dates';
 import { androidColourToHex } from '@/domain/colour';
 import { TopBar } from '@/ui/components/TopBar';
@@ -46,6 +65,7 @@ export function TrainingScreen() {
   const [drawer, setDrawer] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
   const [oneRmSignal, setOneRmSignal] = useState(0);
+  useKeepScreenOn(useSettings().keepScreenOn);
 
   if (!exercise) return <div className="empty">Exercise not found.</div>;
 
@@ -59,12 +79,31 @@ export function TrainingScreen() {
         subtitle={formatShortDate(date)}
         actions={
           <>
-            <IconButton icon="trophy" label="Records, stats and goals" onClick={() => navigate(`/exercise/${exerciseId}/records?date=${date}`)} />
-            <IconButton icon="info" label="Exercise notes" onClick={() => navigate(`/exercise/${exerciseId}/notes`)} />
+            <IconButton
+              icon="trophy"
+              label="Records, stats and goals"
+              onClick={() => navigate(`/exercise/${exerciseId}/records?date=${date}`)}
+            />
+            <IconButton
+              icon="info"
+              label="Exercise notes"
+              onClick={() => navigate(`/exercise/${exerciseId}/notes`)}
+            />
             <MenuButton
               items={[
-                { label: '1RM Calculator', icon: 'calculator', onSelect: () => { setTab('track'); setOneRmSignal((n) => n + 1); } },
-                { label: 'Edit Exercise', icon: 'edit', onSelect: () => navigate(`/exercise/${exerciseId}/edit?date=${date}`) },
+                {
+                  label: '1RM Calculator',
+                  icon: 'calculator',
+                  onSelect: () => {
+                    setTab('track');
+                    setOneRmSignal((n) => n + 1);
+                  },
+                },
+                {
+                  label: 'Edit Exercise',
+                  icon: 'edit',
+                  onSelect: () => navigate(`/exercise/${exerciseId}/edit?date=${date}`),
+                },
                 { label: 'Home', icon: 'home', onSelect: () => navigate(`/workout/${date}`) },
               ]}
             />
@@ -80,7 +119,9 @@ export function TrainingScreen() {
         value={tab}
         onChange={setTab}
       />
-      {tab === 'track' && <TrackTab key={`${exerciseId}:${date}`} exercise={exercise} date={date} oneRmSignal={oneRmSignal} />}
+      {tab === 'track' && (
+        <TrackTab key={`${exerciseId}:${date}`} exercise={exercise} date={date} oneRmSignal={oneRmSignal} />
+      )}
       {tab === 'history' && <HistoryTab exercise={exercise} date={date} />}
       {tab === 'graph' && <GraphTab exercise={exercise} />}
       {drawer && (
@@ -94,7 +135,12 @@ export function TrainingScreen() {
           }}
         />
       )}
-      <GroupDialog open={showGroups} onClose={() => setShowGroups(false)} date={date} currentExerciseId={exerciseId} />
+      <GroupDialog
+        open={showGroups}
+        onClose={() => setShowGroups(false)}
+        date={date}
+        currentExerciseId={exerciseId}
+      />
     </div>
   );
 }
@@ -108,11 +154,20 @@ interface FieldValues {
 }
 
 function valuesFrom(
-  s: { metricWeight: number; reps: number; distanceMetres: number; durationSeconds: number; unit: number } | undefined,
+  s:
+    | { metricWeight: number; reps: number; distanceMetres: number; durationSeconds: number; unit: number }
+    | undefined,
   wu: WeightUnit,
   settings: Settings,
 ): FieldValues {
-  if (!s) return { weight: '', reps: '', distance: '', distanceUnit: resolveDistanceUnit(0, settings.metric), time: '' };
+  if (!s)
+    return {
+      weight: '',
+      reps: '',
+      distance: '',
+      distanceUnit: resolveDistanceUnit(0, settings.metric),
+      time: '',
+    };
   const du = resolveDistanceUnit(s.unit, settings.metric);
   return {
     weight: formatNumber(kgToDisplay(s.metricWeight, wu)),
@@ -127,7 +182,15 @@ function valuesFrom(
  * Track tab. Mounted with a key of exercise+date so its field state starts from the FitNotes
  * pre-fill rule (values of the first set of the last workout, or the last set logged today).
  */
-function TrackTab({ exercise, date, oneRmSignal }: { exercise: ExerciseWithCategory; date: string; oneRmSignal: number }) {
+function TrackTab({
+  exercise,
+  date,
+  oneRmSignal,
+}: {
+  exercise: ExerciseWithCategory;
+  date: string;
+  oneRmSignal: number;
+}) {
   const db = useDb();
   const navigate = useNavigate();
   const toast = useToast();
@@ -141,7 +204,9 @@ function TrackTab({ exercise, date, oneRmSignal }: { exercise: ExerciseWithCateg
   const wu = weightUnitFor(exercise, settings);
   const increment = exercise.weightIncrement ?? settings.weightIncrement;
 
-  const [values, setValues] = useState<FieldValues>(() => valuesFrom(sets.length ? sets[sets.length - 1] : previous?.sets[0], wu, settings));
+  const [values, setValues] = useState<FieldValues>(() =>
+    valuesFrom(sets.length ? sets[sets.length - 1] : previous?.sets[0], wu, settings),
+  );
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [commentSet, setCommentSet] = useState<TrainingSetWithComment | null>(null);
   const [nextPrompt, setNextPrompt] = useState<number | null>(null);
@@ -242,15 +307,46 @@ function TrackTab({ exercise, date, oneRmSignal }: { exercise: ExerciseWithCateg
   return (
     <div className="screen__content">
       <div className="track-fields">
-        {fields.includes('weight') && <NumberField label={`Weight (${wu})`} value={values.weight} onChange={(v) => set({ weight: v })} step={increment} name="weight" />}
-        {fields.includes('reps') && <NumberField label="Reps" value={values.reps} onChange={(v) => set({ reps: v })} step={1} decimals={0} inputMode="numeric" name="reps" />}
+        {fields.includes('weight') && (
+          <NumberField
+            label={`Weight (${wu})`}
+            value={values.weight}
+            onChange={(v) => set({ weight: v })}
+            step={increment}
+            name="weight"
+          />
+        )}
+        {fields.includes('reps') && (
+          <NumberField
+            label="Reps"
+            value={values.reps}
+            onChange={(v) => set({ reps: v })}
+            step={1}
+            decimals={0}
+            inputMode="numeric"
+            name="reps"
+          />
+        )}
       </div>
       {(fields.includes('distance') || fields.includes('time')) && (
         <div className="track-fields" style={{ paddingTop: 0 }}>
           {fields.includes('distance') && (
             <div className="numfield">
-              <NumberField label="Distance" value={values.distance} onChange={(v) => set({ distance: v })} step={settings.metric ? 0.5 : 0.25} decimals={3} name="distance" />
-              <select className="select" style={{ minHeight: 36, padding: '4px 8px' }} value={values.distanceUnit} onChange={(e) => set({ distanceUnit: Number(e.target.value) })} aria-label="Distance unit">
+              <NumberField
+                label="Distance"
+                value={values.distance}
+                onChange={(v) => set({ distance: v })}
+                step={settings.metric ? 0.5 : 0.25}
+                decimals={3}
+                name="distance"
+              />
+              <select
+                className="select"
+                style={{ minHeight: 36, padding: '4px 8px' }}
+                value={values.distanceUnit}
+                onChange={(e) => set({ distanceUnit: Number(e.target.value) })}
+                aria-label="Distance unit"
+              >
                 {ALL_DISTANCE_UNITS.map((u) => (
                   <option key={u} value={u}>
                     {distanceUnitShort(u)}
@@ -259,7 +355,9 @@ function TrackTab({ exercise, date, oneRmSignal }: { exercise: ExerciseWithCateg
               </select>
             </div>
           )}
-          {fields.includes('time') && <DurationField value={values.time} onChange={(v) => set({ time: v })} />}
+          {fields.includes('time') && (
+            <DurationField value={values.time} onChange={(v) => set({ time: v })} />
+          )}
         </div>
       )}
       <div className="track-actions">
@@ -288,22 +386,46 @@ function TrackTab({ exercise, date, oneRmSignal }: { exercise: ExerciseWithCateg
           <span className="muted" style={{ fontSize: 13 }}>
             Set {selectedIndex + 1} of {sets.length}
           </span>
-          <IconButton icon="arrowUp" label="Move set up" small disabled={selectedIndex <= 0} onClick={() => moveSet(-1)} />
-          <IconButton icon="arrowDown" label="Move set down" small disabled={selectedIndex >= sets.length - 1} onClick={() => moveSet(1)} />
+          <IconButton
+            icon="arrowUp"
+            label="Move set up"
+            small
+            disabled={selectedIndex <= 0}
+            onClick={() => moveSet(-1)}
+          />
+          <IconButton
+            icon="arrowDown"
+            label="Move set down"
+            small
+            disabled={selectedIndex >= sets.length - 1}
+            onClick={() => moveSet(1)}
+          />
         </div>
       )}
       <div className="container" style={{ paddingTop: 0 }}>
         <div className="list" data-testid="set-list">
           {sets.length === 0 && (
             <div className="muted" style={{ padding: 16, textAlign: 'center' }}>
-              {previous ? `Last workout: ${formatShortDate(previous.date)} · ${previous.sets.length} sets` : 'No sets yet. Enter your first set and tap Save.'}
+              {previous
+                ? `Last workout: ${formatShortDate(previous.date)} · ${previous.sets.length} sets`
+                : 'No sets yet. Enter your first set and tap Save.'}
             </div>
           )}
           {sets.map((s, i) => (
             <div key={s.id}>
-              <div className={`set-row${s.id === selectedId ? ' set-row--selected' : ''}${s.isComplete && settings.markSetsComplete ? ' set-row--complete' : ''}`}>
-                {settings.markSetsComplete && <Checkbox checked={s.isComplete} onChange={() => toggleComplete(s)} label="Set complete" />}
-                <IconButton icon={s.comment ? 'comment' : 'commentOutline'} label={s.comment ? 'View comment' : 'Add comment'} small primary={!!s.comment} onClick={() => setCommentSet(s)} />
+              <div
+                className={`set-row${s.id === selectedId ? ' set-row--selected' : ''}${s.isComplete && settings.markSetsComplete ? ' set-row--complete' : ''}`}
+              >
+                {settings.markSetsComplete && (
+                  <Checkbox checked={s.isComplete} onChange={() => toggleComplete(s)} label="Set complete" />
+                )}
+                <IconButton
+                  icon={s.comment ? 'comment' : 'commentOutline'}
+                  label={s.comment ? 'View comment' : 'Add comment'}
+                  small
+                  primary={!!s.comment}
+                  onClick={() => setCommentSet(s)}
+                />
                 <button className="set-row__value" style={{ textAlign: 'left' }} onClick={() => select(s)}>
                   <span className="set-row__index" style={{ display: 'inline-block', marginRight: 8 }}>
                     {i + 1}
@@ -311,7 +433,13 @@ function TrackTab({ exercise, date, oneRmSignal }: { exercise: ExerciseWithCateg
                   {formatSet(s, exercise.typeId, wu, settings)}
                 </button>
                 {s.isPersonalRecord && settings.trackPersonalRecords && (
-                  <IconButton icon="trophy" label="Personal record" small className="trophy" onClick={() => navigate(`/exercise/${exerciseId}/records?date=${date}&reps=${s.reps}`)} />
+                  <IconButton
+                    icon="trophy"
+                    label="Personal record"
+                    small
+                    className="trophy"
+                    onClick={() => navigate(`/exercise/${exerciseId}/records?date=${date}&reps=${s.reps}`)}
+                  />
                 )}
               </div>
               {s.comment && <div className="set-row__comment">{s.comment}</div>}
@@ -319,8 +447,20 @@ function TrackTab({ exercise, date, oneRmSignal }: { exercise: ExerciseWithCateg
           ))}
         </div>
       </div>
-      <CommentDialog open={commentSet !== null} onClose={() => setCommentSet(null)} title="Set Comment" initial={commentSet?.comment ?? ''} onSave={(text) => commentSet && setSetComment(db, commentSet.id, text)} />
-      <OneRepMaxDialog open={show1rm} onClose={() => setShow1rm(false)} weightUnit={wu} initialWeight={values.weight} initialReps={values.reps} />
+      <CommentDialog
+        open={commentSet !== null}
+        onClose={() => setCommentSet(null)}
+        title="Set Comment"
+        initial={commentSet?.comment ?? ''}
+        onSave={(text) => commentSet && setSetComment(db, commentSet.id, text)}
+      />
+      <OneRepMaxDialog
+        open={show1rm}
+        onClose={() => setShow1rm(false)}
+        weightUnit={wu}
+        initialWeight={values.weight}
+        initialReps={values.reps}
+      />
       <Dialog
         open={nextPrompt !== null}
         onClose={() => setNextPrompt(null)}
@@ -361,7 +501,15 @@ export function DurationField({ value, onChange }: { value: string; onChange: (v
         <button className="numfield__btn" onClick={() => adjust(-60)} aria-label="Decrease time">
           <Icon name="remove" />
         </button>
-        <input className="numfield__input" inputMode="numeric" value={value} placeholder="0:00" aria-label="Time" onChange={(e) => onChange(e.target.value)} onFocus={(e) => e.target.select()} />
+        <input
+          className="numfield__input"
+          inputMode="numeric"
+          value={value}
+          placeholder="0:00"
+          aria-label="Time"
+          onChange={(e) => onChange(e.target.value)}
+          onFocus={(e) => e.target.select()}
+        />
         <button className="numfield__btn" onClick={() => adjust(60)} aria-label="Increase time">
           <Icon name="add" />
         </button>
@@ -372,7 +520,17 @@ export function DurationField({ value, onChange }: { value: string; onChange: (v
 }
 
 /** Navigation Panel: the exercises of this workout, plus Add Exercise / Add To Group / Home. */
-function NavPanel({ date, currentExerciseId, onClose, onGroups }: { date: string; currentExerciseId: number; onClose: () => void; onGroups: () => void }) {
+function NavPanel({
+  date,
+  currentExerciseId,
+  onClose,
+  onGroups,
+}: {
+  date: string;
+  currentExerciseId: number;
+  onClose: () => void;
+  onGroups: () => void;
+}) {
   const navigate = useNavigate();
   const settings = useSettings();
   const workout: Workout = useQuery((d) => getWorkout(d, date), [date]);
@@ -394,11 +552,21 @@ function NavPanel({ date, currentExerciseId, onClose, onGroups }: { date: string
                   navigate(`/train/${date}/${we.exercise.id}`, { replace: true });
                 }}
               >
-                <span className="group-bar" style={{ background: we.group ? androidColourToHex(we.group.colour) : 'transparent', minHeight: 24 }} />
+                <span
+                  className="group-bar"
+                  style={{
+                    background: we.group ? androidColourToHex(we.group.colour) : 'transparent',
+                    minHeight: 24,
+                  }}
+                />
                 <div className="list__text">
                   <div className="list__primary">{we.exercise.name}</div>
                 </div>
-                <span className="list__meta">{settings.markSetsComplete ? `${done}/${we.sets.length}` : `${we.sets.length} set${we.sets.length === 1 ? '' : 's'}`}</span>
+                <span className="list__meta">
+                  {settings.markSetsComplete
+                    ? `${done}/${we.sets.length}`
+                    : `${we.sets.length} set${we.sets.length === 1 ? '' : 's'}`}
+                </span>
               </button>
             );
           })}

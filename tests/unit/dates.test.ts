@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { addDays, addMonths, daysBetween, formatDuration, isValidIsoDate, parseDuration, startOfWeek, toIsoDate, parseIsoDate } from '../../src/domain/dates';
+import {
+  addDays,
+  addMonths,
+  daysBetween,
+  formatDuration,
+  isValidIsoDate,
+  parseDuration,
+  startOfWeek,
+  toIsoDate,
+  parseIsoDate,
+} from '../../src/domain/dates';
 
 describe('dates', () => {
   it('round-trips ISO dates as local calendar dates', () => {

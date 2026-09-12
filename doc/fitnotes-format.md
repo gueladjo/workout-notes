@@ -12,23 +12,23 @@ seed rows in `src/db/seed.ts`. This document explains them.
 
 ## Tables (verified)
 
-| Table | Purpose | Notes |
-| --- | --- | --- |
-| `Category` | muscle groups | `colour` is an Android colour int (signed ARGB); `sort_order` for manual ordering |
-| `exercise` | exercises | `exercise_type_id`, `weight_unit_id`, `is_favourite`, `weight_increment` (display unit), `default_graph_id`, `default_rest_time`, `notes` |
-| `training_log` | one row per set | see below |
-| `Comment` | set comments | `owner_type_id` 1 = training_log set; `owner_id` = set id; `date` = workout date |
-| `WorkoutComment` | comment per workout date | one row per date used |
-| `WorkoutGroup` / `WorkoutGroupExercise` | supersets | see below |
-| `Routine`, `RoutineSection`, `RoutineSectionExercise`, `RoutineSectionExerciseSet` | routines, days, exercises, predefined sets | `populate_sets_type`: 0 none, 1 predefined sets, 2 copy previous workout |
-| `Goal` | exercise goals | `type_id` (GoalType), `metric_weight`, `reps`, `distance` (m), `duration_seconds`, `unit` (distance unit), `title`, `start_date`, `target_date` |
-| `Measurement`, `MeasurementUnit`, `MeasurementRecord` | body tracker | `Measurement.custom`/`enabled`; `MeasurementRecord.time` is `HH:MM:SS` |
-| `BodyWeight` | legacy (pre-body-tracker) | migrated into `MeasurementRecord` ids 1 (Bodyweight) and 2 (Body Fat) |
-| `WorkoutTime` | workout timer | `workout_date`, `start_date_time`, `end_date_time` (`YYYY-MM-DD HH:MM:SS`) |
-| `ExerciseGraphFavourite`, `RepMaxGridFavourite` | analysis favourites | preserved, not used by WorkoutNotes |
-| `Plate`, `Barbell` | plate calculator config | preserved, not used |
-| `settings` | preference transfer row | see below |
-| `android_metadata` | Android's locale table | created with `en_US` on fresh databases |
+| Table                                                                              | Purpose                                    | Notes                                                                                                                                           |
+| ---------------------------------------------------------------------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `Category`                                                                         | muscle groups                              | `colour` is an Android colour int (signed ARGB); `sort_order` for manual ordering                                                               |
+| `exercise`                                                                         | exercises                                  | `exercise_type_id`, `weight_unit_id`, `is_favourite`, `weight_increment` (display unit), `default_graph_id`, `default_rest_time`, `notes`       |
+| `training_log`                                                                     | one row per set                            | see below                                                                                                                                       |
+| `Comment`                                                                          | set comments                               | `owner_type_id` 1 = training_log set; `owner_id` = set id; `date` = workout date                                                                |
+| `WorkoutComment`                                                                   | comment per workout date                   | one row per date used                                                                                                                           |
+| `WorkoutGroup` / `WorkoutGroupExercise`                                            | supersets                                  | see below                                                                                                                                       |
+| `Routine`, `RoutineSection`, `RoutineSectionExercise`, `RoutineSectionExerciseSet` | routines, days, exercises, predefined sets | `populate_sets_type`: 0 none, 1 predefined sets, 2 copy previous workout                                                                        |
+| `Goal`                                                                             | exercise goals                             | `type_id` (GoalType), `metric_weight`, `reps`, `distance` (m), `duration_seconds`, `unit` (distance unit), `title`, `start_date`, `target_date` |
+| `Measurement`, `MeasurementUnit`, `MeasurementRecord`                              | body tracker                               | `Measurement.custom`/`enabled`; `MeasurementRecord.time` is `HH:MM:SS`                                                                          |
+| `BodyWeight`                                                                       | legacy (pre-body-tracker)                  | migrated into `MeasurementRecord` ids 1 (Bodyweight) and 2 (Body Fat)                                                                           |
+| `WorkoutTime`                                                                      | workout timer                              | `workout_date`, `start_date_time`, `end_date_time` (`YYYY-MM-DD HH:MM:SS`)                                                                      |
+| `ExerciseGraphFavourite`, `RepMaxGridFavourite`                                    | analysis favourites                        | preserved, not used by WorkoutNotes                                                                                                             |
+| `Plate`, `Barbell`                                                                 | plate calculator config                    | preserved, not used                                                                                                                             |
+| `settings`                                                                         | preference transfer row                    | see below                                                                                                                                       |
+| `android_metadata`                                                                 | Android's locale table                     | created with `en_US` on fresh databases                                                                                                         |
 
 `sqlite_sequence` is managed by SQLite (all tables use `AUTOINCREMENT`).
 
@@ -58,18 +58,18 @@ is_personal_record_first, is_complete, is_pending_update, distance (metres), dur
 
 ### Exercise types (verified)
 
-| id | type | fields |
-| --- | --- | --- |
-| 0 | Weight and Reps | weight, reps |
-| 1 | Distance and Time | distance, time |
-| 2 | Weight and Distance | weight, distance |
-| 3 | Weight and Time | weight, time |
-| 4 | Reps and Distance | reps, distance |
-| 5 | Reps and Time | reps, time |
-| 6 | Weight | weight |
-| 7 | Reps | reps |
-| 8 | Distance | distance |
-| 9 | Time | time |
+| id  | type                | fields           |
+| --- | ------------------- | ---------------- |
+| 0   | Weight and Reps     | weight, reps     |
+| 1   | Distance and Time   | distance, time   |
+| 2   | Weight and Distance | weight, distance |
+| 3   | Weight and Time     | weight, time     |
+| 4   | Reps and Distance   | reps, distance   |
+| 5   | Reps and Time       | reps, time       |
+| 6   | Weight              | weight           |
+| 7   | Reps                | reps             |
+| 8   | Distance            | distance         |
+| 9   | Time                | time             |
 
 Types 2-9 are "Supporter" types in FitNotes; WorkoutNotes offers all of them.
 

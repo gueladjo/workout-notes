@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { actualRepMaxes, estimatedOneRepMax, estimatedRepMaxes, personalRecordSetIds, weightForReps } from '../../src/domain/records';
+import {
+  actualRepMaxes,
+  estimatedOneRepMax,
+  estimatedRepMaxes,
+  personalRecordSetIds,
+  weightForReps,
+} from '../../src/domain/records';
 
 describe('Brzycki 1RM', () => {
   it('matches the formula and its inverse', () => {
@@ -39,7 +45,13 @@ describe('personal records', () => {
     expect(est.source?.id).toBe(4);
     expect(est.oneRepMax).toBeCloseTo(estimatedOneRepMax(110, 5), 5);
     expect(est.rows[0]).toEqual({ reps: 1, weight: est.oneRepMax });
-    const limited = estimatedRepMaxes([{ id: 1, date: '2026-01-01', weight: 50, reps: 30 }, { id: 2, date: '2026-01-01', weight: 100, reps: 5 }], 10);
+    const limited = estimatedRepMaxes(
+      [
+        { id: 1, date: '2026-01-01', weight: 50, reps: 30 },
+        { id: 2, date: '2026-01-01', weight: 100, reps: 5 },
+      ],
+      10,
+    );
     expect(limited.source?.id).toBe(2);
   });
 });

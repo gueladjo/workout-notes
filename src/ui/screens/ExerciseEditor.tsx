@@ -2,9 +2,20 @@ import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useRouteDate, useSettings } from '@/app/hooks';
-import { createCategory, getCategory, listCategories, updateCategory, categoryNameExists } from '@/db/repo/categories';
+import {
+  createCategory,
+  getCategory,
+  listCategories,
+  updateCategory,
+  categoryNameExists,
+} from '@/db/repo/categories';
 import { createExercise, exerciseNameExists, getExercise, updateExercise } from '@/db/repo/exercises';
-import { ALL_EXERCISE_TYPES, EXERCISE_TYPE_LABELS, ExerciseWeightUnit, type ExerciseTypeId } from '@/db/constants';
+import {
+  ALL_EXERCISE_TYPES,
+  EXERCISE_TYPE_LABELS,
+  ExerciseWeightUnit,
+  type ExerciseTypeId,
+} from '@/db/constants';
 import { androidColourToHex, hexToAndroidColour, PALETTE } from '@/domain/colour';
 import { resolveWeightUnit } from '@/domain/units';
 import { TopBar } from '@/ui/components/TopBar';
@@ -26,15 +37,22 @@ export function ExerciseEditorScreen() {
   const settings = useSettings();
   const editId = params.id ? Number(params.id) : undefined;
   const existing = useQuery((d) => (editId ? getExercise(d, editId) : undefined), [editId]);
-  const categories = useQuery((d) => listCategories(d, settings.categorySortOrder === 1 ? 'manual' : 'name'), [settings.categorySortOrder]);
+  const categories = useQuery(
+    (d) => listCategories(d, settings.categorySortOrder === 1 ? 'manual' : 'name'),
+    [settings.categorySortOrder],
+  );
   const editCategoryId = search.get('editCategory') ? Number(search.get('editCategory')) : undefined;
   const returnTo = search.get('returnTo');
 
   const [name, setName] = useState(existing?.name ?? '');
   const [notes, setNotes] = useState(existing?.notes ?? '');
-  const [categoryId, setCategoryId] = useState<number>(existing?.categoryId ?? (Number(search.get('categoryId')) || 0));
+  const [categoryId, setCategoryId] = useState<number>(
+    existing?.categoryId ?? (Number(search.get('categoryId')) || 0),
+  );
   const [typeId, setTypeId] = useState<ExerciseTypeId>(existing?.typeId ?? 0);
-  const [weightUnitId, setWeightUnitId] = useState<number>(existing?.weightUnitId ?? ExerciseWeightUnit.DEFAULT);
+  const [weightUnitId, setWeightUnitId] = useState<number>(
+    existing?.weightUnitId ?? ExerciseWeightUnit.DEFAULT,
+  );
   const [categoryDialog, setCategoryDialog] = useState(editCategoryId !== undefined);
   const [unitChange, setUnitChange] = useState<null | { prev: 'kg' | 'lbs'; next: 'kg' | 'lbs' }>(null);
   const [error, setError] = useState<string | null>(null);
@@ -44,7 +62,8 @@ export function ExerciseEditorScreen() {
   const save = (andNew = false) => {
     const trimmed = name.trim();
     if (!trimmed) return setError('Enter a name for the exercise.');
-    if (exerciseNameExists(db, trimmed, editId)) return setError('An exercise with this name already exists.');
+    if (exerciseNameExists(db, trimmed, editId))
+      return setError('An exercise with this name already exists.');
     if (!effectiveCategory) return setError('Create a category first.');
     if (editId && existing) {
       const prevUnit = resolveWeightUnit(existing.weightUnitId, settings.metric);
@@ -53,12 +72,24 @@ export function ExerciseEditorScreen() {
         setUnitChange({ prev: prevUnit, next: nextUnit });
         return;
       }
-      updateExercise(db, editId, { name: trimmed, notes, categoryId: effectiveCategory, typeId, weightUnitId });
+      updateExercise(db, editId, {
+        name: trimmed,
+        notes,
+        categoryId: effectiveCategory,
+        typeId,
+        weightUnitId,
+      });
       toast('Exercise updated');
       navigate(-1);
       return;
     }
-    const id = createExercise(db, { name: trimmed, notes, categoryId: effectiveCategory, typeId, weightUnitId });
+    const id = createExercise(db, {
+      name: trimmed,
+      notes,
+      categoryId: effectiveCategory,
+      typeId,
+      weightUnitId,
+    });
     if (andNew) {
       setName('');
       setError(null);
@@ -103,16 +134,30 @@ export function ExerciseEditorScreen() {
           <div className="card" style={{ padding: 14 }}>
             <label className="field">
               <span className="field__label">Name</span>
-              <input className="input" value={name} onChange={(e) => setName(e.target.value)} autoFocus={!editId} />
+              <input
+                className="input"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoFocus={!editId}
+              />
             </label>
             <label className="field">
               <span className="field__label">Notes</span>
-              <textarea className="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Form tips, machine settings…" />
+              <textarea
+                className="textarea"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Form tips, machine settings…"
+              />
             </label>
             <div className="field">
               <span className="field__label">Category</span>
               <div className="row">
-                <select className="select" value={effectiveCategory} onChange={(e) => setCategoryId(Number(e.target.value))}>
+                <select
+                  className="select"
+                  value={effectiveCategory}
+                  onChange={(e) => setCategoryId(Number(e.target.value))}
+                >
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>
                       {c.name}
@@ -124,7 +169,11 @@ export function ExerciseEditorScreen() {
             </div>
             <label className="field">
               <span className="field__label">Type</span>
-              <select className="select" value={typeId} onChange={(e) => setTypeId(Number(e.target.value) as ExerciseTypeId)}>
+              <select
+                className="select"
+                value={typeId}
+                onChange={(e) => setTypeId(Number(e.target.value) as ExerciseTypeId)}
+              >
                 {ALL_EXERCISE_TYPES.map((t) => (
                   <option key={t} value={t}>
                     {EXERCISE_TYPE_LABELS[t]}
@@ -133,21 +182,32 @@ export function ExerciseEditorScreen() {
               </select>
               {editId && existing && typeId !== existing.typeId && (
                 <span className="muted" style={{ fontSize: 13 }}>
-                  Changing the type deletes values of fields the new type does not have from this exercise's history.
+                  Changing the type deletes values of fields the new type does not have from this exercise's
+                  history.
                 </span>
               )}
             </label>
             {[0, 2, 3, 6].includes(typeId) && (
               <label className="field">
                 <span className="field__label">Weight Unit</span>
-                <select className="select" value={weightUnitId} onChange={(e) => setWeightUnitId(Number(e.target.value))}>
-                  <option value={ExerciseWeightUnit.DEFAULT}>Default ({settings.metric ? 'kg' : 'lbs'})</option>
+                <select
+                  className="select"
+                  value={weightUnitId}
+                  onChange={(e) => setWeightUnitId(Number(e.target.value))}
+                >
+                  <option value={ExerciseWeightUnit.DEFAULT}>
+                    Default ({settings.metric ? 'kg' : 'lbs'})
+                  </option>
                   <option value={ExerciseWeightUnit.METRIC}>Metric (kg)</option>
                   <option value={ExerciseWeightUnit.IMPERIAL}>Imperial (lbs)</option>
                 </select>
               </label>
             )}
-            {error && <div className="banner banner--danger" style={{ margin: 0 }}>{error}</div>}
+            {error && (
+              <div className="banner banner--danger" style={{ margin: 0 }}>
+                {error}
+              </div>
+            )}
           </div>
           <Button block large onClick={() => save(false)}>
             Save
@@ -180,7 +240,8 @@ export function ExerciseEditorScreen() {
         }
       >
         <p>
-          <b>Convert existing values</b>: 100 {unitChange?.prev} becomes {unitChange?.prev === 'kg' ? '220.46' : '45.36'} {unitChange?.next}.
+          <b>Convert existing values</b>: 100 {unitChange?.prev} becomes{' '}
+          {unitChange?.prev === 'kg' ? '220.46' : '45.36'} {unitChange?.next}.
         </p>
         <p>
           <b>Just change unit</b>: 100 {unitChange?.prev} becomes 100 {unitChange?.next}.
@@ -207,14 +268,18 @@ export function CategoryDialog({
   const usedColours = categories.map((c) => c.colour);
   const [name, setName] = useState(existing?.name ?? '');
   const [colour, setColour] = useState<number>(
-    existing?.colour ?? hexToAndroidColour(PALETTE.find((h) => !usedColours.includes(hexToAndroidColour(h))) ?? PALETTE[0]!),
+    existing?.colour ??
+      hexToAndroidColour(PALETTE.find((h) => !usedColours.includes(hexToAndroidColour(h))) ?? PALETTE[0]!),
   );
   const [error, setError] = useState<string | null>(null);
   const [seen, setSeen] = useState(false);
   if (open && !seen) {
     setSeen(true);
     setName(existing?.name ?? '');
-    setColour(existing?.colour ?? hexToAndroidColour(PALETTE.find((h) => !usedColours.includes(hexToAndroidColour(h))) ?? PALETTE[0]!));
+    setColour(
+      existing?.colour ??
+        hexToAndroidColour(PALETTE.find((h) => !usedColours.includes(hexToAndroidColour(h))) ?? PALETTE[0]!),
+    );
     setError(null);
   }
   if (!open && seen) setSeen(false);
@@ -274,11 +339,19 @@ export function CategoryDialog({
           })}
         </div>
         <div className="muted" style={{ fontSize: 13 }}>
-          Selected: <span className="swatch" style={{ background: androidColourToHex(colour), display: 'inline-block', verticalAlign: -2 }} />{' '}
+          Selected:{' '}
+          <span
+            className="swatch"
+            style={{ background: androidColourToHex(colour), display: 'inline-block', verticalAlign: -2 }}
+          />{' '}
           {androidColourToHex(colour)}
         </div>
       </div>
-      {error && <div className="banner banner--danger" style={{ margin: 0 }}>{error}</div>}
+      {error && (
+        <div className="banner banner--danger" style={{ margin: 0 }}>
+          {error}
+        </div>
+      )}
     </Dialog>
   );
 }

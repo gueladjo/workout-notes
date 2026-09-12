@@ -13,7 +13,10 @@ export function getSetComment(db: AppDatabase, setId: number): { id: number; com
 export function setSetComment(db: AppDatabase, setId: number, comment: string): void {
   db.mutate(() => {
     const text = comment.trim();
-    db.run('DELETE FROM Comment WHERE owner_type_id = ? AND owner_id = ?', [CommentOwnerType.TRAINING_LOG_SET, setId]);
+    db.run('DELETE FROM Comment WHERE owner_type_id = ? AND owner_id = ?', [
+      CommentOwnerType.TRAINING_LOG_SET,
+      setId,
+    ]);
     if (!text) return;
     const date = db.get<{ date: string }>('SELECT date FROM training_log WHERE _id = ?', [setId])?.date ?? '';
     db.run('INSERT INTO Comment (date, owner_type_id, owner_id, comment) VALUES (?, ?, ?, ?)', [
@@ -26,9 +29,10 @@ export function setSetComment(db: AppDatabase, setId: number, comment: string): 
 }
 
 export function getWorkoutComment(db: AppDatabase, date: string): string | null {
-  const r = db.get<{ comment: string }>('SELECT comment FROM WorkoutComment WHERE date = ? ORDER BY _id DESC LIMIT 1', [
-    date,
-  ]);
+  const r = db.get<{ comment: string }>(
+    'SELECT comment FROM WorkoutComment WHERE date = ? ORDER BY _id DESC LIMIT 1',
+    [date],
+  );
   return r?.comment ?? null;
 }
 

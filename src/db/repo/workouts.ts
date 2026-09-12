@@ -49,7 +49,10 @@ const SET_SELECT = `SELECT t.*, c._id AS comment_id, c.comment AS comment_text F
 
 export function listSets(db: AppDatabase, exerciseId: number, date: string): TrainingSetWithComment[] {
   return db
-    .all<SetRow>(`${SET_SELECT} WHERE t.exercise_id = ? AND t.date = ? ORDER BY t._id ASC`, [exerciseId, date])
+    .all<SetRow>(`${SET_SELECT} WHERE t.exercise_id = ? AND t.date = ? ORDER BY t._id ASC`, [
+      exerciseId,
+      date,
+    ])
     .map(toSet);
 }
 
@@ -60,18 +63,25 @@ export function getSet(db: AppDatabase, id: number): TrainingSetWithComment | un
 
 /** Every set of an exercise, oldest first (for history, graphs and records). */
 export function allSetsForExercise(db: AppDatabase, exerciseId: number): TrainingSetWithComment[] {
-  return db.all<SetRow>(`${SET_SELECT} WHERE t.exercise_id = ? ORDER BY t.date ASC, t._id ASC`, [exerciseId]).map(toSet);
+  return db
+    .all<SetRow>(`${SET_SELECT} WHERE t.exercise_id = ? ORDER BY t.date ASC, t._id ASC`, [exerciseId])
+    .map(toSet);
 }
 
 /** Training history grouped by workout date, most recent first. */
-export function exerciseHistory(db: AppDatabase, exerciseId: number): { date: string; sets: TrainingSetWithComment[] }[] {
+export function exerciseHistory(
+  db: AppDatabase,
+  exerciseId: number,
+): { date: string; sets: TrainingSetWithComment[] }[] {
   const byDate = new Map<string, TrainingSetWithComment[]>();
   for (const s of allSetsForExercise(db, exerciseId)) {
     const list = byDate.get(s.date);
     if (list) list.push(s);
     else byDate.set(s.date, [s]);
   }
-  return [...byDate.entries()].map(([date, sets]) => ({ date, sets })).sort((a, b) => (a.date < b.date ? 1 : -1));
+  return [...byDate.entries()]
+    .map(([date, sets]) => ({ date, sets }))
+    .sort((a, b) => (a.date < b.date ? 1 : -1));
 }
 
 /** The most recent workout of this exercise strictly before `date` (used to pre-fill set fields). */
@@ -80,10 +90,10 @@ export function previousWorkoutSets(
   exerciseId: number,
   date: string,
 ): { date: string; sets: TrainingSetWithComment[] } | undefined {
-  const r = db.get<{ date: string }>('SELECT MAX(date) AS date FROM training_log WHERE exercise_id = ? AND date < ?', [
-    exerciseId,
-    date,
-  ]);
+  const r = db.get<{ date: string }>(
+    'SELECT MAX(date) AS date FROM training_log WHERE exercise_id = ? AND date < ?',
+    [exerciseId, date],
+  );
   if (!r?.date) return undefined;
   return { date: r.date, sets: listSets(db, exerciseId, r.date) };
 }
@@ -211,7 +221,10 @@ export function deleteSet(db: AppDatabase, id: number): void {
   db.mutate(() => {
     const set = getSet(db, id);
     if (!set) return;
-    db.run('DELETE FROM Comment WHERE owner_type_id = ? AND owner_id = ?', [CommentOwnerType.TRAINING_LOG_SET, id]);
+    db.run('DELETE FROM Comment WHERE owner_type_id = ? AND owner_id = ?', [
+      CommentOwnerType.TRAINING_LOG_SET,
+      id,
+    ]);
     db.run('DELETE FROM training_log WHERE _id = ?', [id]);
     cleanupGroupMembership(db, set.date, set.exerciseId);
     recalculatePersonalRecords(db, set.exerciseId);
@@ -220,13 +233,15 @@ export function deleteSet(db: AppDatabase, id: number): void {
 
 /** Remove the exercise from its group when it has no sets left on that date. */
 function cleanupGroupMembership(db: AppDatabase, date: string, exerciseId: number): void {
-  const remaining = Number(db.scalar('SELECT COUNT(*) FROM training_log WHERE date = ? AND exercise_id = ?', [date, exerciseId]));
+  const remaining = Number(
+    db.scalar('SELECT COUNT(*) FROM training_log WHERE date = ? AND exercise_id = ?', [date, exerciseId]),
+  );
   if (remaining > 0) return;
   db.run('DELETE FROM WorkoutGroupExercise WHERE date = ? AND exercise_id = ?', [date, exerciseId]);
-  db.run('DELETE FROM WorkoutGroup WHERE date = ? AND _id NOT IN (SELECT workout_group_id FROM WorkoutGroupExercise WHERE date = ?)', [
-    date,
-    date,
-  ]);
+  db.run(
+    'DELETE FROM WorkoutGroup WHERE date = ? AND _id NOT IN (SELECT workout_group_id FROM WorkoutGroupExercise WHERE date = ?)',
+    [date, date],
+  );
 }
 
 /** Delete all sets of the given exercises on a date. */
@@ -265,10 +280,9 @@ export function reorderWorkoutExercises(db: AppDatabase, date: string, orderedEx
 
 function reinsertSets(db: AppDatabase, orderedSetIds: number[]): void {
   for (const oldId of orderedSetIds) {
-    const r = db.get<SetRow & { timer_auto_start: number; is_personal_record_first: number; is_pending_update: number }>(
-      'SELECT * FROM training_log WHERE _id = ?',
-      [oldId],
-    );
+    const r = db.get<
+      SetRow & { timer_auto_start: number; is_personal_record_first: number; is_pending_update: number }
+    >('SELECT * FROM training_log WHERE _id = ?', [oldId]);
     if (!r) continue;
     db.run(
       `INSERT INTO training_log (exercise_id, date, metric_weight, reps, unit, routine_section_exercise_set_id, timer_auto_start, is_personal_record, is_personal_record_first, is_complete, is_pending_update, distance, duration_seconds)
@@ -304,7 +318,11 @@ export function moveWorkout(db: AppDatabase, fromDate: string, toDate: string): 
   if (fromDate === toDate) return;
   db.mutate(() => {
     db.run('UPDATE training_log SET date = ? WHERE date = ?', [toDate, fromDate]);
-    db.run('UPDATE Comment SET date = ? WHERE date = ? AND owner_type_id = ?', [toDate, fromDate, CommentOwnerType.TRAINING_LOG_SET]);
+    db.run('UPDATE Comment SET date = ? WHERE date = ? AND owner_type_id = ?', [
+      toDate,
+      fromDate,
+      CommentOwnerType.TRAINING_LOG_SET,
+    ]);
     db.run('UPDATE WorkoutGroup SET date = ? WHERE date = ?', [toDate, fromDate]);
     db.run('UPDATE WorkoutGroupExercise SET date = ? WHERE date = ?', [toDate, fromDate]);
     db.run('UPDATE WorkoutTime SET workout_date = ? WHERE workout_date = ?', [toDate, fromDate]);
@@ -330,7 +348,15 @@ export function copySets(db: AppDatabase, sets: CopySet[], toDate: string): void
     for (const s of sets) {
       db.run(
         'INSERT INTO training_log (exercise_id, date, metric_weight, reps, unit, distance, duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [s.exerciseId, toDate, s.metricWeight, Math.round(s.reps), s.unit, s.distanceMetres, Math.round(s.durationSeconds)],
+        [
+          s.exerciseId,
+          toDate,
+          s.metricWeight,
+          Math.round(s.reps),
+          s.unit,
+          s.distanceMetres,
+          Math.round(s.durationSeconds),
+        ],
       );
       touched.add(s.exerciseId);
     }

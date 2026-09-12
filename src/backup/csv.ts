@@ -3,7 +3,14 @@
  */
 import type { AppDatabase } from '@/db/store';
 import { getSettings } from '@/db/repo/settings';
-import { kgToDisplay, metresToDisplay, resolveDistanceUnit, resolveWeightUnit, distanceUnitShort, fmt } from '@/domain/units';
+import {
+  kgToDisplay,
+  metresToDisplay,
+  resolveDistanceUnit,
+  resolveWeightUnit,
+  distanceUnitShort,
+  fmt,
+} from '@/domain/units';
 import { formatDuration } from '@/domain/dates';
 import { CommentOwnerType } from '@/db/constants';
 
@@ -35,12 +42,24 @@ export function workoutCsv(db: AppDatabase): string {
   const lines = [`Date,Exercise,Category,Weight (${unitLabel}),Reps,Distance,Distance Unit,Time,Comment`];
   for (const r of rows) {
     const wu = resolveWeightUnit(r.weight_unit_id, settings.metric);
-    const weight = Number(r.metric_weight) ? fmt(kgToDisplay(Number(r.metric_weight), wu === 'kg' ? 'kg' : 'lbs'), 3) : '';
+    const weight = Number(r.metric_weight)
+      ? fmt(kgToDisplay(Number(r.metric_weight), wu === 'kg' ? 'kg' : 'lbs'), 3)
+      : '';
     const du = resolveDistanceUnit(r.unit, settings.metric);
     const distance = Number(r.distance) ? fmt(metresToDisplay(Number(r.distance), du), 3) : '';
     const time = Number(r.duration_seconds) ? formatDuration(Number(r.duration_seconds)) : '';
     lines.push(
-      [r.date, r.exercise, r.category, weight, r.reps || '', distance, distance ? distanceUnitShort(du) : '', time, r.comment ?? '']
+      [
+        r.date,
+        r.exercise,
+        r.category,
+        weight,
+        r.reps || '',
+        distance,
+        distance ? distanceUnitShort(du) : '',
+        time,
+        r.comment ?? '',
+      ]
         .map(csvEscape)
         .join(','),
     );
@@ -49,13 +68,23 @@ export function workoutCsv(db: AppDatabase): string {
 }
 
 export function bodyTrackerCsv(db: AppDatabase): string {
-  const rows = db.all<{ date: string; time: string; name: string; value: number; unit: string; comment: string | null }>(
+  const rows = db.all<{
+    date: string;
+    time: string;
+    name: string;
+    value: number;
+    unit: string;
+    comment: string | null;
+  }>(
     `SELECT mr.date, mr.time, m.name, mr.value, COALESCE(mu.short_name, '') AS unit, mr.comment
      FROM MeasurementRecord mr INNER JOIN Measurement m ON m._id = mr.measurement_id LEFT JOIN MeasurementUnit mu ON mu._id = m.unit_id
      ORDER BY mr.date ASC, mr.time ASC, mr._id ASC`,
   );
   const lines = ['Date,Time,Measurement,Value,Unit,Comment'];
-  for (const r of rows) lines.push([r.date, r.time, r.name, fmt(Number(r.value), 3), r.unit, r.comment ?? ''].map(csvEscape).join(','));
+  for (const r of rows)
+    lines.push(
+      [r.date, r.time, r.name, fmt(Number(r.value), 3), r.unit, r.comment ?? ''].map(csvEscape).join(','),
+    );
   return lines.join('\n') + '\n';
 }
 

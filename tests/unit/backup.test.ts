@@ -40,18 +40,24 @@ describe('backup round trip', () => {
     expect(snaps).toHaveLength(1);
     expect(snaps[0]!.label).toBe('Before restore');
     const snapBytes = await readBlob(snaps[0]!.key);
-    expect(snapBytes && new AppDatabase(new SQL.Database(snapBytes)).scalar('SELECT COUNT(*) FROM training_log')).toBe(0);
+    expect(
+      snapBytes && new AppDatabase(new SQL.Database(snapBytes)).scalar('SELECT COUNT(*) FROM training_log'),
+    ).toBe(0);
   });
 
   it('rejects non-SQLite and non-FitNotes files', () => {
-    expect(() => openBackup(SQL, new TextEncoder().encode('hello world, definitely not a database file at all........'))).toThrow(BackupError);
+    expect(() =>
+      openBackup(SQL, new TextEncoder().encode('hello world, definitely not a database file at all........')),
+    ).toThrow(BackupError);
     const other = new SQL.Database();
     other.run('CREATE TABLE t (x)');
     expect(() => openBackup(SQL, other.export())).toThrow(/Category/);
   });
 
   it('names backups like FitNotes', () => {
-    expect(backupFileName(new Date(2026, 8, 12, 15, 30, 5))).toBe('FitNotes_Backup_2026_09_12_15_30_05.fitnotes');
+    expect(backupFileName(new Date(2026, 8, 12, 15, 30, 5))).toBe(
+      'FitNotes_Backup_2026_09_12_15_30_05.fitnotes',
+    );
   });
 
   it('exports CSV in FitNotes column layout', () => {

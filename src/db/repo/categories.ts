@@ -37,8 +37,10 @@ export function createCategory(db: AppDatabase, name: string, colour?: number): 
 
 export function updateCategory(db: AppDatabase, id: number, patch: { name?: string; colour?: number }): void {
   db.mutate(() => {
-    if (patch.name !== undefined) db.run('UPDATE Category SET name = ? WHERE _id = ?', [patch.name.trim(), id]);
-    if (patch.colour !== undefined) db.run('UPDATE Category SET colour = ? WHERE _id = ?', [patch.colour, id]);
+    if (patch.name !== undefined)
+      db.run('UPDATE Category SET name = ? WHERE _id = ?', [patch.name.trim(), id]);
+    if (patch.colour !== undefined)
+      db.run('UPDATE Category SET colour = ? WHERE _id = ?', [patch.colour, id]);
   });
 }
 
@@ -58,7 +60,10 @@ export function reorderCategories(db: AppDatabase, orderedIds: number[]): void {
 
 export function categoryNameExists(db: AppDatabase, name: string, exceptId?: number): boolean {
   const n = Number(
-    db.scalar('SELECT COUNT(*) FROM Category WHERE name = ? COLLATE NOCASE AND _id != ?', [name.trim(), exceptId ?? -1]),
+    db.scalar('SELECT COUNT(*) FROM Category WHERE name = ? COLLATE NOCASE AND _id != ?', [
+      name.trim(),
+      exceptId ?? -1,
+    ]),
   );
   return n > 0;
 }

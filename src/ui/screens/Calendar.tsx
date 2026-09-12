@@ -49,7 +49,8 @@ export function CalendarScreen() {
       if (!exerciseFilter) return null;
       const ok = new Set<string>();
       for (const s of allSetsForExercise(d, exerciseFilter.exerciseId)) {
-        if (s.metricWeight >= exerciseFilter.minWeightKg - 1e-9 && s.reps >= exerciseFilter.minReps) ok.add(s.date);
+        if (s.metricWeight >= exerciseFilter.minWeightKg - 1e-9 && s.reps >= exerciseFilter.minReps)
+          ok.add(s.date);
       }
       return ok;
     },
@@ -74,7 +75,8 @@ export function CalendarScreen() {
   const selectedWorkout = useQuery((d) => (selected ? getWorkout(d, selected) : null), [selected]);
   const jump = (dir: -1 | 1) => {
     const cur = selected ?? month;
-    const next = dir === 1 ? filteredDates.find((d) => d > cur) : [...filteredDates].reverse().find((d) => d < cur);
+    const next =
+      dir === 1 ? filteredDates.find((d) => d > cur) : [...filteredDates].reverse().find((d) => d < cur);
     if (next) {
       setSelected(next);
       setMonth(next);
@@ -82,14 +84,40 @@ export function CalendarScreen() {
   };
 
   const monthMenu = [
-    { label: 'Workout Panel', checked: settings.calendarNavigationBar && false, onSelect: () => setListOpen(true) },
-    { label: 'Category Dots', checked: settings.calendarCategoryDots, onSelect: () => updateSettings(db, { calendarCategoryDots: !settings.calendarCategoryDots }) },
-    { label: 'Navigation Bar', checked: settings.calendarNavigationBar, onSelect: () => updateSettings(db, { calendarNavigationBar: !settings.calendarNavigationBar }) },
+    {
+      label: 'Workout Panel',
+      checked: settings.calendarNavigationBar && false,
+      onSelect: () => setListOpen(true),
+    },
+    {
+      label: 'Category Dots',
+      checked: settings.calendarCategoryDots,
+      onSelect: () => updateSettings(db, { calendarCategoryDots: !settings.calendarCategoryDots }),
+    },
+    {
+      label: 'Navigation Bar',
+      checked: settings.calendarNavigationBar,
+      onSelect: () => updateSettings(db, { calendarNavigationBar: !settings.calendarNavigationBar }),
+    },
   ];
   const listMenu = [
-    { label: 'Category Dots', checked: settings.calendarHistoryCategoryDots, onSelect: () => updateSettings(db, { calendarHistoryCategoryDots: !settings.calendarHistoryCategoryDots }) },
-    { label: 'Category Names', checked: settings.calendarHistoryCategoryNames, onSelect: () => updateSettings(db, { calendarHistoryCategoryNames: !settings.calendarHistoryCategoryNames }) },
-    { label: 'Sets', checked: settings.calendarHistorySets, onSelect: () => updateSettings(db, { calendarHistorySets: !settings.calendarHistorySets }) },
+    {
+      label: 'Category Dots',
+      checked: settings.calendarHistoryCategoryDots,
+      onSelect: () =>
+        updateSettings(db, { calendarHistoryCategoryDots: !settings.calendarHistoryCategoryDots }),
+    },
+    {
+      label: 'Category Names',
+      checked: settings.calendarHistoryCategoryNames,
+      onSelect: () =>
+        updateSettings(db, { calendarHistoryCategoryNames: !settings.calendarHistoryCategoryNames }),
+    },
+    {
+      label: 'Sets',
+      checked: settings.calendarHistorySets,
+      onSelect: () => updateSettings(db, { calendarHistorySets: !settings.calendarHistorySets }),
+    },
   ];
 
   return (
@@ -99,10 +127,19 @@ export function CalendarScreen() {
         leadingLabel="Calendar menu"
         onLeading={() => setDrawer(true)}
         title={view === 'month' ? 'Calendar' : 'Workout List'}
-        subtitle={filtering ? `${filteredDates.length} workouts (filtered)` : `${filteredDates.length} workouts`}
+        subtitle={
+          filtering ? `${filteredDates.length} workouts (filtered)` : `${filteredDates.length} workouts`
+        }
         actions={
           <>
-            <IconButton icon="today" label="Today" onClick={() => { setMonth(todayIso()); setSelected(todayIso()); }} />
+            <IconButton
+              icon="today"
+              label="Today"
+              onClick={() => {
+                setMonth(todayIso());
+                setSelected(todayIso());
+              }}
+            />
             <MenuButton items={view === 'month' ? monthMenu.slice(1) : listMenu} />
           </>
         }
@@ -112,19 +149,42 @@ export function CalendarScreen() {
           <div className="screen__content">
             <div className="container">
               <div className="card" style={{ paddingBottom: 4 }}>
-                <MonthGrid month={month} onMonthChange={setMonth} selected={selected ?? undefined} onSelect={(iso) => setSelected(iso)} markers={markers} weekStart={settings.firstDayOfWeek} showDots={settings.calendarCategoryDots} />
+                <MonthGrid
+                  month={month}
+                  onMonthChange={setMonth}
+                  selected={selected ?? undefined}
+                  onSelect={(iso) => setSelected(iso)}
+                  markers={markers}
+                  weekStart={settings.firstDayOfWeek}
+                  showDots={settings.calendarCategoryDots}
+                />
               </div>
               {filtering && (
                 <div className="banner" style={{ margin: '0 0 12px' }}>
                   <Icon name="filter" size={18} />
                   <span style={{ flex: 1 }}>Filter active</span>
-                  <Button variant="text" onClick={() => { setCategoryFilter(new Set()); setExerciseFilter(null); }}>Reset</Button>
+                  <Button
+                    variant="text"
+                    onClick={() => {
+                      setCategoryFilter(new Set());
+                      setExerciseFilter(null);
+                    }}
+                  >
+                    Reset
+                  </Button>
                 </div>
               )}
             </div>
           </div>
           {settings.calendarNavigationBar && (
-            <div className="home-nav" style={{ borderTop: '1px solid var(--color-border)', borderBottom: 'none', paddingBottom: 'var(--safe-bottom)' }}>
+            <div
+              className="home-nav"
+              style={{
+                borderTop: '1px solid var(--color-border)',
+                borderBottom: 'none',
+                paddingBottom: 'var(--safe-bottom)',
+              }}
+            >
               <IconButton icon="chevronLeft" label="Previous workout" primary onClick={() => jump(-1)} />
               <button className="home-nav__date" onClick={() => setView('list')}>
                 <div className="home-nav__title">{filteredDates.length} workouts</div>
@@ -147,14 +207,27 @@ export function CalendarScreen() {
         wide
         actions={
           <>
-            <Button variant="text" onClick={() => { if (selected) navigate(selected === todayIso() ? '/' : `/workout/${selected}`); }}>
+            <Button
+              variant="text"
+              onClick={() => {
+                if (selected) navigate(selected === todayIso() ? '/' : `/workout/${selected}`);
+              }}
+            >
               Open
             </Button>
-            <Button variant="text" onClick={() => setSelected(null)}>Close</Button>
+            <Button variant="text" onClick={() => setSelected(null)}>
+              Close
+            </Button>
           </>
         }
       >
-        {selectedWorkout && <WorkoutView workout={selectedWorkout} onExerciseClick={(id) => navigate(`/exercise/${id}/overview?date=${selected}`)} showCategory={settings.calendarHistoryCategoryDots} />}
+        {selectedWorkout && (
+          <WorkoutView
+            workout={selectedWorkout}
+            onExerciseClick={(id) => navigate(`/exercise/${id}/overview?date=${selected}`)}
+            showCategory={settings.calendarHistoryCategoryDots}
+          />
+        )}
       </Dialog>
 
       {/* Navigation drawer: views + filters */}
@@ -163,26 +236,84 @@ export function CalendarScreen() {
           <div className="drawer-backdrop" onClick={() => setDrawer(false)} />
           <nav className="drawer" aria-label="Calendar navigation">
             <div className="drawer__header">Calendar</div>
-            <button className={`list__item${view === 'month' ? ' list__item--selected' : ''}`} onClick={() => { setView('month'); setDrawer(false); }}><Icon name="calendar" /><div className="list__text">Month View</div></button>
-            <button className={`list__item${view === 'list' ? ' list__item--selected' : ''}`} onClick={() => { setView('list'); setDrawer(false); }}><Icon name="list" /><div className="list__text">List View</div></button>
+            <button
+              className={`list__item${view === 'month' ? ' list__item--selected' : ''}`}
+              onClick={() => {
+                setView('month');
+                setDrawer(false);
+              }}
+            >
+              <Icon name="calendar" />
+              <div className="list__text">Month View</div>
+            </button>
+            <button
+              className={`list__item${view === 'list' ? ' list__item--selected' : ''}`}
+              onClick={() => {
+                setView('list');
+                setDrawer(false);
+              }}
+            >
+              <Icon name="list" />
+              <div className="list__text">List View</div>
+            </button>
             <div className="list__header" style={{ display: 'flex', alignItems: 'center' }}>
               <span style={{ flex: 1 }}>Category filter</span>
-              <MenuButton small items={[{ label: 'Match All', checked: matchAll, onSelect: () => setMatchAll(true) }, { label: 'Match Any', checked: !matchAll, onSelect: () => setMatchAll(false) }]} />
+              <MenuButton
+                small
+                items={[
+                  { label: 'Match All', checked: matchAll, onSelect: () => setMatchAll(true) },
+                  { label: 'Match Any', checked: !matchAll, onSelect: () => setMatchAll(false) },
+                ]}
+              />
             </div>
             {categories.map((c) => (
-              <button key={c.id} className="list__item" onClick={() => setCategoryFilter((cur) => { const n = new Set(cur); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; })}>
-                <Checkbox checked={categoryFilter.has(c.id)} onChange={() => setCategoryFilter((cur) => { const n = new Set(cur); if (n.has(c.id)) n.delete(c.id); else n.add(c.id); return n; })} label={c.name} />
+              <button
+                key={c.id}
+                className="list__item"
+                onClick={() =>
+                  setCategoryFilter((cur) => {
+                    const n = new Set(cur);
+                    if (n.has(c.id)) n.delete(c.id);
+                    else n.add(c.id);
+                    return n;
+                  })
+                }
+              >
+                <Checkbox
+                  checked={categoryFilter.has(c.id)}
+                  onChange={() =>
+                    setCategoryFilter((cur) => {
+                      const n = new Set(cur);
+                      if (n.has(c.id)) n.delete(c.id);
+                      else n.add(c.id);
+                      return n;
+                    })
+                  }
+                  label={c.name}
+                />
                 <span className="swatch" style={{ background: androidColourToHex(c.colour) }} />
                 <div className="list__text">{c.name}</div>
               </button>
             ))}
             <div className="list__header">Exercise filter</div>
-            <button className="list__item" onClick={() => { setDrawer(false); setFilterDialog(true); }}>
+            <button
+              className="list__item"
+              onClick={() => {
+                setDrawer(false);
+                setFilterDialog(true);
+              }}
+            >
               <Icon name="filter" />
               <div className="list__text">{exerciseFilter ? 'Edit exercise filter' : 'Exercise Filter'}</div>
             </button>
             {(categoryFilter.size > 0 || exerciseFilter) && (
-              <button className="list__item" onClick={() => { setCategoryFilter(new Set()); setExerciseFilter(null); }}>
+              <button
+                className="list__item"
+                onClick={() => {
+                  setCategoryFilter(new Set());
+                  setExerciseFilter(null);
+                }}
+              >
                 <Icon name="close" />
                 <div className="list__text">Reset filters</div>
               </button>
@@ -190,11 +321,39 @@ export function CalendarScreen() {
           </nav>
         </>
       )}
-      <ExerciseFilterDialog open={filterDialog} onClose={() => setFilterDialog(false)} current={exerciseFilter} onApply={setExerciseFilter} />
-      <Dialog open={listOpen} onClose={() => setListOpen(false)} title="Workouts" flush actions={<Button variant="text" onClick={() => setListOpen(false)}>Close</Button>}>
-        {filteredDates.slice().reverse().map((d) => (
-          <button key={d} className="list__item" onClick={() => { setListOpen(false); setSelected(d); setMonth(d); }}>{formatMediumDate(d)}</button>
-        ))}
+      <ExerciseFilterDialog
+        open={filterDialog}
+        onClose={() => setFilterDialog(false)}
+        current={exerciseFilter}
+        onApply={setExerciseFilter}
+      />
+      <Dialog
+        open={listOpen}
+        onClose={() => setListOpen(false)}
+        title="Workouts"
+        flush
+        actions={
+          <Button variant="text" onClick={() => setListOpen(false)}>
+            Close
+          </Button>
+        }
+      >
+        {filteredDates
+          .slice()
+          .reverse()
+          .map((d) => (
+            <button
+              key={d}
+              className="list__item"
+              onClick={() => {
+                setListOpen(false);
+                setSelected(d);
+                setMonth(d);
+              }}
+            >
+              {formatMediumDate(d)}
+            </button>
+          ))}
       </Dialog>
     </div>
   );
@@ -209,24 +368,55 @@ function ListView({ dates, onOpen }: { dates: string[]; onOpen: (date: string) =
   return (
     <div className="screen__content">
       <div className="container">
-        {workouts.length === 0 && <div className="empty"><div className="empty__title">No workouts</div></div>}
+        {workouts.length === 0 && (
+          <div className="empty">
+            <div className="empty__title">No workouts</div>
+          </div>
+        )}
         {workouts.map((w: Workout) => (
-          <button key={w.date} className="card" style={{ width: '100%', textAlign: 'left', padding: 14 }} onClick={() => onOpen(w.date)}>
+          <button
+            key={w.date}
+            className="card"
+            style={{ width: '100%', textAlign: 'left', padding: 14 }}
+            onClick={() => onOpen(w.date)}
+          >
             <div className="row row--between" style={{ marginBottom: 6 }}>
               <b>{formatLongDate(w.date)}</b>
-              <span className="muted" style={{ fontSize: 13 }}>{w.exercises.reduce((n, e) => n + e.sets.length, 0)} sets</span>
+              <span className="muted" style={{ fontSize: 13 }}>
+                {w.exercises.reduce((n, e) => n + e.sets.length, 0)} sets
+              </span>
             </div>
-            {w.comment && <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>{w.comment}</div>}
+            {w.comment && (
+              <div className="muted" style={{ fontSize: 13, marginBottom: 6 }}>
+                {w.comment}
+              </div>
+            )}
             {w.exercises.map((we) => (
               <div key={we.exercise.id} style={{ marginBottom: 4 }}>
                 <div className="row" style={{ gap: 6 }}>
-                  {settings.calendarHistoryCategoryDots && <span className="dot" style={{ background: androidColourToHex(we.exercise.categoryColour) }} />}
+                  {settings.calendarHistoryCategoryDots && (
+                    <span
+                      className="dot"
+                      style={{ background: androidColourToHex(we.exercise.categoryColour) }}
+                    />
+                  )}
                   <span>{we.exercise.name}</span>
-                  {!settings.calendarHistorySets && <span className="muted" style={{ fontSize: 13 }}>· {we.sets.length} sets</span>}
+                  {!settings.calendarHistorySets && (
+                    <span className="muted" style={{ fontSize: 13 }}>
+                      · {we.sets.length} sets
+                    </span>
+                  )}
                 </div>
                 {settings.calendarHistorySets && (
-                  <div className="muted" style={{ fontSize: 13, paddingLeft: settings.calendarHistoryCategoryDots ? 14 : 0 }}>
-                    {we.sets.map((s) => formatSet(s, we.exercise.typeId, weightUnitFor(we.exercise, settings), settings)).join(', ')}
+                  <div
+                    className="muted"
+                    style={{ fontSize: 13, paddingLeft: settings.calendarHistoryCategoryDots ? 14 : 0 }}
+                  >
+                    {we.sets
+                      .map((s) =>
+                        formatSet(s, we.exercise.typeId, weightUnitFor(we.exercise, settings), settings),
+                      )
+                      .join(', ')}
                   </div>
                 )}
               </div>
@@ -235,35 +425,115 @@ function ListView({ dates, onOpen }: { dates: string[]; onOpen: (date: string) =
               <div className="row" style={{ flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
                 {[...new Set(w.exercises.map((e) => e.exercise.categoryId))].map((id) => {
                   const ex = w.exercises.find((e) => e.exercise.categoryId === id)!.exercise;
-                  return <span key={id} className="chip" style={{ color: androidColourToHex(colourOf.get(id) ?? 0) }}>{ex.categoryName}</span>;
+                  return (
+                    <span
+                      key={id}
+                      className="chip"
+                      style={{ color: androidColourToHex(colourOf.get(id) ?? 0) }}
+                    >
+                      {ex.categoryName}
+                    </span>
+                  );
                 })}
               </div>
             )}
           </button>
         ))}
-        {dates.length > limit && <Button block variant="outline" onClick={() => setLimit((l) => l + 30)}>Show more</Button>}
+        {dates.length > limit && (
+          <Button block variant="outline" onClick={() => setLimit((l) => l + 30)}>
+            Show more
+          </Button>
+        )}
       </div>
     </div>
   );
 }
 
-function ExerciseFilterDialog({ open, onClose, current, onApply }: { open: boolean; onClose: () => void; current: ExerciseFilter | null; onApply: (f: ExerciseFilter | null) => void }) {
+function ExerciseFilterDialog({
+  open,
+  onClose,
+  current,
+  onApply,
+}: {
+  open: boolean;
+  onClose: () => void;
+  current: ExerciseFilter | null;
+  onApply: (f: ExerciseFilter | null) => void;
+}) {
   const settings = useSettings();
   const exercises = useQuery((d) => exercisesWithHistory(d));
   const [exerciseId, setExerciseId] = useState<number>(current?.exerciseId ?? exercises[0]?.id ?? 0);
-  const [minWeight, setMinWeight] = useState(current ? fmt(kgToDisplay(current.minWeightKg, settings.metric ? 'kg' : 'lbs')) : '');
+  const [minWeight, setMinWeight] = useState(
+    current ? fmt(kgToDisplay(current.minWeightKg, settings.metric ? 'kg' : 'lbs')) : '',
+  );
   const [minReps, setMinReps] = useState(current ? String(current.minReps || '') : '');
   const unit = settings.metric ? 'kg' : 'lbs';
   return (
-    <Dialog open={open} onClose={onClose} title="Exercise Filter" actions={<><Button variant="text" onClick={() => { onApply(null); onClose(); }}>Reset</Button><Button variant="text" onClick={onClose}>Cancel</Button><Button onClick={() => { if (exerciseId) onApply({ exerciseId, minWeightKg: displayToKg(Number(minWeight) || 0, unit), minReps: Number(minReps) || 0 }); onClose(); }}>Save</Button></>}>
-      <label className="field"><span className="field__label">Exercise</span>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title="Exercise Filter"
+      actions={
+        <>
+          <Button
+            variant="text"
+            onClick={() => {
+              onApply(null);
+              onClose();
+            }}
+          >
+            Reset
+          </Button>
+          <Button variant="text" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => {
+              if (exerciseId)
+                onApply({
+                  exerciseId,
+                  minWeightKg: displayToKg(Number(minWeight) || 0, unit),
+                  minReps: Number(minReps) || 0,
+                });
+              onClose();
+            }}
+          >
+            Save
+          </Button>
+        </>
+      }
+    >
+      <label className="field">
+        <span className="field__label">Exercise</span>
         <select className="select" value={exerciseId} onChange={(e) => setExerciseId(Number(e.target.value))}>
-          {exercises.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+          {exercises.map((e) => (
+            <option key={e.id} value={e.id}>
+              {e.name}
+            </option>
+          ))}
         </select>
       </label>
       <div className="grid-2">
-        <label className="field"><span className="field__label">Min weight ({unit})</span><input className="input" inputMode="decimal" value={minWeight} onChange={(e) => setMinWeight(e.target.value)} placeholder="Any" /></label>
-        <label className="field"><span className="field__label">Min reps</span><input className="input" inputMode="numeric" value={minReps} onChange={(e) => setMinReps(e.target.value)} placeholder="Any" /></label>
+        <label className="field">
+          <span className="field__label">Min weight ({unit})</span>
+          <input
+            className="input"
+            inputMode="decimal"
+            value={minWeight}
+            onChange={(e) => setMinWeight(e.target.value)}
+            placeholder="Any"
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Min reps</span>
+          <input
+            className="input"
+            inputMode="numeric"
+            value={minReps}
+            onChange={(e) => setMinReps(e.target.value)}
+            placeholder="Any"
+          />
+        </label>
       </div>
     </Dialog>
   );

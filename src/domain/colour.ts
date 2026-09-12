@@ -9,9 +9,17 @@ export function androidColourToHex(colour: number): string {
 
 export function hexToAndroidColour(hex: string): number {
   const clean = hex.replace('#', '');
-  const rgb = parseInt(clean.length === 3 ? clean.split('').map((c) => c + c).join('') : clean, 16);
+  const rgb = parseInt(
+    clean.length === 3
+      ? clean
+          .split('')
+          .map((c) => c + c)
+          .join('')
+      : clean,
+    16,
+  );
   // Force alpha = 0xff and reinterpret as a signed 32-bit int.
-  return (0xff000000 | rgb) | 0;
+  return 0xff000000 | rgb | 0;
 }
 
 /** Category colour palette offered in the colour picker (also used to seed new categories). */

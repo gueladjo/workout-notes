@@ -3,7 +3,12 @@
  * directions. Column semantics are documented in doc/fitnotes-format.md.
  */
 import type { AppDatabase } from '../store';
-import { AppTheme, HomeScreenCategoryVisibility, HomeScreenSetLimitType, ExerciseListDetailType } from '../constants';
+import {
+  AppTheme,
+  HomeScreenCategoryVisibility,
+  HomeScreenSetLimitType,
+  ExerciseListDetailType,
+} from '../constants';
 
 export interface Settings {
   /** true = kilograms, false = pounds (settings.metric). */
@@ -93,7 +98,9 @@ const COLUMNS: Record<keyof Settings, string> = {
 };
 
 const BOOLEAN_KEYS = new Set<keyof Settings>(
-  (Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]).filter((k) => typeof DEFAULT_SETTINGS[k] === 'boolean'),
+  (Object.keys(DEFAULT_SETTINGS) as (keyof Settings)[]).filter(
+    (k) => typeof DEFAULT_SETTINGS[k] === 'boolean',
+  ),
 );
 
 function decode<K extends keyof Settings>(key: K, raw: unknown): Settings[K] {

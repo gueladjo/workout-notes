@@ -72,9 +72,7 @@ export function columnNames(db: Database, table: string): string[] {
 
 export function hasTable(db: Database, table: string): boolean {
   return (
-    Number(
-      scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?", [table]),
-    ) > 0
+    Number(scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?", [table])) > 0
   );
 }
 

@@ -172,14 +172,25 @@ export function seedMeasurements(db: Database, metric: boolean): void {
 
 export function seedDefaults(db: Database, metric: boolean): void {
   DEFAULT_CATEGORIES.forEach(([name, colour], i) => {
-    run(db, 'INSERT INTO Category (_id, name, colour, sort_order) VALUES (?, ?, ?, ?)', [i + 1, name, colour, i + 1]);
+    run(db, 'INSERT INTO Category (_id, name, colour, sort_order) VALUES (?, ?, ?, ?)', [
+      i + 1,
+      name,
+      colour,
+      i + 1,
+    ]);
   });
   for (const [name, categoryId, typeId] of DEFAULT_EXERCISES) {
-    run(db, 'INSERT INTO exercise (name, category_id, exercise_type_id) VALUES (?, ?, ?)', [name, categoryId, typeId]);
+    run(db, 'INSERT INTO exercise (name, category_id, exercise_type_id) VALUES (?, ?, ?)', [
+      name,
+      categoryId,
+      typeId,
+    ]);
   }
   seedMeasurementUnits(db);
   seedMeasurements(db, metric);
-  run(db, 'INSERT INTO settings (metric, first_day_of_week, weight_increment, track_personal_records) VALUES (?, 2, 2.5, 1)', [
-    metric ? 1 : 0,
-  ]);
+  run(
+    db,
+    'INSERT INTO settings (metric, first_day_of_week, weight_increment, track_personal_records) VALUES (?, 2, 2.5, 1)',
+    [metric ? 1 : 0],
+  );
 }

@@ -1,6 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { loadSqlJs, tableNames, columnNames, scalar, run, type SqlJsStatic } from '../../src/db/sqlite';
-import { TABLES, createEmptyDatabase, ensureSchema, columnDefinitions, validateBackupDatabase } from '../../src/db/schema';
+import {
+  TABLES,
+  createEmptyDatabase,
+  ensureSchema,
+  columnDefinitions,
+  validateBackupDatabase,
+} from '../../src/db/schema';
 import { FITNOTES_DB_VERSION } from '../../src/db/constants';
 import { DEFAULT_CATEGORIES, DEFAULT_EXERCISES, DEFAULT_MEASUREMENTS } from '../../src/db/seed';
 
@@ -25,7 +31,7 @@ describe('createEmptyDatabase', () => {
     const db = createEmptyDatabase(SQL);
     expect(scalar(db, 'SELECT COUNT(*) FROM Category')).toBe(DEFAULT_CATEGORIES.length);
     expect(scalar(db, 'SELECT COUNT(*) FROM exercise')).toBe(DEFAULT_EXERCISES.length);
-    expect(scalar(db, "SELECT name FROM Category WHERE _id = 4")).toBe('Chest');
+    expect(scalar(db, 'SELECT name FROM Category WHERE _id = 4')).toBe('Chest');
     expect(scalar(db, "SELECT exercise_type_id FROM exercise WHERE name = 'Cycling'")).toBe(1);
     expect(scalar(db, 'SELECT COUNT(*) FROM MeasurementUnit')).toBe(6);
     expect(scalar(db, 'SELECT COUNT(*) FROM Measurement')).toBe(DEFAULT_MEASUREMENTS.length);
@@ -54,26 +60,51 @@ describe('ensureSchema', () => {
     const db = new SQL.Database();
     // A minimal, early-FitNotes shaped database.
     run(db, 'CREATE TABLE Category(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
-    run(db, 'CREATE TABLE exercise(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category_id INTEGER NOT NULL)');
-    run(db, 'CREATE TABLE training_log (_id INTEGER PRIMARY KEY AUTOINCREMENT, exercise_id INTEGER NOT NULL, date DATE NOT NULL, metric_weight INTEGER NOT NULL, reps INTEGER NOT NULL)');
-    run(db, 'CREATE TABLE BodyWeight (_id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, body_weight_metric REAL NOT NULL, body_fat REAL NOT NULL, comments TEXT)');
-    run(db, 'CREATE TABLE Comment (_id INTEGER PRIMARY KEY AUTOINCREMENT, date DATE NOT NULL, owner_type_id INTEGER NOT NULL, owner_id INTEGER NOT NULL, comment TEXT NOT NULL)');
+    run(
+      db,
+      'CREATE TABLE exercise(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category_id INTEGER NOT NULL)',
+    );
+    run(
+      db,
+      'CREATE TABLE training_log (_id INTEGER PRIMARY KEY AUTOINCREMENT, exercise_id INTEGER NOT NULL, date DATE NOT NULL, metric_weight INTEGER NOT NULL, reps INTEGER NOT NULL)',
+    );
+    run(
+      db,
+      'CREATE TABLE BodyWeight (_id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, body_weight_metric REAL NOT NULL, body_fat REAL NOT NULL, comments TEXT)',
+    );
+    run(
+      db,
+      'CREATE TABLE Comment (_id INTEGER PRIMARY KEY AUTOINCREMENT, date DATE NOT NULL, owner_type_id INTEGER NOT NULL, owner_id INTEGER NOT NULL, comment TEXT NOT NULL)',
+    );
     run(db, "INSERT INTO Category (name) VALUES ('Chest')");
     run(db, "INSERT INTO exercise (name, category_id) VALUES ('Bench', 1)");
-    run(db, "INSERT INTO training_log (exercise_id, date, metric_weight, reps) VALUES (1, '2015-01-01', 100, 5)");
-    run(db, "INSERT INTO BodyWeight (date, body_weight_metric, body_fat, comments) VALUES ('2015-01-01 08:30:00', 80.5, 15, 'morning')");
-    run(db, "INSERT INTO Comment (date, owner_type_id, owner_id, comment) VALUES ('2015-01-01', 2, 0, 'good session')");
+    run(
+      db,
+      "INSERT INTO training_log (exercise_id, date, metric_weight, reps) VALUES (1, '2015-01-01', 100, 5)",
+    );
+    run(
+      db,
+      "INSERT INTO BodyWeight (date, body_weight_metric, body_fat, comments) VALUES ('2015-01-01 08:30:00', 80.5, 15, 'morning')",
+    );
+    run(
+      db,
+      "INSERT INTO Comment (date, owner_type_id, owner_id, comment) VALUES ('2015-01-01', 2, 0, 'good session')",
+    );
     run(db, 'PRAGMA user_version = 3');
 
     const report = ensureSchema(db);
     expect(report.createdTables).toContain('WorkoutComment');
     expect(report.addedColumns).toContain('exercise.exercise_type_id');
     expect(report.addedColumns).toContain('training_log.distance');
-    expect(columnNames(db, 'training_log')).toEqual(columnDefinitions(TABLES.training_log!).map((c) => c.name));
+    expect(columnNames(db, 'training_log')).toEqual(
+      columnDefinitions(TABLES.training_log!).map((c) => c.name),
+    );
     expect(scalar(db, 'SELECT COUNT(*) FROM MeasurementRecord')).toBe(2);
     expect(scalar(db, 'SELECT value FROM MeasurementRecord WHERE measurement_id = 1')).toBe(80.5);
-    expect(scalar(db, "SELECT time FROM MeasurementRecord WHERE measurement_id = 1")).toBe('08:30:00');
-    expect(scalar(db, 'SELECT comment FROM WorkoutComment WHERE date = ?', ['2015-01-01'])).toBe('good session');
+    expect(scalar(db, 'SELECT time FROM MeasurementRecord WHERE measurement_id = 1')).toBe('08:30:00');
+    expect(scalar(db, 'SELECT comment FROM WorkoutComment WHERE date = ?', ['2015-01-01'])).toBe(
+      'good session',
+    );
     expect(scalar(db, 'SELECT colour FROM Category WHERE _id = 1')).not.toBe(0);
     expect(scalar(db, 'PRAGMA user_version')).toBe(FITNOTES_DB_VERSION);
     // Data untouched

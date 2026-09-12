@@ -10,6 +10,8 @@ export default defineConfig({
   use: {
     baseURL: 'http://127.0.0.1:4173/',
     trace: 'retain-on-failure',
+    // A non-US locale so a fresh database starts in kilograms (see bootstrap()).
+    locale: 'en-GB',
   },
   projects: [{ name: 'mobile-chromium', use: { ...devices['Pixel 7'] } }],
   webServer: {

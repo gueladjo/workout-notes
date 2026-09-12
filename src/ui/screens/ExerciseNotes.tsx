@@ -18,14 +18,24 @@ export function ExerciseNotesScreen() {
   const id = Number(useParams().id);
   const exercise = useQuery((d) => getExercise(d, id), [id]);
   const [notes, setNotes] = useState(exercise?.notes ?? '');
-  const [increment, setIncrement] = useState(exercise?.weightIncrement ? String(exercise.weightIncrement) : '');
-  const [graph, setGraph] = useState<string>(exercise?.defaultGraphId === null || exercise?.defaultGraphId === undefined ? '' : String(exercise.defaultGraphId));
+  const [increment, setIncrement] = useState(
+    exercise?.weightIncrement ? String(exercise.weightIncrement) : '',
+  );
+  const [graph, setGraph] = useState<string>(
+    exercise?.defaultGraphId === null || exercise?.defaultGraphId === undefined
+      ? ''
+      : String(exercise.defaultGraphId),
+  );
   if (!exercise) return <div className="empty">Exercise not found.</div>;
   const unit = resolveWeightUnit(exercise.weightUnitId, settings.metric);
   const save = () => {
     const inc = increment.trim() === '' ? null : Number(increment);
     if (inc !== null && (!Number.isFinite(inc) || inc <= 0)) return toast('Enter a valid increment');
-    updateExercise(db, id, { notes, weightIncrement: inc, defaultGraphId: graph === '' ? null : Number(graph) });
+    updateExercise(db, id, {
+      notes,
+      weightIncrement: inc,
+      defaultGraphId: graph === '' ? null : Number(graph),
+    });
     toast('Saved');
     navigate(-1);
   };
@@ -41,19 +51,40 @@ export function ExerciseNotesScreen() {
     );
   return (
     <div className="screen">
-      <TopBar back title="Exercise Notes" subtitle={exercise.name} actions={<IconButton icon="save" label="Save" primary onClick={save} />} />
+      <TopBar
+        back
+        title="Exercise Notes"
+        subtitle={exercise.name}
+        actions={<IconButton icon="save" label="Save" primary onClick={save} />}
+      />
       <div className="screen__content">
         <div className="container">
           <div className="card" style={{ padding: 14 }}>
             <label className="field">
               <span className="field__label">Notes</span>
-              <textarea className="textarea" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Instructions, form tips, machine settings, links…" style={{ minHeight: 140 }} />
-              {notes && <div className="muted" style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>{linkify(notes)}</div>}
+              <textarea
+                className="textarea"
+                value={notes}
+                onChange={(e) => setNotes(e.target.value)}
+                placeholder="Instructions, form tips, machine settings, links…"
+                style={{ minHeight: 140 }}
+              />
+              {notes && (
+                <div className="muted" style={{ fontSize: 13, whiteSpace: 'pre-wrap' }}>
+                  {linkify(notes)}
+                </div>
+              )}
             </label>
             {[0, 2, 3, 6].includes(exercise.typeId) && (
               <label className="field">
                 <span className="field__label">Weight Increment ({unit})</span>
-                <input className="input" inputMode="decimal" value={increment} onChange={(e) => setIncrement(e.target.value)} placeholder={`Default (${settings.weightIncrement})`} />
+                <input
+                  className="input"
+                  inputMode="decimal"
+                  value={increment}
+                  onChange={(e) => setIncrement(e.target.value)}
+                  placeholder={`Default (${settings.weightIncrement})`}
+                />
               </label>
             )}
             <label className="field">

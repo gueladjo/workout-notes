@@ -32,7 +32,12 @@ export function useQuery<T>(query: (db: AppDatabase) => T, deps: readonly unknow
   const version = useDbVersion();
   // Cached result keyed on (db, version, deps). Re-computed during render when the key changes,
   // which is React's sanctioned pattern for state derived from props ("adjusting state on change").
-  const [cache, setCache] = useState<{ db: AppDatabase; version: number; deps: readonly unknown[]; value: T } | null>(null);
+  const [cache, setCache] = useState<{
+    db: AppDatabase;
+    version: number;
+    deps: readonly unknown[];
+    value: T;
+  } | null>(null);
   if (cache && cache.db === db && cache.version === version && sameDeps(cache.deps, deps)) return cache.value;
   const value = query(db);
   setCache({ db, version, deps, value });

@@ -52,7 +52,12 @@ function encodePng(size: number, rgba: Uint8Array): Uint8Array {
   ihdr[8] = 8; // bit depth
   ihdr[9] = 6; // RGBA
   const sig = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
-  const parts = [sig, chunk('IHDR', ihdr), chunk('IDAT', new Uint8Array(deflateSync(raw))), chunk('IEND', new Uint8Array())];
+  const parts = [
+    sig,
+    chunk('IHDR', ihdr),
+    chunk('IDAT', new Uint8Array(deflateSync(raw))),
+    chunk('IEND', new Uint8Array()),
+  ];
   const total = parts.reduce((n, p) => n + p.length, 0);
   const out = new Uint8Array(total);
   let off = 0;
@@ -77,9 +82,9 @@ function dumbbell(x: number, y: number): number {
   const parts = [
     roundedRect(x, y, 0.5, 0.5, 0.56, 0.08, 0.03), // bar
     roundedRect(x, y, 0.27, 0.5, 0.09, 0.42, 0.03), // left outer plate
-    roundedRect(x, y, 0.36, 0.5, 0.07, 0.30, 0.025), // left inner plate
+    roundedRect(x, y, 0.36, 0.5, 0.07, 0.3, 0.025), // left inner plate
     roundedRect(x, y, 0.73, 0.5, 0.09, 0.42, 0.03), // right outer plate
-    roundedRect(x, y, 0.64, 0.5, 0.07, 0.30, 0.025), // right inner plate
+    roundedRect(x, y, 0.64, 0.5, 0.07, 0.3, 0.025), // right inner plate
   ];
   return Math.min(...parts);
 }
@@ -89,7 +94,10 @@ function render(size: number, opts: { maskable: boolean; transparentBg: boolean 
   const ss = 3; // supersampling
   for (let py = 0; py < size; py++) {
     for (let px = 0; px < size; px++) {
-      let r = 0, g = 0, b = 0, a = 0;
+      let r = 0,
+        g = 0,
+        b = 0,
+        a = 0;
       for (let sy = 0; sy < ss; sy++) {
         for (let sx = 0; sx < ss; sx++) {
           const x = (px + (sx + 0.5) / ss) / size;
@@ -100,9 +108,22 @@ function render(size: number, opts: { maskable: boolean; transparentBg: boolean 
           const lx = (x - 0.5) / scale + 0.5;
           const ly = (y - 0.5) / scale + 0.5;
           const inFg = dumbbell(lx, ly) <= 0;
-          if (inFg) { r += FG[0]!; g += FG[1]!; b += FG[2]!; a += 255; }
-          else if (inBg) { r += BG[0]!; g += BG[1]!; b += BG[2]!; a += 255; }
-          else if (!opts.transparentBg) { r += 255; g += 255; b += 255; a += 255; }
+          if (inFg) {
+            r += FG[0]!;
+            g += FG[1]!;
+            b += FG[2]!;
+            a += 255;
+          } else if (inBg) {
+            r += BG[0]!;
+            g += BG[1]!;
+            b += BG[2]!;
+            a += 255;
+          } else if (!opts.transparentBg) {
+            r += 255;
+            g += 255;
+            b += 255;
+            a += 255;
+          }
         }
       }
       const n = ss * ss;

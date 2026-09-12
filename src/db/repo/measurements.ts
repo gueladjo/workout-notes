@@ -44,13 +44,18 @@ export function getMeasurement(db: AppDatabase, id: number): MeasurementWithUnit
 
 export function listMeasurementUnits(db: AppDatabase): MeasurementUnit[] {
   return db
-    .all<{ _id: number; type: number; long_name: string; short_name: string }>('SELECT * FROM MeasurementUnit ORDER BY _id ASC')
+    .all<{ _id: number; type: number; long_name: string; short_name: string }>(
+      'SELECT * FROM MeasurementUnit ORDER BY _id ASC',
+    )
     .map((r) => ({ id: r._id, type: r.type, longName: r.long_name, shortName: r.short_name }));
 }
 
 export function createMeasurementUnit(db: AppDatabase, longName: string, shortName: string): number {
   return db.mutate(() => {
-    db.run('INSERT INTO MeasurementUnit (type, long_name, short_name) VALUES (3, ?, ?)', [longName.trim(), shortName.trim()]);
+    db.run('INSERT INTO MeasurementUnit (type, long_name, short_name) VALUES (3, ?, ?)', [
+      longName.trim(),
+      shortName.trim(),
+    ]);
     return Number(db.scalar('SELECT last_insert_rowid()'));
   });
 }
@@ -99,7 +104,9 @@ export function deleteMeasurement(db: AppDatabase, id: number): void {
 }
 
 export function reorderMeasurements(db: AppDatabase, orderedIds: number[]): void {
-  db.mutate(() => orderedIds.forEach((id, i) => db.run('UPDATE Measurement SET sort_order = ? WHERE _id = ?', [i, id])));
+  db.mutate(() =>
+    orderedIds.forEach((id, i) => db.run('UPDATE Measurement SET sort_order = ? WHERE _id = ?', [i, id])),
+  );
 }
 
 interface RecordRow {
@@ -112,19 +119,29 @@ interface RecordRow {
 }
 
 function toRecord(r: RecordRow): MeasurementRecord {
-  return { id: r._id, measurementId: r.measurement_id, date: r.date, time: r.time, value: Number(r.value), comment: r.comment };
+  return {
+    id: r._id,
+    measurementId: r.measurement_id,
+    date: r.date,
+    time: r.time,
+    value: Number(r.value),
+    comment: r.comment,
+  };
 }
 
 /** Records ordered oldest -> newest. */
 export function listRecords(db: AppDatabase, measurementId?: number): MeasurementRecord[] {
   if (measurementId !== undefined) {
     return db
-      .all<RecordRow>('SELECT * FROM MeasurementRecord WHERE measurement_id = ? ORDER BY date ASC, time ASC, _id ASC', [
-        measurementId,
-      ])
+      .all<RecordRow>(
+        'SELECT * FROM MeasurementRecord WHERE measurement_id = ? ORDER BY date ASC, time ASC, _id ASC',
+        [measurementId],
+      )
       .map(toRecord);
   }
-  return db.all<RecordRow>('SELECT * FROM MeasurementRecord ORDER BY date ASC, time ASC, _id ASC').map(toRecord);
+  return db
+    .all<RecordRow>('SELECT * FROM MeasurementRecord ORDER BY date ASC, time ASC, _id ASC')
+    .map(toRecord);
 }
 
 export function latestRecord(db: AppDatabase, measurementId: number): MeasurementRecord | undefined {
@@ -140,13 +157,10 @@ export function addRecord(
   input: { measurementId: number; date: string; time: string; value: number; comment?: string },
 ): number {
   return db.mutate(() => {
-    db.run('INSERT INTO MeasurementRecord (measurement_id, date, time, value, comment) VALUES (?, ?, ?, ?, ?)', [
-      input.measurementId,
-      input.date,
-      input.time,
-      input.value,
-      input.comment?.trim() || null,
-    ]);
+    db.run(
+      'INSERT INTO MeasurementRecord (measurement_id, date, time, value, comment) VALUES (?, ?, ?, ?, ?)',
+      [input.measurementId, input.date, input.time, input.value, input.comment?.trim() || null],
+    );
     return Number(db.scalar('SELECT last_insert_rowid()'));
   });
 }
@@ -162,7 +176,8 @@ export function updateRecord(
     if (patch.time !== undefined) cols.push(['time', patch.time]);
     if (patch.value !== undefined) cols.push(['value', patch.value]);
     if (patch.comment !== undefined) cols.push(['comment', patch.comment?.trim() || null]);
-    for (const [c, v] of cols) db.run(`UPDATE MeasurementRecord SET ${c} = ? WHERE _id = ?`, [v as never, id]);
+    for (const [c, v] of cols)
+      db.run(`UPDATE MeasurementRecord SET ${c} = ? WHERE _id = ?`, [v as never, id]);
   });
 }
 

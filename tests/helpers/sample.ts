@@ -26,21 +26,30 @@ export function seedSampleWorkouts(db: Database): void {
     [squat, '2026-09-08', 105, 5, 0, 0, 0],
   ];
   for (const [ex, date, kg, reps, unit, dist, secs] of sets) {
-    run(db, 'INSERT INTO training_log (exercise_id, date, metric_weight, reps, unit, distance, duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?)', [
-      ex,
-      date,
-      kg,
-      reps,
-      unit,
-      dist,
-      secs,
-    ]);
+    run(
+      db,
+      'INSERT INTO training_log (exercise_id, date, metric_weight, reps, unit, distance, duration_seconds) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [ex, date, kg, reps, unit, dist, secs],
+    );
   }
-  run(db, "INSERT INTO Comment (date, owner_type_id, owner_id, comment) VALUES ('2026-09-01', 1, 2, 'Felt strong')");
+  run(
+    db,
+    "INSERT INTO Comment (date, owner_type_id, owner_id, comment) VALUES ('2026-09-01', 1, 2, 'Felt strong')",
+  );
   run(db, "INSERT INTO WorkoutComment (date, comment) VALUES ('2026-09-08', 'Deload next week')");
   run(db, "INSERT INTO Routine (name, notes) VALUES ('Starter', 'Twice a week')");
   run(db, "INSERT INTO RoutineSection (routine_id, name, sort_order) VALUES (1, 'Day A', 1)");
-  run(db, 'INSERT INTO RoutineSectionExercise (routine_section_id, exercise_id, sort_order, populate_sets_type) VALUES (1, ?, 1, 1)', [bench]);
-  run(db, 'INSERT INTO RoutineSectionExerciseSet (routine_section_exercise_id, metric_weight, reps, sort_order) VALUES (1, 0, 5, 1), (1, 0, 5, 2), (1, 0, 5, 3)');
-  run(db, "INSERT INTO MeasurementRecord (measurement_id, date, time, value) VALUES (1, '2026-09-01', '08:00:00', 80.4), (1, '2026-09-08', '08:05:00', 79.9)");
+  run(
+    db,
+    'INSERT INTO RoutineSectionExercise (routine_section_id, exercise_id, sort_order, populate_sets_type) VALUES (1, ?, 1, 1)',
+    [bench],
+  );
+  run(
+    db,
+    'INSERT INTO RoutineSectionExerciseSet (routine_section_exercise_id, metric_weight, reps, sort_order) VALUES (1, 0, 5, 1), (1, 0, 5, 2), (1, 0, 5, 3)',
+  );
+  run(
+    db,
+    "INSERT INTO MeasurementRecord (measurement_id, date, time, value) VALUES (1, '2026-09-01', '08:00:00', 80.4), (1, '2026-09-08', '08:05:00', 79.9)",
+  );
 }

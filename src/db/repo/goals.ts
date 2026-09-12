@@ -35,7 +35,9 @@ function toGoal(r: GoalRow): Goal {
 
 export function listGoals(db: AppDatabase, exerciseId?: number): Goal[] {
   if (exerciseId !== undefined) {
-    return db.all<GoalRow>('SELECT * FROM Goal WHERE exercise_id = ? ORDER BY sort_order ASC, _id ASC', [exerciseId]).map(toGoal);
+    return db
+      .all<GoalRow>('SELECT * FROM Goal WHERE exercise_id = ? ORDER BY sort_order ASC, _id ASC', [exerciseId])
+      .map(toGoal);
   }
   return db.all<GoalRow>('SELECT * FROM Goal ORDER BY exercise_id ASC, sort_order ASC, _id ASC').map(toGoal);
 }
@@ -44,7 +46,11 @@ export type GoalInput = Omit<Goal, 'id' | 'sortOrder'>;
 
 export function createGoal(db: AppDatabase, input: GoalInput): number {
   return db.mutate(() => {
-    const sort = Number(db.scalar('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM Goal WHERE exercise_id = ?', [input.exerciseId]));
+    const sort = Number(
+      db.scalar('SELECT COALESCE(MAX(sort_order), 0) + 1 FROM Goal WHERE exercise_id = ?', [
+        input.exerciseId,
+      ]),
+    );
     db.run(
       'INSERT INTO Goal (type_id, exercise_id, metric_weight, reps, unit, title, target_date, sort_order, distance, duration_seconds, start_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
       [

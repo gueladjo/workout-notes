@@ -29,7 +29,8 @@ export function DatePickerDialog({
   const markers = useQuery((db) => {
     const colours = new Map(listCategories(db).map((c) => [c.id, c.colour]));
     const m = new Map<string, DayMarker>();
-    for (const [date, cats] of workoutDates(db)) m.set(date, { colours: cats.map((id) => colours.get(id) ?? 0) });
+    for (const [date, cats] of workoutDates(db))
+      m.set(date, { colours: cats.map((id) => colours.get(id) ?? 0) });
     return m;
   });
   return (

@@ -70,6 +70,7 @@ npm run test:e2e     # Playwright smoke tests against the production build (need
 npm run inspect-backup -- path/to/backup.fitnotes   # print schema and counts of a real backup
 npm run make-fixture                                 # write tests/fixtures/generated/sample.fitnotes
 npm run make-icons                                   # regenerate public/icons
+npm run screenshots                                  # build, serve and screenshot the main screens into ./screenshots
 ```
 
 Documentation for contributors and coding agents:

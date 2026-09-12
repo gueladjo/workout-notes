@@ -30,7 +30,9 @@ export interface GroupWithExercises extends WorkoutGroup {
 }
 
 export function listGroups(db: AppDatabase, date: string): GroupWithExercises[] {
-  const groups = db.all<GroupRow>('SELECT * FROM WorkoutGroup WHERE date = ? ORDER BY _id ASC', [date]).map(toGroup);
+  const groups = db
+    .all<GroupRow>('SELECT * FROM WorkoutGroup WHERE date = ? ORDER BY _id ASC', [date])
+    .map(toGroup);
   return groups.map((g) => ({
     ...g,
     exerciseIds: db
@@ -44,7 +46,10 @@ export function listGroups(db: AppDatabase, date: string): GroupWithExercises[] 
 
 export function listRoutineSectionGroups(db: AppDatabase, sectionId: number): GroupWithExercises[] {
   const groups = db
-    .all<GroupRow>('SELECT * FROM WorkoutGroup WHERE routine_section_id = ? AND date = ? ORDER BY _id ASC', [sectionId, ''])
+    .all<GroupRow>('SELECT * FROM WorkoutGroup WHERE routine_section_id = ? AND date = ? ORDER BY _id ASC', [
+      sectionId,
+      '',
+    ])
     .map(toGroup);
   return groups.map((g) => ({
     ...g,
@@ -63,14 +68,19 @@ export function getGroup(db: AppDatabase, id: number): GroupWithExercises | unde
   return {
     ...toGroup(r),
     exerciseIds: db
-      .all<{ exercise_id: number }>('SELECT exercise_id FROM WorkoutGroupExercise WHERE workout_group_id = ? ORDER BY _id ASC', [
-        id,
-      ])
+      .all<{ exercise_id: number }>(
+        'SELECT exercise_id FROM WorkoutGroupExercise WHERE workout_group_id = ? ORDER BY _id ASC',
+        [id],
+      )
       .map((x) => x.exercise_id),
   };
 }
 
-export function groupForExercise(db: AppDatabase, date: string, exerciseId: number): GroupWithExercises | undefined {
+export function groupForExercise(
+  db: AppDatabase,
+  date: string,
+  exerciseId: number,
+): GroupWithExercises | undefined {
   const r = db.get<{ workout_group_id: number }>(
     'SELECT workout_group_id FROM WorkoutGroupExercise WHERE date = ? AND exercise_id = ? ORDER BY _id DESC LIMIT 1',
     [date, exerciseId],
@@ -80,15 +90,19 @@ export function groupForExercise(db: AppDatabase, date: string, exerciseId: numb
 
 export function createGroup(
   db: AppDatabase,
-  input: { date: string; routineSectionId?: number | null; name: string; colour: number; exerciseIds: number[] },
+  input: {
+    date: string;
+    routineSectionId?: number | null;
+    name: string;
+    colour: number;
+    exerciseIds: number[];
+  },
 ): number {
   return db.mutate(() => {
-    db.run('INSERT INTO WorkoutGroup (name, date, colour, routine_section_id, auto_jump_enabled) VALUES (?, ?, ?, ?, 1)', [
-      input.name.trim(),
-      input.date,
-      input.colour,
-      input.routineSectionId ?? null,
-    ]);
+    db.run(
+      'INSERT INTO WorkoutGroup (name, date, colour, routine_section_id, auto_jump_enabled) VALUES (?, ?, ?, ?, 1)',
+      [input.name.trim(), input.date, input.colour, input.routineSectionId ?? null],
+    );
     const id = Number(db.scalar('SELECT last_insert_rowid()'));
     setGroupExercises(db, id, input.exerciseIds);
     return id;
@@ -101,10 +115,15 @@ export function updateGroup(
   patch: { name?: string; colour?: number; exerciseIds?: number[]; autoJumpEnabled?: boolean },
 ): void {
   db.mutate(() => {
-    if (patch.name !== undefined) db.run('UPDATE WorkoutGroup SET name = ? WHERE _id = ?', [patch.name.trim(), id]);
-    if (patch.colour !== undefined) db.run('UPDATE WorkoutGroup SET colour = ? WHERE _id = ?', [patch.colour, id]);
+    if (patch.name !== undefined)
+      db.run('UPDATE WorkoutGroup SET name = ? WHERE _id = ?', [patch.name.trim(), id]);
+    if (patch.colour !== undefined)
+      db.run('UPDATE WorkoutGroup SET colour = ? WHERE _id = ?', [patch.colour, id]);
     if (patch.autoJumpEnabled !== undefined)
-      db.run('UPDATE WorkoutGroup SET auto_jump_enabled = ? WHERE _id = ?', [patch.autoJumpEnabled ? 1 : 0, id]);
+      db.run('UPDATE WorkoutGroup SET auto_jump_enabled = ? WHERE _id = ?', [
+        patch.autoJumpEnabled ? 1 : 0,
+        id,
+      ]);
     if (patch.exerciseIds) setGroupExercises(db, id, patch.exerciseIds);
   });
 }
@@ -115,26 +134,29 @@ function setGroupExercises(db: AppDatabase, groupId: number, exerciseIds: number
   db.run('DELETE FROM WorkoutGroupExercise WHERE workout_group_id = ?', [groupId]);
   for (const exerciseId of exerciseIds) {
     // An exercise can only be in one group per workout / section.
-    if (g.date) db.run('DELETE FROM WorkoutGroupExercise WHERE date = ? AND exercise_id = ?', [g.date, exerciseId]);
+    if (g.date)
+      db.run('DELETE FROM WorkoutGroupExercise WHERE date = ? AND exercise_id = ?', [g.date, exerciseId]);
     else if (g.routine_section_id !== null)
-      db.run('DELETE FROM WorkoutGroupExercise WHERE routine_section_id = ? AND exercise_id = ? AND date = ?', [
-        g.routine_section_id,
-        exerciseId,
-        '',
-      ]);
-    db.run('INSERT INTO WorkoutGroupExercise (exercise_id, date, routine_section_id, workout_group_id) VALUES (?, ?, ?, ?)', [
-      exerciseId,
-      g.date,
-      g.routine_section_id ?? 0,
-      groupId,
-    ]);
+      db.run(
+        'DELETE FROM WorkoutGroupExercise WHERE routine_section_id = ? AND exercise_id = ? AND date = ?',
+        [g.routine_section_id, exerciseId, ''],
+      );
+    db.run(
+      'INSERT INTO WorkoutGroupExercise (exercise_id, date, routine_section_id, workout_group_id) VALUES (?, ?, ?, ?)',
+      [exerciseId, g.date, g.routine_section_id ?? 0, groupId],
+    );
   }
 }
 
 export function removeExerciseFromGroup(db: AppDatabase, groupId: number, exerciseId: number): void {
   db.mutate(() => {
-    db.run('DELETE FROM WorkoutGroupExercise WHERE workout_group_id = ? AND exercise_id = ?', [groupId, exerciseId]);
-    const remaining = Number(db.scalar('SELECT COUNT(*) FROM WorkoutGroupExercise WHERE workout_group_id = ?', [groupId]));
+    db.run('DELETE FROM WorkoutGroupExercise WHERE workout_group_id = ? AND exercise_id = ?', [
+      groupId,
+      exerciseId,
+    ]);
+    const remaining = Number(
+      db.scalar('SELECT COUNT(*) FROM WorkoutGroupExercise WHERE workout_group_id = ?', [groupId]),
+    );
     if (remaining === 0) db.run('DELETE FROM WorkoutGroup WHERE _id = ?', [groupId]);
   });
 }
@@ -147,7 +169,9 @@ export function deleteGroup(db: AppDatabase, groupId: number): void {
 }
 
 /** FitNotes' default group colours, cycling for successive groups. */
-export const GROUP_COLOURS = [-13330213, -1618884, -14176672, -812014, -7453523, -11226442, -1671646, -13877680];
+export const GROUP_COLOURS = [
+  -13330213, -1618884, -14176672, -812014, -7453523, -11226442, -1671646, -13877680,
+];
 
 export function nextGroupName(db: AppDatabase, date: string): string {
   const n = Number(db.scalar('SELECT COUNT(*) FROM WorkoutGroup WHERE date = ?', [date]));

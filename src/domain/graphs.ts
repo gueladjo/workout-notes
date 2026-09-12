@@ -137,7 +137,8 @@ export function computeSeries(
         break;
       case GraphType.MAX_PACE:
         // Best pace = fewest seconds per metre; store as negative so "max" picks it, then flip.
-        for (const s of day) if (s.distanceMetres > 0 && s.durationSeconds > 0) pick(-(s.durationSeconds / s.distanceMetres), s);
+        for (const s of day)
+          if (s.distanceMetres > 0 && s.durationSeconds > 0) pick(-(s.durationSeconds / s.distanceMetres), s);
         value = -value;
         break;
       case GraphType.TOTAL_DISTANCE:
@@ -154,7 +155,10 @@ export function computeSeries(
 }
 
 /** Least-squares trend line over point indexes (x = days since first point). */
-export function trendLine(points: GraphPoint[], dayIndex: (date: string) => number): { a: number; b: number } | null {
+export function trendLine(
+  points: GraphPoint[],
+  dayIndex: (date: string) => number,
+): { a: number; b: number } | null {
   if (points.length < 2) return null;
   const xs = points.map((p) => dayIndex(p.date));
   const ys = points.map((p) => p.value);

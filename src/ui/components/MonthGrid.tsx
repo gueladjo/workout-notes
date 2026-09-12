@@ -35,13 +35,14 @@ export function MonthGrid({
   const year = d.getFullYear();
   const mi = d.getMonth();
   const first = new Date(year, mi, 1).getDay(); // 0 = Sunday
-  const startDow = ((weekStart - 1) % 7 + 7) % 7; // 0 = Sunday
+  const startDow = (((weekStart - 1) % 7) + 7) % 7; // 0 = Sunday
   const lead = (first - startDow + 7) % 7;
   const total = daysInMonth(year, mi);
   const today = todayIso();
   const cells: (string | null)[] = [];
   for (let i = 0; i < lead; i++) cells.push(null);
-  for (let day = 1; day <= total; day++) cells.push(`${year}-${String(mi + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
+  for (let day = 1; day <= total; day++)
+    cells.push(`${year}-${String(mi + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
   while (cells.length % 7 !== 0) cells.push(null);
   const dows = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
   const headers = Array.from({ length: 7 }, (_, i) => dows[(startDow + i) % 7]);
@@ -49,11 +50,19 @@ export function MonthGrid({
   return (
     <div className={`month${compact ? ' month--compact' : ''}`}>
       <div className="month__header">
-        <IconButton icon="chevronLeft" label="Previous month" onClick={() => onMonthChange(addMonths(month, -1))} />
+        <IconButton
+          icon="chevronLeft"
+          label="Previous month"
+          onClick={() => onMonthChange(addMonths(month, -1))}
+        />
         <div className="month__title">
           {monthName(mi)} {year}
         </div>
-        <IconButton icon="chevronRight" label="Next month" onClick={() => onMonthChange(addMonths(month, 1))} />
+        <IconButton
+          icon="chevronRight"
+          label="Next month"
+          onClick={() => onMonthChange(addMonths(month, 1))}
+        />
       </div>
       <div className="month__grid">
         {headers.map((h, i) => (
@@ -78,9 +87,11 @@ export function MonthGrid({
               {marker && (
                 <span className="month__dots">
                   {showDots && marker.colours.length > 0 ? (
-                    marker.colours.slice(0, 4).map((c, j) => (
-                      <span key={j} className="dot" style={{ background: androidColourToHex(c) }} />
-                    ))
+                    marker.colours
+                      .slice(0, 4)
+                      .map((c, j) => (
+                        <span key={j} className="dot" style={{ background: androidColourToHex(c) }} />
+                      ))
                   ) : (
                     <span className="dot dot--plain" />
                   )}

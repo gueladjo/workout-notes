@@ -4,16 +4,50 @@ import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
 import { sampleExerciseIds, seedSampleWorkouts } from '../helpers/sample';
 import {
-  addSet, copySets, deleteSet, deleteWorkoutExercises, exerciseHistory, getWorkout, listSets, moveWorkout, previousWorkoutSets,
-  reorderSets, reorderWorkoutExercises, updateSet, workoutDates, deleteWorkoutHistory,
+  addSet,
+  copySets,
+  deleteSet,
+  deleteWorkoutExercises,
+  exerciseHistory,
+  getWorkout,
+  listSets,
+  moveWorkout,
+  previousWorkoutSets,
+  reorderSets,
+  reorderWorkoutExercises,
+  updateSet,
+  workoutDates,
+  deleteWorkoutHistory,
 } from '../../src/db/repo/workouts';
 import { getSetComment, setSetComment, setWorkoutComment } from '../../src/db/repo/comments';
-import { createExercise, deleteExercise, getExercise, listExercises, updateExercise } from '../../src/db/repo/exercises';
+import {
+  createExercise,
+  deleteExercise,
+  getExercise,
+  listExercises,
+  updateExercise,
+} from '../../src/db/repo/exercises';
 import { createCategory, deleteCategory, listCategories } from '../../src/db/repo/categories';
 import { createGroup, listGroups } from '../../src/db/repo/groups';
 import { getSettings, updateSettings, DEFAULT_SETTINGS } from '../../src/db/repo/settings';
-import { addSection, createRoutine, getRoutine, logRoutineSection, plannedSetsForSection, setPredefinedSets, listSectionExercises, addSectionExercise, copyRoutine } from '../../src/db/repo/routines';
-import { addRecord, listMeasurements, listRecords, createMeasurement, deleteMeasurement } from '../../src/db/repo/measurements';
+import {
+  addSection,
+  createRoutine,
+  getRoutine,
+  logRoutineSection,
+  plannedSetsForSection,
+  setPredefinedSets,
+  listSectionExercises,
+  addSectionExercise,
+  copyRoutine,
+} from '../../src/db/repo/routines';
+import {
+  addRecord,
+  listMeasurements,
+  listRecords,
+  createMeasurement,
+  deleteMeasurement,
+} from '../../src/db/repo/measurements';
 import { ExerciseType, DistanceUnit } from '../../src/db/constants';
 
 let SQL: SqlJsStatic;
@@ -38,7 +72,15 @@ describe('sets and workouts', () => {
     expect(w.exercises[0]!.sets).toHaveLength(3);
     expect(w.exercises[0]!.sets[1]!.comment).toBe('Felt strong');
     // Records are flagged lazily; adding a set recalculates for that exercise.
-    addSet(app, { exerciseId: BENCH, date: '2026-09-10', metricWeight: 90, reps: 5, distanceMetres: 0, durationSeconds: 0, unit: 0 });
+    addSet(app, {
+      exerciseId: BENCH,
+      date: '2026-09-10',
+      metricWeight: 90,
+      reps: 5,
+      distanceMetres: 0,
+      durationSeconds: 0,
+      unit: 0,
+    });
     const hist = exerciseHistory(app, BENCH);
     expect(hist[0]!.date).toBe('2026-09-10');
     expect(hist[0]!.sets[0]!.isPersonalRecord).toBe(true);
@@ -48,7 +90,15 @@ describe('sets and workouts', () => {
   });
 
   it('adds, updates, deletes sets and their comments', () => {
-    const id = addSet(app, { exerciseId: SQUAT, date: '2026-09-12', metricWeight: 120, reps: 3, distanceMetres: 0, durationSeconds: 0, unit: 0 });
+    const id = addSet(app, {
+      exerciseId: SQUAT,
+      date: '2026-09-12',
+      metricWeight: 120,
+      reps: 3,
+      distanceMetres: 0,
+      durationSeconds: 0,
+      unit: 0,
+    });
     setSetComment(app, id, 'belt on');
     expect(getSetComment(app, id)?.comment).toBe('belt on');
     updateSet(app, id, { reps: 4 });
@@ -76,11 +126,17 @@ describe('sets and workouts', () => {
     expect(after[2]!.comment).toBe('Felt strong');
     reorderWorkoutExercises(app, '2026-09-01', [SQUAT, BENCH]);
     expect(getWorkout(app, '2026-09-01').exercises.map((e) => e.exercise.id)).toEqual([SQUAT, BENCH]);
-    expect(getWorkout(app, '2026-09-01').exercises[1]!.sets.find((s) => s.comment)?.comment).toBe('Felt strong');
+    expect(getWorkout(app, '2026-09-01').exercises[1]!.sets.find((s) => s.comment)?.comment).toBe(
+      'Felt strong',
+    );
   });
 
   it('copies, moves and deletes workouts', () => {
-    copySets(app, [{ exerciseId: BENCH, metricWeight: 70, reps: 8, distanceMetres: 0, durationSeconds: 0, unit: 0 }], '2026-09-12');
+    copySets(
+      app,
+      [{ exerciseId: BENCH, metricWeight: 70, reps: 8, distanceMetres: 0, durationSeconds: 0, unit: 0 }],
+      '2026-09-12',
+    );
     expect(listSets(app, BENCH, '2026-09-12')).toHaveLength(1);
     setWorkoutComment(app, '2026-09-12', 'copied');
     moveWorkout(app, '2026-09-12', '2026-09-13');
@@ -94,7 +150,12 @@ describe('sets and workouts', () => {
   });
 
   it('keeps supersets in sync with exercise membership', () => {
-    const gid = createGroup(app, { date: '2026-09-01', name: 'Group 1', colour: -1, exerciseIds: [BENCH, SQUAT] });
+    const gid = createGroup(app, {
+      date: '2026-09-01',
+      name: 'Group 1',
+      colour: -1,
+      exerciseIds: [BENCH, SQUAT],
+    });
     expect(getWorkout(app, '2026-09-01').exercises[0]!.group?.id).toBe(gid);
     deleteWorkoutExercises(app, '2026-09-01', [SQUAT]);
     expect(listGroups(app, '2026-09-01')[0]!.exerciseIds).toEqual([BENCH]);
@@ -103,8 +164,20 @@ describe('sets and workouts', () => {
 
 describe('exercises and categories', () => {
   it('creates, edits (type change clears fields), and deletes exercises with all references', () => {
-    const id = createExercise(app, { name: 'Farmer Walk', categoryId: 6, typeId: ExerciseType.WEIGHT_AND_DISTANCE });
-    addSet(app, { exerciseId: id, date: '2026-09-12', metricWeight: 40, reps: 0, distanceMetres: 50, durationSeconds: 0, unit: DistanceUnit.METRES });
+    const id = createExercise(app, {
+      name: 'Farmer Walk',
+      categoryId: 6,
+      typeId: ExerciseType.WEIGHT_AND_DISTANCE,
+    });
+    addSet(app, {
+      exerciseId: id,
+      date: '2026-09-12',
+      metricWeight: 40,
+      reps: 0,
+      distanceMetres: 50,
+      durationSeconds: 0,
+      unit: DistanceUnit.METRES,
+    });
     updateExercise(app, id, { typeId: ExerciseType.WEIGHT });
     const s = listSets(app, id, '2026-09-12')[0]!;
     expect(s.distanceMetres).toBe(0);
@@ -115,7 +188,12 @@ describe('exercises and categories', () => {
   });
 
   it('"just change unit" rescales stored kilograms so displayed numbers stay the same', () => {
-    updateExercise(app, BENCH, { weightUnitId: 2, previousUnit: 'kg', nextUnit: 'lbs', convertWeightsOnUnitChange: false });
+    updateExercise(app, BENCH, {
+      weightUnitId: 2,
+      previousUnit: 'kg',
+      nextUnit: 'lbs',
+      convertWeightsOnUnitChange: false,
+    });
     expect(listSets(app, BENCH, '2026-09-01')[0]!.metricWeight).toBeCloseTo(60 * 0.45359237, 6);
   });
 
@@ -150,11 +228,15 @@ describe('routines', () => {
     const routineId = createRoutine(app, 'PPL');
     const sectionId = addSection(app, routineId, 'Push');
     const re = addSectionExercise(app, sectionId, SQUAT);
-    setPredefinedSets(app, re, [{ metricWeight: 100, reps: 5, distanceMetres: 0, durationSeconds: 0, unit: 0 }]);
+    setPredefinedSets(app, re, [
+      { metricWeight: 100, reps: 5, distanceMetres: 0, durationSeconds: 0, unit: 0 },
+    ]);
     const r = getRoutine(app, routineId)!;
     expect(r.sections[0]!.exercises[0]!.sets[0]!.metricWeight).toBe(100);
     logRoutineSection(app, sectionId, '2026-09-12', plannedSetsForSection(app, sectionId, '2026-09-12'));
-    expect(listSets(app, SQUAT, '2026-09-12')[0]!.routineSetId).toBe(r.sections[0]!.exercises[0]!.sets[0]!.id);
+    expect(listSets(app, SQUAT, '2026-09-12')[0]!.routineSetId).toBe(
+      r.sections[0]!.exercises[0]!.sets[0]!.id,
+    );
     const copyId = copyRoutine(app, routineId, 'PPL copy');
     expect(listSectionExercises(app, getRoutine(app, copyId)!.sections[0]!.id)).toHaveLength(1);
   });

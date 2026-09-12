@@ -34,7 +34,8 @@ export function setValueParts(
 ): SetValueParts {
   const fields = exerciseTypeFields(typeId);
   const parts: SetValueParts = {};
-  if (fields.includes('weight')) parts.weight = `${fmt(kgToDisplay(set.metricWeight, weightUnit))} ${weightUnit}`;
+  if (fields.includes('weight'))
+    parts.weight = `${fmt(kgToDisplay(set.metricWeight, weightUnit))} ${weightUnit}`;
   if (fields.includes('reps')) parts.reps = `${set.reps} reps`;
   if (fields.includes('distance')) {
     const du = resolveDistanceUnit(set.unit, settings.metric);

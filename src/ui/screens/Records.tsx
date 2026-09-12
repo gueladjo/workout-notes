@@ -10,8 +10,27 @@ import { GOAL_TYPE_LABELS, GoalType, exerciseTypeHas } from '@/db/constants';
 import type { ExerciseWithCategory, Goal, TrainingSet } from '@/db/types';
 import { actualRepMaxes, estimatedRepMaxes } from '@/domain/records';
 import { exerciseStats, goalProgress, goalTypesForExercise } from '@/domain/stats';
-import { addDays, endOfMonth, endOfYear, formatLongDate, formatShortDate, startOfMonth, startOfWeek, startOfYear, todayIso, parseDuration, formatDuration } from '@/domain/dates';
-import { displayToKg, displayToMetres, kgToDisplay, metresToDisplay, resolveDistanceUnit, fmt } from '@/domain/units';
+import {
+  addDays,
+  endOfMonth,
+  endOfYear,
+  formatLongDate,
+  formatShortDate,
+  startOfMonth,
+  startOfWeek,
+  startOfYear,
+  todayIso,
+  parseDuration,
+  formatDuration,
+} from '@/domain/dates';
+import {
+  displayToKg,
+  displayToMetres,
+  kgToDisplay,
+  metresToDisplay,
+  resolveDistanceUnit,
+  fmt,
+} from '@/domain/units';
 import { formatSet, formatStatValue, formatWeightValue, weightUnitFor } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
 import { Tabs } from '@/ui/components/Tabs';
@@ -34,15 +53,46 @@ export function RecordsScreen() {
   return (
     <div className="screen">
       <TopBar back title={exercise.name} subtitle="Records · Stats · Goals" />
-      <RecordsTabs exercise={exercise} date={date} tab={tab} onTab={(t) => setSearch((p) => { p.set('tab', t); return p; }, { replace: true })} />
+      <RecordsTabs
+        exercise={exercise}
+        date={date}
+        tab={tab}
+        onTab={(t) =>
+          setSearch(
+            (p) => {
+              p.set('tab', t);
+              return p;
+            },
+            { replace: true },
+          )
+        }
+      />
     </div>
   );
 }
 
-export function RecordsTabs({ exercise, date, tab, onTab }: { exercise: ExerciseWithCategory; date: string; tab: Tab; onTab: (t: Tab) => void }) {
+export function RecordsTabs({
+  exercise,
+  date,
+  tab,
+  onTab,
+}: {
+  exercise: ExerciseWithCategory;
+  date: string;
+  tab: Tab;
+  onTab: (t: Tab) => void;
+}) {
   return (
     <>
-      <Tabs tabs={[{ id: 'records', label: 'Records' }, { id: 'stats', label: 'Stats' }, { id: 'goals', label: 'Goals' }]} value={tab} onChange={onTab} />
+      <Tabs
+        tabs={[
+          { id: 'records', label: 'Records' },
+          { id: 'stats', label: 'Stats' },
+          { id: 'goals', label: 'Goals' },
+        ]}
+        value={tab}
+        onChange={onTab}
+      />
       {tab === 'records' && <RecordsTab exercise={exercise} />}
       {tab === 'stats' && <StatsTab exercise={exercise} date={date} />}
       {tab === 'goals' && <GoalsTab exercise={exercise} />}
@@ -60,11 +110,21 @@ export function RecordsTab({ exercise }: { exercise: ExerciseWithCategory }) {
   const [historyReps, setHistoryReps] = useState<number | null>(null);
   const wu = weightUnitFor(exercise, settings);
   const strength = exerciseTypeHas(exercise.typeId, 'weight') && exerciseTypeHas(exercise.typeId, 'reps');
-  const setLike = useMemo(() => sets.map((s) => ({ id: s.id, date: s.date, weight: s.metricWeight, reps: s.reps })), [sets]);
+  const setLike = useMemo(
+    () => sets.map((s) => ({ id: s.id, date: s.date, weight: s.metricWeight, reps: s.reps })),
+    [sets],
+  );
   const actual = useMemo(() => actualRepMaxes(setLike), [setLike]);
-  const estimated = useMemo(() => estimatedRepMaxes(setLike, settings.estimated1rmMaxReps || null), [setLike, settings.estimated1rmMaxReps]);
-  if (!strength) return <EmptyState title="No records" message="Personal records are tracked for Weight and Reps exercises." />;
-  if (sets.length === 0) return <EmptyState title="No records yet" message="Log some sets to see your rep maxes." />;
+  const estimated = useMemo(
+    () => estimatedRepMaxes(setLike, settings.estimated1rmMaxReps || null),
+    [setLike, settings.estimated1rmMaxReps],
+  );
+  if (!strength)
+    return (
+      <EmptyState title="No records" message="Personal records are tracked for Weight and Reps exercises." />
+    );
+  if (sets.length === 0)
+    return <EmptyState title="No records yet" message="Log some sets to see your rep maxes." />;
 
   const prHistory = historyReps !== null ? personalRecordHistory(sets, historyReps) : [];
 
@@ -72,10 +132,22 @@ export function RecordsTab({ exercise }: { exercise: ExerciseWithCategory }) {
     <div className="screen__content">
       <div className="row" style={{ padding: '10px 12px 0', gap: 6 }}>
         <div className="row" style={{ flex: 1, gap: 6 }}>
-          <button className={`chip${mode === 'actual' ? ' chip--active' : ''}`} onClick={() => setMode('actual')}>Actual</button>
-          <button className={`chip${mode === 'estimated' ? ' chip--active' : ''}`} onClick={() => setMode('estimated')}>Estimated</button>
+          <button
+            className={`chip${mode === 'actual' ? ' chip--active' : ''}`}
+            onClick={() => setMode('actual')}
+          >
+            Actual
+          </button>
+          <button
+            className={`chip${mode === 'estimated' ? ' chip--active' : ''}`}
+            onClick={() => setMode('estimated')}
+          >
+            Estimated
+          </button>
         </div>
-        {mode === 'estimated' && <IconButton icon="settings" label="Estimated 1RM settings" onClick={() => setLimitOpen(true)} />}
+        {mode === 'estimated' && (
+          <IconButton icon="settings" label="Estimated 1RM settings" onClick={() => setLimitOpen(true)} />
+        )}
       </div>
       <div className="container">
         {mode === 'estimated' ? (
@@ -86,41 +158,97 @@ export function RecordsTab({ exercise }: { exercise: ExerciseWithCategory }) {
             </div>
             {estimated.source && (
               <div className="stat-row" style={{ fontSize: 13 }}>
-                <span className="muted">Based on {formatSet(sets.find((s) => s.id === estimated.source!.id)!, exercise.typeId, wu, settings)}</span>
+                <span className="muted">
+                  Based on{' '}
+                  {formatSet(
+                    sets.find((s) => s.id === estimated.source!.id)!,
+                    exercise.typeId,
+                    wu,
+                    settings,
+                  )}
+                </span>
                 <span className="stat-row__date">{formatShortDate(estimated.source.date)}</span>
               </div>
             )}
             {estimated.rows.slice(1).map((r) => (
-              <div key={r.reps} className="stat-row"><span>{r.reps}RM</span><span className="stat-row__value">{formatWeightValue(r.weight, wu)}</span></div>
+              <div key={r.reps} className="stat-row">
+                <span>{r.reps}RM</span>
+                <span className="stat-row__value">{formatWeightValue(r.weight, wu)}</span>
+              </div>
             ))}
           </div>
         ) : (
           <div className="list">
             {actual.map((r) => (
-              <button key={r.reps} className={`stat-row${r.superseded ? ' rm-row--faded' : ''}`} onClick={() => setHistoryReps(r.reps)}>
+              <button
+                key={r.reps}
+                className={`stat-row${r.superseded ? ' rm-row--faded' : ''}`}
+                onClick={() => setHistoryReps(r.reps)}
+              >
                 <span>{r.reps}RM</span>
                 <span style={{ textAlign: 'right' }}>
                   <div className="stat-row__value">{formatWeightValue(r.weight, wu)}</div>
-                  {r.set && <div className="stat-row__date">{formatShortDate(r.set.date)}{r.superseded ? ` · ${r.set.reps} reps` : ''}</div>}
+                  {r.set && (
+                    <div className="stat-row__date">
+                      {formatShortDate(r.set.date)}
+                      {r.superseded ? ` · ${r.set.reps} reps` : ''}
+                    </div>
+                  )}
                 </span>
               </button>
             ))}
           </div>
         )}
       </div>
-      <Dialog open={limitOpen} onClose={() => setLimitOpen(false)} title="Estimated 1RM" actions={<Button variant="text" onClick={() => setLimitOpen(false)}>Done</Button>}>
+      <Dialog
+        open={limitOpen}
+        onClose={() => setLimitOpen(false)}
+        title="Estimated 1RM"
+        actions={
+          <Button variant="text" onClick={() => setLimitOpen(false)}>
+            Done
+          </Button>
+        }
+      >
         <label className="field">
           <span className="field__label">Ignore sets with more reps than</span>
-          <select className="select" value={settings.estimated1rmMaxReps} onChange={(e) => updateSettings(db, { estimated1rmMaxReps: Number(e.target.value) })}>
+          <select
+            className="select"
+            value={settings.estimated1rmMaxReps}
+            onChange={(e) => updateSettings(db, { estimated1rmMaxReps: Number(e.target.value) })}
+          >
             <option value={0}>Include all sets</option>
-            {[5, 6, 8, 10, 12, 15, 20].map((n) => <option key={n} value={n}>{n} reps</option>)}
+            {[5, 6, 8, 10, 12, 15, 20].map((n) => (
+              <option key={n} value={n}>
+                {n} reps
+              </option>
+            ))}
           </select>
         </label>
-        <p className="muted" style={{ fontSize: 13 }}>High-rep sets make the Brzycki formula less accurate; 10–12 reps is a reasonable limit.</p>
+        <p className="muted" style={{ fontSize: 13 }}>
+          High-rep sets make the Brzycki formula less accurate; 10–12 reps is a reasonable limit.
+        </p>
       </Dialog>
-      <Dialog open={historyReps !== null} onClose={() => setHistoryReps(null)} title={`${historyReps}RM history`} flush actions={<Button variant="text" onClick={() => setHistoryReps(null)}>Close</Button>}>
+      <Dialog
+        open={historyReps !== null}
+        onClose={() => setHistoryReps(null)}
+        title={`${historyReps}RM history`}
+        flush
+        actions={
+          <Button variant="text" onClick={() => setHistoryReps(null)}>
+            Close
+          </Button>
+        }
+      >
         {prHistory.map((s) => (
-          <button key={s.id} className="stat-row" onClick={() => { setHistoryReps(null); navigate(`/exercise/${exercise.id}/overview?date=${s.date}`); }}>
+          <button
+            key={s.id}
+            className="stat-row"
+            onClick={() => {
+              setHistoryReps(null);
+              navigate(`/exercise/${exercise.id}/overview?date=${s.date}`);
+            }}
+          >
             <span>{formatShortDate(s.date)}</span>
             <span className="stat-row__value">{formatWeightValue(s.metricWeight, wu)}</span>
           </button>
@@ -159,12 +287,20 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
 
   const range = useMemo((): [string, string] => {
     switch (period) {
-      case 'workout': return [anchor, anchor];
-      case 'week': { const from = startOfWeek(anchor, ((settings.firstDayOfWeek - 1) % 7 + 7) % 7); return [from, addDays(from, 6)]; }
-      case 'month': return [startOfMonth(anchor), endOfMonth(anchor)];
-      case 'year': return [startOfYear(anchor), endOfYear(anchor)];
-      case 'custom': return [customFrom, customTo];
-      default: return ['0000-00-00', '9999-99-99'];
+      case 'workout':
+        return [anchor, anchor];
+      case 'week': {
+        const from = startOfWeek(anchor, (((settings.firstDayOfWeek - 1) % 7) + 7) % 7);
+        return [from, addDays(from, 6)];
+      }
+      case 'month':
+        return [startOfMonth(anchor), endOfMonth(anchor)];
+      case 'year':
+        return [startOfYear(anchor), endOfYear(anchor)];
+      case 'custom':
+        return [customFrom, customTo];
+      default:
+        return ['0000-00-00', '9999-99-99'];
     }
   }, [period, anchor, customFrom, customTo, settings.firstDayOfWeek]);
   const filtered = useMemo(() => sets.filter((s) => s.date >= range[0] && s.date <= range[1]), [sets, range]);
@@ -176,28 +312,77 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
         <div className="grid-2" style={{ marginBottom: 12 }}>
           <label className="field" style={{ marginBottom: 0 }}>
             <span className="field__label">Period</span>
-            <select className="select" value={period} onChange={(e) => setPeriod(e.target.value as typeof period)}>
-              <option value="workout">Workout</option><option value="week">Week</option><option value="month">Month</option><option value="year">Year</option><option value="all">All</option><option value="custom">Custom</option>
+            <select
+              className="select"
+              value={period}
+              onChange={(e) => setPeriod(e.target.value as typeof period)}
+            >
+              <option value="workout">Workout</option>
+              <option value="week">Week</option>
+              <option value="month">Month</option>
+              <option value="year">Year</option>
+              <option value="all">All</option>
+              <option value="custom">Custom</option>
             </select>
           </label>
           {period === 'workout' ? (
-            <label className="field" style={{ marginBottom: 0 }}><span className="field__label">Date</span>
-              <select className="select" value={workoutDates.includes(anchor) ? anchor : (workoutDates[0] ?? '')} onChange={(e) => setAnchor(e.target.value)}>
-                {workoutDates.map((d) => <option key={d} value={d}>{formatShortDate(d)}</option>)}
+            <label className="field" style={{ marginBottom: 0 }}>
+              <span className="field__label">Date</span>
+              <select
+                className="select"
+                value={workoutDates.includes(anchor) ? anchor : (workoutDates[0] ?? '')}
+                onChange={(e) => setAnchor(e.target.value)}
+              >
+                {workoutDates.map((d) => (
+                  <option key={d} value={d}>
+                    {formatShortDate(d)}
+                  </option>
+                ))}
               </select>
             </label>
           ) : period === 'custom' ? (
-            <div className="field" style={{ marginBottom: 0 }}><span className="field__label">Range</span>
-              <div className="row"><input className="input" type="date" value={customFrom} onChange={(e) => setCustomFrom(e.target.value)} /><input className="input" type="date" value={customTo} onChange={(e) => setCustomTo(e.target.value)} /></div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <span className="field__label">Range</span>
+              <div className="row">
+                <input
+                  className="input"
+                  type="date"
+                  value={customFrom}
+                  onChange={(e) => setCustomFrom(e.target.value)}
+                />
+                <input
+                  className="input"
+                  type="date"
+                  value={customTo}
+                  onChange={(e) => setCustomTo(e.target.value)}
+                />
+              </div>
             </div>
           ) : period !== 'all' ? (
-            <label className="field" style={{ marginBottom: 0 }}><span className="field__label">Date</span><input className="input" type="date" value={anchor} onChange={(e) => e.target.value && setAnchor(e.target.value)} /></label>
+            <label className="field" style={{ marginBottom: 0 }}>
+              <span className="field__label">Date</span>
+              <input
+                className="input"
+                type="date"
+                value={anchor}
+                onChange={(e) => e.target.value && setAnchor(e.target.value)}
+              />
+            </label>
           ) : null}
         </div>
-        {period !== 'all' && <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>{formatShortDate(range[0])} – {formatShortDate(range[1])}</div>}
+        {period !== 'all' && (
+          <div className="muted" style={{ fontSize: 13, marginBottom: 8 }}>
+            {formatShortDate(range[0])} – {formatShortDate(range[1])}
+          </div>
+        )}
         <div className="list">
           {stats.map((s) => (
-            <button key={s.label} className="stat-row" disabled={!s.date} onClick={() => s.date && setViewDate(s.date)}>
+            <button
+              key={s.label}
+              className="stat-row"
+              disabled={!s.date}
+              onClick={() => s.date && setViewDate(s.date)}
+            >
               <span>{s.label}</span>
               <span style={{ textAlign: 'right' }}>
                 <div className="stat-row__value">{formatStatValue(s.value, s.kind, wu, settings)}</div>
@@ -207,8 +392,27 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
           ))}
         </div>
       </div>
-      <Dialog open={viewDate !== null} onClose={() => setViewDate(null)} title={viewDate ? formatLongDate(viewDate) : ''} flush wide actions={<Button variant="text" onClick={() => setViewDate(null)}>Close</Button>}>
-        {viewWorkout && <WorkoutView workout={viewWorkout} onExerciseClick={(id) => { setViewDate(null); navigate(`/exercise/${id}/overview?date=${viewDate}`); }} />}
+      <Dialog
+        open={viewDate !== null}
+        onClose={() => setViewDate(null)}
+        title={viewDate ? formatLongDate(viewDate) : ''}
+        flush
+        wide
+        actions={
+          <Button variant="text" onClick={() => setViewDate(null)}>
+            Close
+          </Button>
+        }
+      >
+        {viewWorkout && (
+          <WorkoutView
+            workout={viewWorkout}
+            onExerciseClick={(id) => {
+              setViewDate(null);
+              navigate(`/exercise/${id}/overview?date=${viewDate}`);
+            }}
+          />
+        )}
       </Dialog>
     </div>
   );
@@ -225,21 +429,34 @@ export function GoalsTab({ exercise }: { exercise: ExerciseWithCategory }) {
   return (
     <div className="screen__content">
       <div className="container">
-        {goals.length === 0 && <EmptyState title="No goals yet" message="Add a goal to track your progress towards it." />}
+        {goals.length === 0 && (
+          <EmptyState title="No goals yet" message="Add a goal to track your progress towards it." />
+        )}
         <div className="stack">
           {goals.map((g) => {
             const p = goalProgress(g, sets);
             return (
-              <button key={g.id} className="card" style={{ padding: 14, textAlign: 'left', width: '100%', marginBottom: 0 }} onClick={() => setEditing(g)}>
+              <button
+                key={g.id}
+                className="card"
+                style={{ padding: 14, textAlign: 'left', width: '100%', marginBottom: 0 }}
+                onClick={() => setEditing(g)}
+              >
                 <div className="row row--between">
                   <b>{g.title || GOAL_TYPE_LABELS[g.typeId as keyof typeof GOAL_TYPE_LABELS] || 'Goal'}</b>
                   {p.achieved && <Icon name="trophy" className="trophy" />}
                 </div>
                 <div className="muted" style={{ fontSize: 13 }}>
-                  {GOAL_TYPE_LABELS[g.typeId as keyof typeof GOAL_TYPE_LABELS]}: {goalTargetText(g, wu, settings.metric)}
+                  {GOAL_TYPE_LABELS[g.typeId as keyof typeof GOAL_TYPE_LABELS]}:{' '}
+                  {goalTargetText(g, wu, settings.metric)}
                   {g.targetDate ? ` by ${formatShortDate(g.targetDate)}` : ''}
                 </div>
-                <div className="progress"><div className={`progress__bar${p.achieved ? ' progress__bar--done' : ''}`} style={{ width: `${Math.round(p.fraction * 100)}%` }} /></div>
+                <div className="progress">
+                  <div
+                    className={`progress__bar${p.achieved ? ' progress__bar--done' : ''}`}
+                    style={{ width: `${Math.round(p.fraction * 100)}%` }}
+                  />
+                </div>
                 <div className="row row--between" style={{ fontSize: 13, marginTop: 4 }}>
                   <span>{formatStatValue(p.current, p.kind, wu, settings)}</span>
                   <span className="muted">{Math.round(p.fraction * 100)}%</span>
@@ -249,16 +466,30 @@ export function GoalsTab({ exercise }: { exercise: ExerciseWithCategory }) {
           })}
         </div>
       </div>
-      <button className="fab" aria-label="Add goal" onClick={() => setEditing('new')}><Icon name="add" size={28} /></button>
+      <button className="fab" aria-label="Add goal" onClick={() => setEditing('new')}>
+        <Icon name="add" size={28} />
+      </button>
       <GoalEditor
         open={editing !== null}
         onClose={() => setEditing(null)}
         exercise={exercise}
         goal={editing === 'new' ? null : editing}
-        onSave={(input) => (editing === 'new' ? createGoal(db, input) : editing && updateGoal(db, editing.id, input))}
+        onSave={(input) =>
+          editing === 'new' ? createGoal(db, input) : editing && updateGoal(db, editing.id, input)
+        }
         onDelete={() => editing && editing !== 'new' && setConfirm(editing.id)}
       />
-      <ConfirmDialog open={confirm !== null} onClose={() => setConfirm(null)} title="Delete goal?" confirmLabel="Delete" danger onConfirm={() => { if (confirm !== null) deleteGoal(db, confirm); setEditing(null); }} />
+      <ConfirmDialog
+        open={confirm !== null}
+        onClose={() => setConfirm(null)}
+        title="Delete goal?"
+        confirmLabel="Delete"
+        danger
+        onConfirm={() => {
+          if (confirm !== null) deleteGoal(db, confirm);
+          setEditing(null);
+        }}
+      />
     </div>
   );
 }
@@ -266,15 +497,40 @@ export function GoalsTab({ exercise }: { exercise: ExerciseWithCategory }) {
 function goalTargetText(g: Goal, wu: 'kg' | 'lbs', metric: boolean): string {
   const du = resolveDistanceUnit(g.unit, metric);
   switch (g.typeId) {
-    case GoalType.MAX_WEIGHT_AND_REPS: return `${fmt(kgToDisplay(g.metricWeight, wu))} ${wu} × ${g.reps}`;
-    case GoalType.MAX_REPS: case GoalType.TOTAL_REPS: case GoalType.MAX_WORKOUT_REPS: return `${g.reps} reps`;
-    case GoalType.MAX_DISTANCE: case GoalType.TOTAL_DISTANCE: case GoalType.MAX_WORKOUT_DISTANCE: return `${fmt(metresToDisplay(g.distanceMetres, du))} ${du === 2 ? 'm' : du === 3 ? 'km' : du === 4 ? 'ft' : 'mi'}`;
-    case GoalType.MAX_DURATION: case GoalType.TOTAL_DURATION: case GoalType.MAX_WORKOUT_DURATION: return formatDuration(g.durationSeconds);
-    default: return `${fmt(kgToDisplay(g.metricWeight, wu))} ${wu}`;
+    case GoalType.MAX_WEIGHT_AND_REPS:
+      return `${fmt(kgToDisplay(g.metricWeight, wu))} ${wu} × ${g.reps}`;
+    case GoalType.MAX_REPS:
+    case GoalType.TOTAL_REPS:
+    case GoalType.MAX_WORKOUT_REPS:
+      return `${g.reps} reps`;
+    case GoalType.MAX_DISTANCE:
+    case GoalType.TOTAL_DISTANCE:
+    case GoalType.MAX_WORKOUT_DISTANCE:
+      return `${fmt(metresToDisplay(g.distanceMetres, du))} ${du === 2 ? 'm' : du === 3 ? 'km' : du === 4 ? 'ft' : 'mi'}`;
+    case GoalType.MAX_DURATION:
+    case GoalType.TOTAL_DURATION:
+    case GoalType.MAX_WORKOUT_DURATION:
+      return formatDuration(g.durationSeconds);
+    default:
+      return `${fmt(kgToDisplay(g.metricWeight, wu))} ${wu}`;
   }
 }
 
-function GoalEditor({ open, onClose, exercise, goal, onSave, onDelete }: { open: boolean; onClose: () => void; exercise: ExerciseWithCategory; goal: Goal | null; onSave: (g: GoalInput) => void; onDelete: () => void }) {
+function GoalEditor({
+  open,
+  onClose,
+  exercise,
+  goal,
+  onSave,
+  onDelete,
+}: {
+  open: boolean;
+  onClose: () => void;
+  exercise: ExerciseWithCategory;
+  goal: Goal | null;
+  onSave: (g: GoalInput) => void;
+  onDelete: () => void;
+}) {
   const settings = useSettings();
   const wu = weightUnitFor(exercise, settings);
   const types = goalTypesForExercise(exercise.typeId);
@@ -293,17 +549,39 @@ function GoalEditor({ open, onClose, exercise, goal, onSave, onDelete }: { open:
     setTypeId(goal?.typeId ?? types[0] ?? 0);
     setWeight(goal?.metricWeight ? fmt(kgToDisplay(goal.metricWeight, wu)) : '');
     setReps(goal?.reps ? String(goal.reps) : '');
-    setDistance(goal?.distanceMetres ? fmt(metresToDisplay(goal.distanceMetres, resolveDistanceUnit(goal.unit, settings.metric))) : '');
+    setDistance(
+      goal?.distanceMetres
+        ? fmt(metresToDisplay(goal.distanceMetres, resolveDistanceUnit(goal.unit, settings.metric)))
+        : '',
+    );
     setTime(goal?.durationSeconds ? formatDuration(goal.durationSeconds) : '');
     setTitle(goal?.title ?? '');
     setTargetDate(goal?.targetDate ?? '');
     setStartDate(goal?.startDate ?? '');
   }
   if (!open && seen) setSeen(false);
-  const needsWeight = [GoalType.MAX_WEIGHT, GoalType.TOTAL_VOLUME, GoalType.MAX_WEIGHT_AND_REPS, GoalType.ESTIMATED_1RM, GoalType.MAX_VOLUME, GoalType.MAX_WORKOUT_VOLUME].includes(typeId as never);
-  const needsReps = [GoalType.MAX_REPS, GoalType.TOTAL_REPS, GoalType.MAX_WEIGHT_AND_REPS, GoalType.MAX_WORKOUT_REPS].includes(typeId as never);
-  const needsDistance = [GoalType.MAX_DISTANCE, GoalType.TOTAL_DISTANCE, GoalType.MAX_WORKOUT_DISTANCE].includes(typeId as never);
-  const needsTime = [GoalType.MAX_DURATION, GoalType.TOTAL_DURATION, GoalType.MAX_WORKOUT_DURATION].includes(typeId as never);
+  const needsWeight = [
+    GoalType.MAX_WEIGHT,
+    GoalType.TOTAL_VOLUME,
+    GoalType.MAX_WEIGHT_AND_REPS,
+    GoalType.ESTIMATED_1RM,
+    GoalType.MAX_VOLUME,
+    GoalType.MAX_WORKOUT_VOLUME,
+  ].includes(typeId as never);
+  const needsReps = [
+    GoalType.MAX_REPS,
+    GoalType.TOTAL_REPS,
+    GoalType.MAX_WEIGHT_AND_REPS,
+    GoalType.MAX_WORKOUT_REPS,
+  ].includes(typeId as never);
+  const needsDistance = [
+    GoalType.MAX_DISTANCE,
+    GoalType.TOTAL_DISTANCE,
+    GoalType.MAX_WORKOUT_DISTANCE,
+  ].includes(typeId as never);
+  const needsTime = [GoalType.MAX_DURATION, GoalType.TOTAL_DURATION, GoalType.MAX_WORKOUT_DURATION].includes(
+    typeId as never,
+  );
   const save = () => {
     const t = time.trim() ? parseDuration(time) : 0;
     onSave({
@@ -321,22 +599,104 @@ function GoalEditor({ open, onClose, exercise, goal, onSave, onDelete }: { open:
     onClose();
   };
   return (
-    <Dialog open={open} onClose={onClose} title={goal ? 'Edit Goal' : 'New Goal'} actions={<>{goal && <Button variant="danger-text" onClick={onDelete}>Delete</Button>}<Button variant="text" onClick={onClose}>Cancel</Button><Button onClick={save}>Save</Button></>}>
-      <label className="field"><span className="field__label">Type</span>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      title={goal ? 'Edit Goal' : 'New Goal'}
+      actions={
+        <>
+          {goal && (
+            <Button variant="danger-text" onClick={onDelete}>
+              Delete
+            </Button>
+          )}
+          <Button variant="text" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={save}>Save</Button>
+        </>
+      }
+    >
+      <label className="field">
+        <span className="field__label">Type</span>
         <select className="select" value={typeId} onChange={(e) => setTypeId(Number(e.target.value))}>
-          {types.map((t) => <option key={t} value={t}>{GOAL_TYPE_LABELS[t as keyof typeof GOAL_TYPE_LABELS]}</option>)}
+          {types.map((t) => (
+            <option key={t} value={t}>
+              {GOAL_TYPE_LABELS[t as keyof typeof GOAL_TYPE_LABELS]}
+            </option>
+          ))}
         </select>
       </label>
       <div className="grid-2">
-        {needsWeight && <label className="field"><span className="field__label">Weight ({wu})</span><input className="input" inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} /></label>}
-        {needsReps && <label className="field"><span className="field__label">Reps</span><input className="input" inputMode="numeric" value={reps} onChange={(e) => setReps(e.target.value)} /></label>}
-        {needsDistance && <label className="field"><span className="field__label">Distance ({du === 3 ? 'km' : 'mi'})</span><input className="input" inputMode="decimal" value={distance} onChange={(e) => setDistance(e.target.value)} /></label>}
-        {needsTime && <label className="field"><span className="field__label">Time (h:mm:ss)</span><input className="input" inputMode="numeric" value={time} onChange={(e) => setTime(e.target.value)} placeholder="0:00" /></label>}
+        {needsWeight && (
+          <label className="field">
+            <span className="field__label">Weight ({wu})</span>
+            <input
+              className="input"
+              inputMode="decimal"
+              value={weight}
+              onChange={(e) => setWeight(e.target.value)}
+            />
+          </label>
+        )}
+        {needsReps && (
+          <label className="field">
+            <span className="field__label">Reps</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={reps}
+              onChange={(e) => setReps(e.target.value)}
+            />
+          </label>
+        )}
+        {needsDistance && (
+          <label className="field">
+            <span className="field__label">Distance ({du === 3 ? 'km' : 'mi'})</span>
+            <input
+              className="input"
+              inputMode="decimal"
+              value={distance}
+              onChange={(e) => setDistance(e.target.value)}
+            />
+          </label>
+        )}
+        {needsTime && (
+          <label className="field">
+            <span className="field__label">Time (h:mm:ss)</span>
+            <input
+              className="input"
+              inputMode="numeric"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+              placeholder="0:00"
+            />
+          </label>
+        )}
       </div>
-      <label className="field"><span className="field__label">Title (optional)</span><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></label>
+      <label className="field">
+        <span className="field__label">Title (optional)</span>
+        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
+      </label>
       <div className="grid-2">
-        <label className="field"><span className="field__label">Start date</span><input className="input" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} /></label>
-        <label className="field"><span className="field__label">Target date</span><input className="input" type="date" value={targetDate} onChange={(e) => setTargetDate(e.target.value)} /></label>
+        <label className="field">
+          <span className="field__label">Start date</span>
+          <input
+            className="input"
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+          />
+        </label>
+        <label className="field">
+          <span className="field__label">Target date</span>
+          <input
+            className="input"
+            type="date"
+            value={targetDate}
+            onChange={(e) => setTargetDate(e.target.value)}
+          />
+        </label>
       </div>
     </Dialog>
   );
