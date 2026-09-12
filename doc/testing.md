@@ -9,8 +9,24 @@
 | `npm run test:e2e`                | Playwright against `vite preview` of a fresh production build (mobile Chromium profile) |
 | `npm run build`                   | production build; fails loudly if the PWA plugin or WASM asset is misconfigured         |
 
-Playwright needs a browser once: `npx playwright install chromium` (add `--with-deps` on a bare
-Linux box).
+### Playwright browser setup
+
+`npm run test:e2e` runs `scripts/run-e2e.mjs`, which calls `scripts/ensure-playwright.mjs` before
+starting Playwright, so no manual `npx playwright install` is needed:
+
+- If the Chromium build for the installed Playwright version is missing, it is downloaded into
+  Playwright's normal cache (`~/.cache/ms-playwright`, or `$PLAYWRIGHT_BROWSERS_PATH`), shared by
+  every checkout on the machine.
+- On Linux, `ldd` checks that Chromium's shared libraries resolve. If some are missing and the box
+  is Debian 12 x64 without root (WSL, containers), the packages are downloaded with
+  `apt-get --download-only`, unpacked with `dpkg-deb` into the git-ignored `work/` folder, and
+  Playwright runs with `LD_LIBRARY_PATH` pointing at them. Elsewhere the script stops with the
+  usual `npx playwright install-deps chromium` instruction.
+- `npm run setup:e2e` performs only this preparation. CI installs system libraries as root with
+  `npx playwright install --with-deps chromium` and then runs the same `npm run test:e2e`.
+
+Pass Playwright arguments after `--`, e.g. `npm run test:e2e -- --headed` or a spec path.
+`npm run clean` removes `work/`.
 
 ## Unit tests (`tests/unit`)
 

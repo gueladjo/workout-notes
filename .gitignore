@@ -13,3 +13,5 @@ screenshots
 tests/fixtures/generated/
 *.apk
 *:Zone.Identifier
+# Project-local Playwright runtime libraries (npm run setup:e2e)
+work/

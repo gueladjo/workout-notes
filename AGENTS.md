@@ -40,7 +40,7 @@ sql.js. Writes: screen -> repo function -> `db.mutate()` -> subscribers re-query
 
 ```bash
 npm run check            # typecheck + lint + unit tests; must pass before committing
-npm run test:e2e         # Playwright, after `npx playwright install chromium` (once)
+npm run test:e2e         # Playwright; installs Chromium on first run, no manual browser setup
 npm run build            # must succeed; the PWA precache must include the .wasm
 npm run screenshots      # phone-sized PNGs of every main screen in ./screenshots (visual check after UI work)
 ```

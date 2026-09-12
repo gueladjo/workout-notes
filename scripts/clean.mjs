@@ -17,6 +17,7 @@ const GENERATED = [
   'coverage',
   'screenshots', // npm run screenshots
   'tests/fixtures/generated', // npm run make-fixture
+  'work', // npm run setup:e2e (rootless Chromium libraries)
 ];
 const DEPENDENCIES = ['node_modules'];
 

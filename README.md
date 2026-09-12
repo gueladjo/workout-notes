@@ -66,7 +66,8 @@ Settings > Save/Share Backup and restore the file in FitNotes.
 
 ```bash
 npm run check        # typecheck + lint + unit tests (run before committing)
-npm run test:e2e     # Playwright smoke tests against the production build (needs `npx playwright install chromium` once)
+npm run test:e2e     # Playwright smoke tests against the production build (installs Chromium on first run)
+npm run setup:e2e    # only prepare the Playwright browser (test:e2e does this itself)
 npm run inspect-backup -- path/to/backup.fitnotes   # print schema and counts of a real backup
 npm run make-fixture                                 # write tests/fixtures/generated/sample.fitnotes
 npm run make-icons                                   # regenerate public/icons
