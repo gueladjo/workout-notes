@@ -1,0 +1,13 @@
+node_modules
+dist
+dev-dist
+playwright-report
+test-results
+coverage
+*.local
+.DS_Store
+# Real backups must never be committed (personal data). Generated fixtures live in tests/fixtures/generated.
+*.fitnotes
+!tests/fixtures/*.fitnotes
+tests/fixtures/generated/
+*.apk

@@ -1,0 +1,44 @@
+# Screens and behaviour
+
+The UI follows the structure of FitNotes' help pages (Home Screen, Workout Tracking, Exercises,
+Progress Tracking, Routines, Calendar, Body Tracker, Settings) with a refreshed visual style:
+same navigation, tabs and vocabulary, cleaner cards and spacing, light and dark themes.
+
+## Screen map
+
+| Route (hash) | Screen | FitNotes equivalent |
+| --- | --- | --- |
+| `/`, `/workout/:date` | `Home.tsx` | Home Screen: date title (tap = today), calendar / add / overflow, previous-next bar (swipe too), exercise cards with set limit and group bars, workout comment, empty state with Start New Workout and Copy Previous Workout. Overflow: Copy, Move, Comment, Share Workout; Routines, Body Tracker, Settings. Press-and-hold a card for selection mode (delete, move up/down, select all). |
+| `/exercises`, `/exercises/:categoryId` | `ExerciseList.tsx` | Exercise List: category list (Favorites first when any), search box (every term must match), "All Exercises / routines" dropdown in the title, + to add, per-exercise menu (Edit, Favorite, History, Delete), list menu (reorder, alphabetical, colours; workout count / last used details). |
+| `/exercise/new`, `/exercise/:id/edit` | `ExerciseEditor.tsx` | New/Edit Exercise: name, notes, category (+ new category dialog with colour palette), type, weight unit; "save and new"; unit change asks convert vs keep. |
+| `/exercise/:id/notes` | `ExerciseNotes.tsx` | Exercise Notes: notes with links, weight increment, default graph. |
+| `/train/:date/:exerciseId` | `Training.tsx` | Training Screen: Track / History / Graph tabs; nav panel drawer (exercises with set counts, Add Exercise, Add To Group, Home); trophy (records), info (notes), overflow (1RM calculator, edit exercise, home). |
+| Track tab | `Training.tsx` (`TrackTab`) | Fields per exercise type with +/- (exercise increment or default), distance unit selector, time as h:mm:ss; Save/Clear or Update/Delete when a set is selected; move set up/down; comment icon per set; trophy on records; checkbox when Mark Sets Complete is on, with next-exercise prompt; auto-jump inside supersets; pre-fill from last workout. |
+| History tab | `HistoryTab.tsx` | Sets grouped by date; tap date for volume/reps (or distance/time) plus View Workout, Edit Sets, Copy Sets; tap set for est. 1RM/volume (or speed/pace) plus Edit Set, Copy Set. |
+| Graph tab | `GraphTab.tsx` | Graph type dropdown (types depend on exercise type), rep-count picker for Weight and Reps / Rep Maxes, period chips and custom range, tap point for details with previous/next, options: points, trend line, y from 0. |
+| `/exercise/:id/records` | `Records.tsx` | Records (Actual with superseded rows faded and record history per rep count; Estimated with rep limit setting), Stats (period: workout/week/month/year/all/custom), Goals (progress bars, add/edit/delete). |
+| `/exercise/:id/overview` | `ExerciseOverview.tsx` | Exercise Overview: History, Graph, Records, Stats, Goals in one screen (opened from workout popups). |
+| `/calendar` | `Calendar.tsx` | Month view with category dots, workout popup, navigation bar (previous/next workout, count); List view with dots / names / sets options; drawer with Month/List and category filter (match all/any) and exercise filter (min weight/reps). |
+| `/routines`, `/routine/:id`, `/routine/new`, `/routine/:id/edit` | `Routines.tsx` | Routine list; routine view with routine dropdown, days with Log All (selection dialog with edit); editor: create days, add exercises (via exercise list), predefined sets (blank = copy previous), groups, rename/delete/reorder days; copy/delete routine. |
+| `/body`, `/body/measurements`, `/body/measurement/:id` | `BodyTracker.tsx` | Track (latest value, delta coloured by goal), History (per day, filter), Graph (goal line); measurements list with enable/reorder; editor with unit (custom units), goal, reset/delete. |
+| `/settings`, `/settings/database` | `Settings.tsx`, `Database.tsx` | General, Home Screen, Training toggles; Data: Save/Share Backup, Restore, rollback snapshots, CSV exports, Calculate Personal Records, Delete Workout History, Database diagnostics, storage status. |
+
+## Deviations from FitNotes
+
+- Re-ordering (sets, exercises, categories, routine days/exercises, measurements) uses up/down
+  buttons instead of press-and-drag; drag-and-drop on mobile web is unreliable.
+- The calendar's "workout panel" option is a dialog list of workouts instead of a split panel.
+- Routine editing uses the exercise list with a `returnTo` parameter (see
+  `src/app/return-to.ts`) instead of a dedicated Select Exercise screen.
+- The 1RM calculator is available; the set and plate calculators are not (see below).
+
+## Not implemented
+
+Deliberately left out as superfluous for this app or as later work:
+
+- Rest timer and workout timer (`WorkoutTime` rows are preserved and shown nowhere).
+- Plate calculator and set calculator (`Plate`/`Barbell` tables preserved).
+- Analysis screens (yearly graphs, rep-max grid; `RepMaxGridFavourite`/`ExerciseGraphFavourite`
+  preserved).
+- Automatic backups to cloud storage; "share graph as image".
+- Keep Screen On is stored but only advisory (no wake lock yet).
