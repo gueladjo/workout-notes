@@ -12,3 +12,4 @@ screenshots
 !tests/fixtures/*.fitnotes
 tests/fixtures/generated/
 *.apk
+*:Zone.Identifier
