@@ -74,7 +74,7 @@ npm run screenshots                                  # build, serve and screensh
 ```
 
 GitHub Actions run the same checks on every push (`.github/workflows/ci.yml`) and publish the
-build to GitHub Pages on pushes to `main` once Pages is enabled for the repository
+build to GitHub Pages on pushes to `main` or `master` once Pages is enabled for the repository
 (`.github/workflows/deploy-pages.yml`).
 
 Documentation for contributors and coding agents:
