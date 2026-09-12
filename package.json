@@ -21,7 +21,8 @@
     "make-fixture": "tsx scripts/make-fixture.ts",
     "make-icons": "tsx scripts/make-icons.ts",
     "screenshots": "tsx scripts/screenshots.ts",
-    "clean": "node scripts/clean.mjs"
+    "clean": "node scripts/clean.mjs",
+    "deploy": "npm run check && npm run build && gh-pages -d dist --nojekyll"
   },
   "dependencies": {
     "react": "^19.3.0",
@@ -40,6 +41,7 @@
     "eslint": "^10.10.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "fake-indexeddb": "^6.2.5",
+    "gh-pages": "^6.3.0",
     "globals": "^17.12.0",
     "prettier": "^3.9.6",
     "tsx": "^4.20.0",

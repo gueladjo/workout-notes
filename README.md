@@ -75,9 +75,23 @@ npm run screenshots                                  # build, serve and screensh
 npm run clean                                        # delete node_modules and generated output (`-- --keep-deps` keeps node_modules)
 ```
 
-GitHub Actions run the same checks on every push (`.github/workflows/ci.yml`) and publish the
-build to GitHub Pages on pushes to `main` or `master` once Pages is enabled for the repository
-(`.github/workflows/deploy-pages.yml`).
+Nothing runs automatically on push. `.github/workflows/ci.yml` holds the same checks plus
+`npm run format:check` and the end-to-end suite, and is triggered by hand from the Actions tab
+(CI > Run workflow).
+
+## Deploy
+
+Deployment is manual:
+
+```bash
+npm run deploy       # check + build, then push dist/ to the gh-pages branch
+```
+
+It runs `npm run check`, builds, and publishes `dist/` to the `gh-pages` branch with
+[gh-pages](https://github.com/tschaub/gh-pages). One-time setup: create the GitHub repository,
+`git remote add origin <url>`, push once, then set Settings > Pages > Source to
+"Deploy from a branch", branch `gh-pages`, folder `/ (root)`. The site is served from
+`https://<user>.github.io/<repo>/`; the relative `base` and hash routing make the sub-path work.
 
 Documentation for contributors and coding agents:
 

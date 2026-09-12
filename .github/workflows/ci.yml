@@ -1,8 +1,10 @@
+# Manual only: nothing runs on push or pull request. Start a run from the Actions tab
+# (CI > Run workflow) when you want the full check, build and end-to-end suite on CI.
+# Deployment is not part of this workflow; publish with `npm run deploy` locally.
 name: CI
 
 on:
-  push:
-  pull_request:
+  workflow_dispatch:
 
 jobs:
   check:

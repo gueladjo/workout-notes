@@ -45,13 +45,18 @@ npm run build            # must succeed; the PWA precache must include the .wasm
 npm run screenshots      # phone-sized PNGs of every main screen in ./screenshots (visual check after UI work)
 ```
 
-- CI (`.github/workflows/ci.yml`) runs exactly these commands plus `npm run format:check`; keep
-  them green rather than adding new validation entry points.
+- Nothing runs automatically on push. `.github/workflows/ci.yml` runs exactly these commands plus
+  `npm run format:check` and is triggered by hand (Actions > CI > Run workflow); keep them green
+  locally rather than adding new validation entry points.
+- Deployment is manual too: `npm run deploy` (check + build + publish `dist/` to the `gh-pages`
+  branch). Never wire a deploy into a push trigger.
 - Unit tests run against real sql.js databases in Node (`tests/unit`), no browser needed.
 - After changing anything under `src/db`, run `npm run inspect-backup -- <real backup>` if a real
   `.fitnotes` file is available and compare with [doc/fitnotes-format.md](doc/fitnotes-format.md).
 - Real backups contain personal data: never commit them (`*.fitnotes` is git-ignored except
   `tests/fixtures`). Generated fixtures come from `npm run make-fixture`.
+- Completion also requires affected canonical docs updated, and no personal data, credentials,
+unrelated changes, or unintended artifacts in the diff.
 
 ## Conventions
 
