@@ -26,6 +26,10 @@ export function useDbVersion(): number {
 /**
  * Run a synchronous query against the database and keep the result fresh across mutations.
  * `deps` are extra inputs (route params, filters) that should trigger a re-query.
+ *
+ * `deps` are compared with `Object.is`, like React's own dependency lists: pass primitives, state,
+ * or memoised values. A fresh object or array literal created during render would re-query on
+ * every render and loop.
  */
 export function useQuery<T>(query: (db: AppDatabase) => T, deps: readonly unknown[] = []): T {
   const db = useDb();

@@ -57,6 +57,8 @@ npm run screenshots      # phone-sized PNGs of every main screen in ./screenshot
 
 - TypeScript strict with `noUncheckedIndexedAccess`; ESLint flat config with React Compiler rules
   (no state updates inside effects: derive state during render or key the component instead).
+- `useQuery(fn, deps)` compares `deps` by identity (`Object.is`): pass primitives, state or
+  memoised values, never a fresh object literal (it would re-query every render).
 - Screens are self-contained; dialogs live next to the screen that owns them.
 - Keep FitNotes vocabulary in the UI (Track/History/Graph, Records/Stats/Goals, Log All, etc.).
 - Commits: imperative subject line; body explains motivation and what was validated for
