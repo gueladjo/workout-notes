@@ -74,6 +74,14 @@ test('reorders sets on the Track tab with press-and-hold drag', async ({ page })
   await expect(list.getByRole('button', { name: 'Set 2: 100 kg × 5 reps' })).toBeVisible();
   // The release did not also select the dragged set.
   await expect(page.getByTestId('save-set')).toBeVisible();
+  // The arrows keep the moved set selected, so it can be moved again without re-tapping it.
+  await list.getByRole('button', { name: 'Set 1: 80 kg × 8 reps' }).click();
+  await page.getByRole('button', { name: 'Move set down' }).click();
+  await expect(list.getByRole('button', { name: 'Set 2: 80 kg × 8 reps' })).toHaveAttribute(
+    'aria-pressed',
+    'true',
+  );
+  await expect(page.getByRole('button', { name: 'Move set up' })).toBeEnabled();
 });
 
 test('restores a FitNotes backup and exports one', async ({ page }) => {

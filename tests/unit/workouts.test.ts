@@ -120,9 +120,10 @@ describe('sets and workouts', () => {
 
   it('reorders sets and exercises while keeping comments attached', () => {
     const before = listSets(app, BENCH, '2026-09-01');
-    reorderSets(app, [before[2]!.id, before[0]!.id, before[1]!.id]);
+    const newIds = reorderSets(app, [before[2]!.id, before[0]!.id, before[1]!.id]);
     const after = listSets(app, BENCH, '2026-09-01');
     expect(after.map((s) => s.metricWeight)).toEqual([80, 60, 80]);
+    expect(after.map((s) => s.id)).toEqual(newIds);
     expect(after[2]!.comment).toBe('Felt strong');
     reorderWorkoutExercises(app, '2026-09-01', [SQUAT, BENCH]);
     expect(getWorkout(app, '2026-09-01').exercises.map((e) => e.exercise.id)).toEqual([SQUAT, BENCH]);

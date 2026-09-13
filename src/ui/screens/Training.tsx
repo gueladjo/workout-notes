@@ -301,8 +301,8 @@ function TrackTab({
     const j = i + dir;
     if (i < 0 || j < 0 || j >= ids.length) return;
     [ids[i], ids[j]] = [ids[j]!, ids[i]!];
-    reorderSets(db, ids);
-    setSelectedId(null); // ids change on reorder
+    // Ids change on reorder: keep the moved set selected so it can be moved again straight away.
+    setSelectedId(reorderSets(db, ids)[j] ?? null);
   };
   const selectedIndex = sets.findIndex((s) => s.id === selectedId);
   // Press-and-hold a set and drag it, as in FitNotes; the up/down buttons above stay as the
@@ -310,8 +310,8 @@ function TrackTab({
   const { listRef, order, draggingId, listProps, rowProps, clickWasDrag } = useDragReorder(
     sets.map((s) => s.id),
     (order) => {
-      reorderSets(db, order);
-      setSelectedId(null); // ids change on reorder
+      const newIds = reorderSets(db, order);
+      setSelectedId(selectedId === null ? null : (newIds[order.indexOf(selectedId)] ?? null));
     },
   );
   const shownSets = order

@@ -261,10 +261,11 @@ export function deleteWorkoutExercises(db: AppDatabase, date: string, exerciseId
 
 /**
  * Re-order the sets of one exercise on one date. Set order is id order, so rows are re-inserted in
- * the new order (ids change) and comments are re-pointed.
+ * the new order (ids change) and comments are re-pointed. Returns the new ids, in the same order,
+ * so a caller can keep a set selected across the move.
  */
-export function reorderSets(db: AppDatabase, orderedSetIds: number[]): void {
-  db.mutate(() => reinsertSets(db, orderedSetIds));
+export function reorderSets(db: AppDatabase, orderedSetIds: number[]): number[] {
+  return db.mutate(() => reinsertSets(db, orderedSetIds));
 }
 
 /** Re-order the exercises of a workout by re-inserting their sets in the new exercise order. */
@@ -278,7 +279,8 @@ export function reorderWorkoutExercises(db: AppDatabase, date: string, orderedEx
   });
 }
 
-function reinsertSets(db: AppDatabase, orderedSetIds: number[]): void {
+function reinsertSets(db: AppDatabase, orderedSetIds: number[]): number[] {
+  const newIds: number[] = [];
   for (const oldId of orderedSetIds) {
     const r = db.get<
       SetRow & { timer_auto_start: number; is_personal_record_first: number; is_pending_update: number }
@@ -304,6 +306,7 @@ function reinsertSets(db: AppDatabase, orderedSetIds: number[]): void {
       ],
     );
     const newId = Number(db.scalar('SELECT last_insert_rowid()'));
+    newIds.push(newId);
     db.run('UPDATE Comment SET owner_id = ? WHERE owner_type_id = ? AND owner_id = ?', [
       newId,
       CommentOwnerType.TRAINING_LOG_SET,
@@ -311,6 +314,7 @@ function reinsertSets(db: AppDatabase, orderedSetIds: number[]): void {
     ]);
     db.run('DELETE FROM training_log WHERE _id = ?', [oldId]);
   }
+  return newIds;
 }
 
 /** Move every part of a workout to another date (merging into whatever is already there). */
