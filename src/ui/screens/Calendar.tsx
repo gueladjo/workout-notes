@@ -280,7 +280,6 @@ export function CalendarScreen() {
           <WorkoutView
             workout={selectedWorkout}
             onExerciseClick={(id) => navigate(`/exercise/${id}/overview?date=${selected}`)}
-            showCategory={settings.calendarHistoryCategoryDots}
           />
         )}
       </Dialog>

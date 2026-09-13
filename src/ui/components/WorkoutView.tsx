@@ -12,11 +12,9 @@ import { Icon } from './Icon';
 export function WorkoutView({
   workout,
   onExerciseClick,
-  showCategory,
 }: {
   workout: Workout;
   onExerciseClick?: (exerciseId: number) => void;
-  showCategory?: boolean;
 }) {
   const settings = useSettings();
   if (workout.exercises.length === 0 && !workout.comment) {
@@ -45,12 +43,6 @@ export function WorkoutView({
                 onClick={onExerciseClick ? () => onExerciseClick(we.exercise.id) : undefined}
                 disabled={!onExerciseClick}
               >
-                {showCategory && (
-                  <span
-                    className="dot"
-                    style={{ background: androidColourToHex(we.exercise.categoryColour) }}
-                  />
-                )}
                 {we.exercise.name}
               </button>
               <ul className="workout-view__sets">
