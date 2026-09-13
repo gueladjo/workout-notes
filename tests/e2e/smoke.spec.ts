@@ -111,3 +111,32 @@ test('works offline after the first load (service worker)', async ({ page, conte
   await expect(page.getByText('Start New Workout').first()).toBeVisible({ timeout: 30_000 });
   await context.setOffline(false);
 });
+
+test('reminds about backups on Home and stops once one is saved', async ({ page }) => {
+  // Pretend the last backup was three weeks ago.
+  const threeWeeksAgo = new Date(Date.now() - 21 * 86_400_000).toISOString();
+  await page.addInitScript((iso) => localStorage.setItem('workoutnotes.lastBackupAt', iso), threeWeeksAgo);
+  await openApp(page);
+  // An empty database is not worth nagging about.
+  await expect(page.getByRole('status')).toHaveCount(0);
+  await page.goto('/#/settings');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Restore Backup…' }).click();
+  await (await chooser).setFiles(FIXTURE);
+  await page.getByRole('button', { name: 'Restore', exact: true }).click();
+  await expect(page.getByText('Backup restored')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'OK' }).click();
+
+  await page.goto('/#/workout/2026-09-08');
+  await expect(page.getByText('Barbell Squat').first()).toBeVisible();
+  const reminder = page.getByRole('status');
+  await expect(reminder).toContainText('Last backup was 3 weeks ago.');
+  await reminder.getByRole('button', { name: 'Back up' }).click();
+  await expect(page).toHaveURL(/#\/settings$/);
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save Backup' }).click();
+  await download;
+  await page.goto('/#/workout/2026-09-08');
+  await expect(page.getByText('Barbell Squat').first()).toBeVisible();
+  await expect(page.getByRole('status')).toHaveCount(0);
+});

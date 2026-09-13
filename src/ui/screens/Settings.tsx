@@ -26,8 +26,7 @@ import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
 import { Icon } from '@/ui/components/Icon';
 import { useToast } from '@/ui/components/Toast';
 import { formatShortDate } from '@/domain/dates';
-
-const LAST_BACKUP_KEY = 'workoutnotes.lastBackupAt';
+import { lastBackupAt, markBackupSaved } from '@/backup/reminder';
 
 export function SettingsScreen() {
   const db = useDb();
@@ -43,7 +42,7 @@ export function SettingsScreen() {
   const [rollback, setRollback] = useState<StoredFileMeta | null>(null);
   const [storage, setStorage] = useState<{ persisted: boolean; usage?: number; quota?: number } | null>(null);
   const [deleteHistoryOpen, setDeleteHistoryOpen] = useState(false);
-  const [lastBackup, setLastBackup] = useState<string | null>(() => safeGet(LAST_BACKUP_KEY));
+  const [lastBackup, setLastBackup] = useState<string | null>(() => lastBackupAt());
 
   useEffect(() => {
     void listSnapshots().then(setSnapshots);
@@ -60,9 +59,7 @@ export function SettingsScreen() {
         mode === 'share'
           ? await shareOrDownload(blob, name, 'FitNotes backup')
           : (downloadBlob(blob, name), 'downloaded');
-      const now = new Date().toISOString();
-      safeSet(LAST_BACKUP_KEY, now);
-      setLastBackup(now);
+      setLastBackup(markBackupSaved());
       toast(result === 'shared' ? 'Backup shared' : `Saved ${name}`);
     } finally {
       setBusy(null);
@@ -557,19 +554,4 @@ function DeleteHistoryDialog({ open, onClose }: { open: boolean; onClose: () => 
       />
     </>
   );
-}
-
-function safeGet(key: string): string | null {
-  try {
-    return localStorage.getItem(key);
-  } catch {
-    return null;
-  }
-}
-function safeSet(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value);
-  } catch {
-    /* ignore */
-  }
 }

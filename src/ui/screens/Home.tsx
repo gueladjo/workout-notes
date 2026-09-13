@@ -31,6 +31,7 @@ import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
 import { DatePickerDialog } from '@/ui/components/DatePickerDialog';
 import { ToggleRow } from '@/ui/components/Toggle';
 import { useToast } from '@/ui/components/Toast';
+import { describeBackupAge, readBackupReminder, snoozeBackupReminder } from '@/backup/reminder';
 import type { Workout } from '@/db/types';
 
 export function HomeScreen() {
@@ -43,6 +44,8 @@ export function HomeScreen() {
   const dates = useQuery((d) => allWorkoutDates(d));
   const [selected, setSelected] = useState<Set<number> | null>(null);
   const [dialog, setDialog] = useState<'none' | 'movePick' | 'comment' | 'share' | 'deleteConfirm'>('none');
+  // Read once per visit: a backup made in Settings clears it on the way back, "Not now" hides it.
+  const [backupReminder, setBackupReminder] = useState(() => readBackupReminder());
 
   const goTo = (iso: string) => {
     setSelected(null);
@@ -161,6 +164,24 @@ export function HomeScreen() {
       </div>
       <div className="screen__content">
         <div className="container">
+          {backupReminder && !selected && dates.length > 0 && (
+            <div className="backup-reminder" role="status">
+              <span className="backup-reminder__text">
+                {describeBackupAge(backupReminder)} Save a copy of your data to your phone.
+              </span>
+              <Button variant="text" onClick={() => navigate('/settings')}>
+                Back up
+              </Button>
+              <IconButton
+                icon="close"
+                label="Not now"
+                onClick={() => {
+                  snoozeBackupReminder();
+                  setBackupReminder(null);
+                }}
+              />
+            </div>
+          )}
           {workout.comment && <div className="workout-comment">{workout.comment}</div>}
           {workout.exercises.length === 0 ? (
             <div className="empty">
