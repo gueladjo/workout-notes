@@ -130,7 +130,6 @@ export function HomeScreen() {
       ) : (
         <TopBar
           title="WorkoutNotes"
-          primary
           actions={
             <>
               <IconButton
@@ -227,25 +226,27 @@ export function HomeScreen() {
                     style={{ background: we.group ? androidColourToHex(we.group.colour) : 'transparent' }}
                   />
                   <div className="exercise-card__main">
-                    <div className="exercise-card__name">
-                      {showColour && (
-                        <span
-                          className="dot"
-                          style={{ background: androidColourToHex(we.exercise.categoryColour) }}
-                        />
-                      )}
-                      <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {we.exercise.name}
-                      </span>
-                      {settings.markSetsComplete && (
-                        <span className="exercise-card__progress">
-                          {complete}/{we.sets.length}
+                    <div className="exercise-card__header">
+                      <div className="exercise-card__name">
+                        {showColour && (
+                          <span
+                            className="dot"
+                            style={{ background: androidColourToHex(we.exercise.categoryColour) }}
+                          />
+                        )}
+                        <span style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {we.exercise.name}
                         </span>
+                        {settings.markSetsComplete && (
+                          <span className="exercise-card__progress">
+                            {complete}/{we.sets.length}
+                          </span>
+                        )}
+                      </div>
+                      {showCategory && (
+                        <div className="exercise-card__category">{we.exercise.categoryName}</div>
                       )}
                     </div>
-                    {showCategory && (
-                      <div className="exercise-card__category">{we.exercise.categoryName}</div>
-                    )}
                     {!selected && (
                       <ul className="exercise-card__sets">
                         {setsToShow.map((s) => (
@@ -258,7 +259,6 @@ export function HomeScreen() {
                               typeId={we.exercise.typeId}
                               weightUnit={wu}
                               settings={settings}
-                              small
                             />
                             <span className="exercise-card__set-icons">
                               {s.isPersonalRecord && settings.trackPersonalRecords && (

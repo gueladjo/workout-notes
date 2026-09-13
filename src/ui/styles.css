@@ -1,37 +1,49 @@
 /* ---------------------------------------------------------------------------------------------
    WorkoutNotes design tokens and shared component styles.
-   Layout mirrors FitNotes (Android): top app bar, list/card content, primary blue accent.
+   Look mirrors FitNotes (Android, Holo era): black app bars and tab strips, light-blue accent
+   lines (tab indicator, field labels, card header rule), flat white cards on a light grey ground,
+   green Save / blue Clear buttons.
    Theme: `html[data-theme="light"|"dark"]` is set by the app from the Theme setting.
    --------------------------------------------------------------------------------------------- */
 :root {
   --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 
-  --color-primary: #1e6fd9;
-  --color-primary-hover: #1a60bb;
-  --color-primary-soft: #e6f0fc;
+  /* App bar / tab strip (FitNotes' near-black) and the light-blue accent used for its rules. */
+  --color-bar: #1f1f1f;
+  --color-bar-2: #101010;
+  --color-on-bar: #ffffff;
+  --color-on-bar-muted: rgba(255, 255, 255, 0.72);
+  --color-accent: #33b5e5;
+
+  --color-primary: #1190e0;
+  --color-primary-hover: #0d7cc4;
+  --color-primary-soft: #e3f3fc;
   --color-on-primary: #ffffff;
-  --color-bg: #f2f4f8;
+  --color-bg: #eeeeee;
   --color-surface: #ffffff;
-  --color-surface-2: #f7f8fb;
-  --color-text: #1b1f27;
-  --color-text-muted: #6b7280;
-  --color-text-faint: #9aa3b2;
-  --color-border: #e3e6ec;
-  --color-divider: #eceef3;
+  --color-surface-2: #f5f5f5;
+  --color-text: #212121;
+  --color-text-muted: #6f6f6f;
+  --color-text-faint: #9e9e9e;
+  --color-border: #d6d6d6;
+  --color-divider: #e2e2e2;
+  --color-control: #dcdcdc;
+  --color-control-fg: #8a8a8a;
   --color-danger: #d93025;
   --color-danger-soft: #fdecea;
-  --color-success: #1f9d55;
+  --color-success: #06b98b;
+  --color-success-hover: #059f78;
   --color-warning: #d97706;
   --color-trophy: #e0a100;
-  --color-selected: #dbe8fb;
-  --color-backdrop: rgba(20, 24, 33, 0.45);
+  --color-selected: #dbeffa;
+  --color-backdrop: rgba(0, 0, 0, 0.5);
 
-  --radius-sm: 8px;
-  --radius: 12px;
-  --radius-lg: 16px;
-  --shadow: 0 1px 2px rgba(16, 24, 40, 0.06), 0 1px 3px rgba(16, 24, 40, 0.08);
-  --shadow-lg: 0 10px 30px rgba(16, 24, 40, 0.18);
+  --radius-sm: 2px;
+  --radius: 2px;
+  --radius-lg: 4px;
+  --shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.28);
   --topbar-height: 56px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
@@ -40,25 +52,30 @@
 }
 
 html[data-theme='dark'] {
-  --color-primary: #5b9cf5;
-  --color-primary-hover: #7bb0f8;
-  --color-primary-soft: #1a2a44;
-  --color-on-primary: #0b1220;
-  --color-bg: #0f1218;
-  --color-surface: #181c24;
-  --color-surface-2: #1f242e;
-  --color-text: #e8eaf0;
-  --color-text-muted: #9aa3b2;
-  --color-text-faint: #6b7280;
-  --color-border: #2a303c;
-  --color-divider: #262b35;
+  --color-bar: #1a1a1a;
+  --color-bar-2: #0a0a0a;
+  --color-primary: #3aa3ec;
+  --color-primary-hover: #5bb4f0;
+  --color-primary-soft: #14324a;
+  --color-on-primary: #ffffff;
+  --color-bg: #121212;
+  --color-surface: #1e1e1e;
+  --color-surface-2: #262626;
+  --color-text: #eeeeee;
+  --color-text-muted: #a3a3a3;
+  --color-text-faint: #757575;
+  --color-border: #3a3a3a;
+  --color-divider: #333333;
+  --color-control: #3a3a3a;
+  --color-control-fg: #a3a3a3;
   --color-danger: #f28b82;
   --color-danger-soft: #3a1f1d;
-  --color-success: #5ec98a;
+  --color-success: #17c99a;
+  --color-success-hover: #3ad4ab;
   --color-warning: #f0b35a;
   --color-trophy: #f2c14e;
-  --color-selected: #22344f;
-  --color-backdrop: rgba(0, 0, 0, 0.6);
+  --color-selected: #1d3a4d;
+  --color-backdrop: rgba(0, 0, 0, 0.65);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
   --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.6);
   color-scheme: dark;
@@ -152,8 +169,8 @@ h4 {
   gap: 4px;
   min-height: calc(var(--topbar-height) + var(--safe-top));
   padding: var(--safe-top) 6px 0;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bar);
+  color: var(--color-on-bar);
   position: sticky;
   top: 0;
   z-index: 20;
@@ -162,8 +179,8 @@ h4 {
 .topbar__title {
   flex: 1;
   min-width: 0;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 19px;
+  font-weight: 400;
   padding: 0 6px 0 10px;
   white-space: nowrap;
   overflow: hidden;
@@ -174,20 +191,15 @@ h4 {
   display: block;
   font-size: 12px;
   font-weight: 400;
-  color: var(--color-text-muted);
+  color: var(--color-on-bar-muted);
 }
 
 .topbar .app-logo {
   flex: none;
   display: block;
   margin-left: 4px;
-  --logo-bg: var(--color-primary);
-  --logo-fg: var(--color-on-primary);
-}
-
-.topbar--primary .app-logo {
-  --logo-bg: var(--color-on-primary);
-  --logo-fg: var(--color-primary);
+  --logo-bg: var(--color-accent);
+  --logo-fg: #ffffff;
 }
 
 .topbar__actions {
@@ -196,25 +208,14 @@ h4 {
   gap: 2px;
 }
 
-.topbar--primary {
-  background: var(--color-primary);
-  color: var(--color-on-primary);
-  border-bottom-color: transparent;
+.topbar .iconbtn {
+  color: var(--color-on-bar);
 }
 
-.topbar--primary .topbar__subtitle {
-  color: color-mix(in srgb, var(--color-on-primary) 80%, transparent);
-}
-
-.topbar--primary .iconbtn {
-  color: var(--color-on-primary);
-}
-
-/* ---------- Tabs ---------- */
+/* ---------- Tabs (FitNotes: black strip, white labels, light-blue indicator) ---------- */
 .tabs {
   display: flex;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bar-2);
   position: sticky;
   top: 0;
   z-index: 10;
@@ -222,19 +223,23 @@ h4 {
 
 .tabs__tab {
   flex: 1;
-  padding: 12px 8px;
+  padding: 13px 8px 10px;
   text-align: center;
   font-size: 13px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-on-bar-muted);
   border-bottom: 3px solid transparent;
 }
 
+.tabs__tab + .tabs__tab {
+  border-left: 1px solid rgba(255, 255, 255, 0.12);
+}
+
 .tabs__tab[aria-selected='true'] {
-  color: var(--color-primary);
-  border-bottom-color: var(--color-primary);
+  color: var(--color-on-bar);
+  border-bottom-color: var(--color-accent);
 }
 
 /* ---------- Buttons ---------- */
@@ -247,6 +252,8 @@ h4 {
   border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: 14px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   min-height: 42px;
   border: 1px solid transparent;
   transition:
@@ -267,6 +274,15 @@ h4 {
 
 .btn--primary:not(:disabled):active {
   background: var(--color-primary-hover);
+}
+
+.btn--success {
+  background: var(--color-success);
+  color: #fff;
+}
+
+.btn--success:not(:disabled):active {
+  background: var(--color-success-hover);
 }
 
 .btn--outline {
@@ -530,22 +546,13 @@ h4 {
 .set-value__num {
   font-size: 19px;
   font-weight: 700;
+  color: var(--color-text);
 }
 
 .set-value__unit {
   font-size: 13px;
   font-weight: 500;
   color: var(--color-text-muted);
-}
-
-.set-values--small .set-value__num {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.set-values--small .set-value__unit {
-  font-size: 12px;
 }
 
 /* Fixed-width slot for the record trophy so rows without one keep the same column positions. */
@@ -630,9 +637,9 @@ h4 {
   width: 64px;
   min-height: 48px;
   border-radius: var(--radius-sm);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  color: var(--color-primary);
+  background: var(--color-control);
+  border: none;
+  color: var(--color-control-fg);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -640,7 +647,7 @@ h4 {
 }
 
 .numfield__btn:active {
-  background: var(--color-primary-soft);
+  background: var(--color-border);
 }
 
 .numfield__input {
@@ -651,15 +658,16 @@ h4 {
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   padding: 6px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
-  background: var(--color-surface);
+  border-radius: 0;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  background: transparent;
   min-height: 48px;
 }
 
 .numfield__input:focus {
-  outline: 2px solid var(--color-primary);
-  outline-offset: -1px;
+  outline: none;
+  border-bottom: 2px solid var(--color-accent);
 }
 
 .numfield__label {
@@ -669,12 +677,12 @@ h4 {
   gap: 8px;
   min-height: 22px;
   padding-bottom: 3px;
-  border-bottom: 2px solid var(--color-primary);
+  border-bottom: 2px solid var(--color-accent);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text);
+  color: var(--color-text-muted);
 }
 
 .select--inline {
@@ -1191,9 +1199,14 @@ h4 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 4px 8px;
-  background: var(--color-surface);
-  border-bottom: 1px solid var(--color-border);
+  padding: 2px 4px;
+  background: var(--color-bar-2);
+  color: var(--color-on-bar);
+  border-bottom: 2px solid var(--color-accent);
+}
+
+.home-nav .iconbtn {
+  color: var(--color-accent);
 }
 
 .home-nav__date {
@@ -1202,21 +1215,23 @@ h4 {
   min-width: 0;
   padding: 4px 0;
   border-radius: var(--radius-sm);
-  color: var(--color-text);
+  color: var(--color-on-bar);
 }
 
 .home-nav__date:active {
-  background: var(--color-surface-2);
+  background: rgba(255, 255, 255, 0.08);
 }
 
 .home-nav__title {
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .home-nav__sub {
   font-size: 12px;
-  color: var(--color-text-muted);
+  color: var(--color-on-bar-muted);
 }
 
 .exercise-card {
@@ -1242,13 +1257,19 @@ h4 {
   flex: 1;
   min-width: 0;
   text-align: left;
-  padding: 12px 14px;
+  padding: 0;
   color: var(--color-text);
 }
 
+/* Exercise name (and category) sit above a light-blue rule, as on FitNotes' home cards. */
+.exercise-card__header {
+  padding: 12px 14px 10px;
+  border-bottom: 1px solid var(--color-accent);
+}
+
 .exercise-card__name {
-  font-weight: 600;
-  font-size: 16px;
+  font-weight: 400;
+  font-size: 18px;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -1262,10 +1283,9 @@ h4 {
 
 .exercise-card__sets {
   list-style: none;
-  padding: 0;
-  margin: 6px 0 0;
+  padding: 0 14px;
+  margin: 0;
   color: var(--color-text-muted);
-  font-size: 14px;
   font-variant-numeric: tabular-nums;
 }
 
@@ -1273,7 +1293,12 @@ h4 {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 3px 0;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.exercise-card__sets li:last-child {
+  border-bottom: none;
 }
 
 .exercise-card__set-icons {
@@ -1288,7 +1313,7 @@ h4 {
 .exercise-card__more {
   font-size: 12px;
   color: var(--color-text-faint);
-  margin-top: 2px;
+  padding: 4px 14px 8px;
 }
 
 .exercise-card__progress {
@@ -1304,6 +1329,11 @@ h4 {
   padding: 6px 8px;
   background: var(--color-primary-soft);
   border-bottom: 1px solid var(--color-border);
+}
+
+.exercise-card--selected .exercise-card__header {
+  padding-bottom: 12px;
+  border-bottom: none;
 }
 
 .workout-comment {
@@ -1457,7 +1487,7 @@ h4 {
   text-transform: uppercase;
   text-align: left;
   color: var(--color-text);
-  border-bottom: 2px solid var(--color-primary);
+  border-bottom: 2px solid var(--color-accent);
 }
 
 .history-day:first-child {

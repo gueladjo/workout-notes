@@ -19,7 +19,7 @@ export default defineConfig({
         name: 'WorkoutNotes',
         short_name: 'WorkoutNotes',
         description: 'Local-only workout log compatible with FitNotes backups.',
-        theme_color: '#1e6fd9',
+        theme_color: '#1f1f1f',
         background_color: '#ffffff',
         display: 'standalone',
         orientation: 'portrait',

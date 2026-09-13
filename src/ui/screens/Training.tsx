@@ -357,16 +357,16 @@ function TrackTab({
       <div className="track-actions">
         {selectedId === null ? (
           <>
-            <Button large onClick={save} data-testid="save-set">
+            <Button large variant="success" onClick={save} data-testid="save-set">
               Save
             </Button>
-            <Button large variant="outline" onClick={clear}>
+            <Button large onClick={clear}>
               Clear
             </Button>
           </>
         ) : (
           <>
-            <Button large onClick={update}>
+            <Button large variant="success" onClick={update}>
               Update
             </Button>
             <Button large variant="danger" onClick={remove}>

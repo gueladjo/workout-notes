@@ -86,7 +86,7 @@ function ThemeApplier() {
   useEffect(() => {
     const dark = theme === AppTheme.DARK;
     document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#181c24' : '#1e6fd9');
+    document.querySelector('meta[name="theme-color"]')?.setAttribute('content', dark ? '#1a1a1a' : '#1f1f1f');
   }, [theme]);
   return null;
 }

@@ -5,7 +5,8 @@ import { AppLogo, type IconName } from './Icon';
 
 /**
  * App bar shared by every screen: leading button, app logo (as FitNotes shows on every screen),
- * title and actions. `leading` defaults to a back button when `back` is set.
+ * title and actions, on FitNotes' black bar. `leading` defaults to a back button when `back` is
+ * set.
  */
 export function TopBar({
   title,
@@ -16,7 +17,6 @@ export function TopBar({
   leadingLabel,
   onLeading,
   actions,
-  primary,
   onTitleClick,
   titleId,
 }: {
@@ -29,7 +29,6 @@ export function TopBar({
   leadingLabel?: string;
   onLeading?: () => void;
   actions?: ReactNode;
-  primary?: boolean;
   onTitleClick?: () => void;
   titleId?: string;
 }) {
@@ -43,7 +42,7 @@ export function TopBar({
     else navigate('/');
   };
   return (
-    <header className={`topbar${primary ? ' topbar--primary' : ''}`}>
+    <header className="topbar">
       {showLeading ? (
         <IconButton icon={leading} label={leadingLabel ?? 'Back'} onClick={handleLeading} />
       ) : (

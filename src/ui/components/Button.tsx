@@ -1,7 +1,7 @@
 import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { Icon, type IconName } from './Icon';
 
-type Variant = 'primary' | 'outline' | 'text' | 'danger' | 'danger-text';
+type Variant = 'primary' | 'success' | 'outline' | 'text' | 'danger' | 'danger-text';
 
 export function Button({
   variant = 'primary',

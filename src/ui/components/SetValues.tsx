@@ -13,20 +13,15 @@ export function SetValues({
   typeId,
   weightUnit,
   settings,
-  small,
 }: {
   set: Pick<TrainingSet, 'metricWeight' | 'reps' | 'distanceMetres' | 'durationSeconds' | 'unit'>;
   typeId: ExerciseTypeId;
   weightUnit: WeightUnit;
   settings: Settings;
-  small?: boolean;
 }) {
   const columns = setValueColumns(set, typeId, weightUnit, settings);
   return (
-    <span
-      className={`set-values${small ? ' set-values--small' : ''}`}
-      aria-label={formatSet(set, typeId, weightUnit, settings)}
-    >
+    <span className="set-values" aria-label={formatSet(set, typeId, weightUnit, settings)}>
       {columns.map((c, i) => (
         <span key={i} className="set-value" aria-hidden="true">
           <span className="set-value__num">{c.value}</span>
