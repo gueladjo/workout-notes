@@ -9,7 +9,9 @@
     <meta name="theme-color" content="#1f1f1f" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- Translucent so the black app bar (padded by the safe-area inset) shows under the iOS status
+         bar; with "default" iOS paints the bar from the theme colour it cached at install time. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="WorkoutNotes" />
     <link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
