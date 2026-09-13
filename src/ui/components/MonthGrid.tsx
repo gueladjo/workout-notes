@@ -1,28 +1,13 @@
-import { addMonths, daysInMonth, monthName, parseIsoDate, todayIso } from '@/domain/dates';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { addMonths, daysInMonth, monthName, parseIsoDate, startOfMonth, todayIso } from '@/domain/dates';
 import { androidColourToHex } from '@/domain/colour';
-import { IconButton } from './Button';
 
 export interface DayMarker {
   /** Category colours (Android ints) to show as dots; empty array = plain highlight. */
   colours: number[];
 }
 
-/**
- * Month calendar grid shared by the Calendar screen and date-picker dialogs.
- * `month` is any ISO date inside the month to show.
- */
-export function MonthGrid({
-  month,
-  onMonthChange,
-  selected,
-  onSelect,
-  markers,
-  weekStart,
-  showDots = true,
-  compact,
-}: {
-  month: string;
-  onMonthChange: (iso: string) => void;
+interface MonthProps {
   selected?: string;
   onSelect: (iso: string) => void;
   markers: Map<string, DayMarker>;
@@ -30,7 +15,18 @@ export function MonthGrid({
   weekStart: number;
   showDots?: boolean;
   compact?: boolean;
-}) {
+}
+
+/** One month: centred "SEPTEMBER 2026" title, weekday headers and the day cells. */
+export function MonthGrid({
+  month,
+  selected,
+  onSelect,
+  markers,
+  weekStart,
+  showDots = true,
+  compact,
+}: MonthProps & { month: string }) {
   const d = parseIsoDate(month);
   const year = d.getFullYear();
   const mi = d.getMonth();
@@ -44,26 +40,14 @@ export function MonthGrid({
   for (let day = 1; day <= total; day++)
     cells.push(`${year}-${String(mi + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`);
   while (cells.length % 7 !== 0) cells.push(null);
-  const dows = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+  const dows = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
   const headers = Array.from({ length: 7 }, (_, i) => dows[(startDow + i) % 7]);
 
   return (
-    <div className={`month${compact ? ' month--compact' : ''}`}>
-      <div className="month__header">
-        <IconButton
-          icon="chevronLeft"
-          label="Previous month"
-          onClick={() => onMonthChange(addMonths(month, -1))}
-        />
-        <div className="month__title">
-          {monthName(mi)} {year}
-        </div>
-        <IconButton
-          icon="chevronRight"
-          label="Next month"
-          onClick={() => onMonthChange(addMonths(month, 1))}
-        />
-      </div>
+    <section className={`month${compact ? ' month--compact' : ''}`} data-month={month.slice(0, 7)}>
+      <h2 className="month__title">
+        {monthName(mi)} {year}
+      </h2>
       <div className="month__grid">
         {headers.map((h, i) => (
           <div key={i} className="month__dow">
@@ -101,6 +85,87 @@ export function MonthGrid({
           );
         })}
       </div>
+    </section>
+  );
+}
+
+/** A request to bring a month to the top of the list; bump `nonce` to repeat the same month. */
+export interface ScrollRequest {
+  month: string;
+  nonce: number;
+}
+
+const CHUNK = 6; // months added at a time when scrolling reaches an end
+const EDGE = 600; // px from an end at which more months are added
+
+/**
+ * Vertically scrolling list of months, as FitNotes' calendar: starts on `initialMonth` and grows
+ * in both directions while the user scrolls, so any date can be reached.
+ */
+export function MonthList({
+  initialMonth,
+  scrollTo,
+  className,
+  ...monthProps
+}: MonthProps & {
+  initialMonth: string;
+  scrollTo?: ScrollRequest;
+  className?: string;
+}) {
+  const el = useRef<HTMLDivElement>(null);
+  const [range, setRange] = useState(() => ({
+    start: addMonths(startOfMonth(initialMonth), -CHUNK),
+    end: addMonths(startOfMonth(initialMonth), CHUNK),
+  }));
+  // Grow the range during render so the requested month exists by the time the effect scrolls.
+  const [seen, setSeen] = useState(scrollTo?.nonce);
+  if (scrollTo && scrollTo.nonce !== seen) {
+    setSeen(scrollTo.nonce);
+    const m = startOfMonth(scrollTo.month);
+    if (m < range.start) setRange({ ...range, start: addMonths(m, -CHUNK) });
+    else if (m > range.end) setRange({ ...range, end: addMonths(m, CHUNK) });
+  }
+  const months = useMemo(() => {
+    const out: string[] = [];
+    for (let m = range.start; m <= range.end; m = addMonths(m, 1)) out.push(m);
+    return out;
+  }, [range]);
+
+  // Keep the visible months still when earlier months are inserted above them.
+  const heightBeforePrepend = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const c = el.current;
+    if (c && heightBeforePrepend.current !== null) {
+      c.scrollTop += c.scrollHeight - heightBeforePrepend.current;
+      heightBeforePrepend.current = null;
+    }
+  });
+
+  // Initial position and explicit requests (Today, previous/next workout).
+  const target = scrollTo?.month ?? initialMonth;
+  const nonce = scrollTo?.nonce ?? 0;
+  useEffect(() => {
+    const c = el.current;
+    const section = c?.querySelector<HTMLElement>(`[data-month="${target.slice(0, 7)}"]`);
+    if (c && section) c.scrollTop = section.offsetTop;
+  }, [target, nonce]);
+
+  const onScroll = () => {
+    const c = el.current;
+    if (!c) return;
+    if (c.scrollTop < EDGE && heightBeforePrepend.current === null) {
+      heightBeforePrepend.current = c.scrollHeight;
+      setRange((r) => ({ ...r, start: addMonths(r.start, -CHUNK) }));
+    } else if (c.scrollHeight - c.scrollTop - c.clientHeight < EDGE) {
+      setRange((r) => ({ ...r, end: addMonths(r.end, CHUNK) }));
+    }
+  };
+
+  return (
+    <div ref={el} className={`month-list${className ? ` ${className}` : ''}`} onScroll={onScroll}>
+      {months.map((m) => (
+        <MonthGrid key={m} month={m} {...monthProps} />
+      ))}
     </div>
   );
 }

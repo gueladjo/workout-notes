@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Button } from './Button';
 
 /**
@@ -22,7 +22,8 @@ export function Dialog({
   flush?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
+  // Layout effect so the dialog is open (and laid out) before its children's effects run.
+  useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (open && !el.open) el.showModal();

@@ -18,7 +18,7 @@ import { formatSet, weightUnitFor } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
 import { IconButton, Button } from '@/ui/components/Button';
 import { MenuButton } from '@/ui/components/Menu';
-import { MonthGrid, type DayMarker } from '@/ui/components/MonthGrid';
+import { MonthList, type DayMarker, type ScrollRequest } from '@/ui/components/MonthGrid';
 import { Dialog } from '@/ui/components/Dialog';
 import { SetSelectionDialog, type SelectableExercise } from '@/ui/components/SetSelectionDialog';
 import { WorkoutView } from '@/ui/components/WorkoutView';
@@ -47,7 +47,9 @@ export function CalendarScreen() {
   const [search] = useSearchParams();
   const copyMode = search.get('copy') === '1';
   const [view, setView] = useState<'month' | 'list'>('month');
-  const [month, setMonth] = useState(routeDate);
+  // Month currently brought to the top of the scrolling list (Today, previous/next workout).
+  const [focus, setFocus] = useState<ScrollRequest>({ month: routeDate, nonce: 0 });
+  const focusMonth = (iso: string) => setFocus((f) => ({ month: iso, nonce: f.nonce + 1 }));
   const [selected, setSelected] = useState<string | null>(null);
   const [drawer, setDrawer] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<Set<number>>(new Set());
@@ -109,12 +111,12 @@ export function CalendarScreen() {
     setSelected(iso);
   };
   const jump = (dir: -1 | 1) => {
-    const cur = selected ?? month;
+    const cur = selected ?? focus.month;
     const next =
       dir === 1 ? filteredDates.find((d) => d > cur) : [...filteredDates].reverse().find((d) => d < cur);
     if (next) {
       setSelected(next);
-      setMonth(next);
+      focusMonth(next);
     }
   };
 
@@ -171,7 +173,7 @@ export function CalendarScreen() {
               icon="today"
               label="Today"
               onClick={() => {
-                setMonth(todayIso());
+                focusMonth(todayIso());
                 if (!copyMode) setSelected(todayIso());
               }}
             />
@@ -186,36 +188,31 @@ export function CalendarScreen() {
       )}
       {view === 'month' ? (
         <>
-          <div className="screen__content">
-            <div className="container">
-              <div className="card" style={{ paddingBottom: 4 }}>
-                <MonthGrid
-                  month={month}
-                  onMonthChange={setMonth}
-                  selected={selected ?? undefined}
-                  onSelect={pick}
-                  markers={markers}
-                  weekStart={settings.firstDayOfWeek}
-                  showDots={settings.calendarCategoryDots}
-                />
-              </div>
-              {filtering && (
-                <div className="banner" style={{ margin: '0 0 12px' }}>
-                  <Icon name="filter" size={18} />
-                  <span style={{ flex: 1 }}>Filter active</span>
-                  <Button
-                    variant="text"
-                    onClick={() => {
-                      setCategoryFilter(new Set());
-                      setExerciseFilter(null);
-                    }}
-                  >
-                    Reset
-                  </Button>
-                </div>
-              )}
+          {filtering && (
+            <div className="banner" style={{ margin: '12px 12px 0' }}>
+              <Icon name="filter" size={18} />
+              <span style={{ flex: 1 }}>Filter active</span>
+              <Button
+                variant="text"
+                onClick={() => {
+                  setCategoryFilter(new Set());
+                  setExerciseFilter(null);
+                }}
+              >
+                Reset
+              </Button>
             </div>
-          </div>
+          )}
+          <MonthList
+            className="month-list--screen"
+            initialMonth={routeDate}
+            scrollTo={focus}
+            selected={selected ?? undefined}
+            onSelect={pick}
+            markers={markers}
+            weekStart={settings.firstDayOfWeek}
+            showDots={settings.calendarCategoryDots}
+          />
           {settings.calendarNavigationBar && (
             <div
               className="home-nav"
@@ -406,7 +403,7 @@ export function CalendarScreen() {
               onClick={() => {
                 setListOpen(false);
                 setSelected(d);
-                setMonth(d);
+                focusMonth(d);
               }}
             >
               {formatMediumDate(d)}

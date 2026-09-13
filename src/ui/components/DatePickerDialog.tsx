@@ -1,13 +1,12 @@
-import { useState } from 'react';
 import { Dialog } from './Dialog';
 import { Button } from './Button';
-import { MonthGrid, type DayMarker } from './MonthGrid';
+import { MonthList, type DayMarker } from './MonthGrid';
 import { useQuery } from '@/app/db-context';
 import { workoutDates } from '@/db/repo/workouts';
 import { listCategories } from '@/db/repo/categories';
 import { useSettings } from '@/app/hooks';
 
-/** Pick a date from a month calendar; workout dates are highlighted with category dots. */
+/** Pick a date from a scrolling month calendar; workout dates are highlighted with category dots. */
 export function DatePickerDialog({
   open,
   onClose,
@@ -22,7 +21,6 @@ export function DatePickerDialog({
   initialDate: string;
 }) {
   const settings = useSettings();
-  const [month, setMonth] = useState(initialDate);
   const markers = useQuery((db) => {
     const colours = new Map(listCategories(db).map((c) => [c.id, c.colour]));
     const m = new Map<string, DayMarker>();
@@ -42,9 +40,9 @@ export function DatePickerDialog({
         </Button>
       }
     >
-      <MonthGrid
-        month={month}
-        onMonthChange={setMonth}
+      <MonthList
+        className="month-list--dialog"
+        initialMonth={initialDate}
         selected={initialDate}
         markers={markers}
         weekStart={settings.firstDayOfWeek}

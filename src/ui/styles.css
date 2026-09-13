@@ -1010,14 +1010,34 @@ h4 {
 }
 
 /* ---------- Month grid ---------- */
-.month__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 4px 0;
+/* Scrolling list of months (FitNotes calendar); grows at both ends while scrolling. */
+.month-list {
+  position: relative;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overflow-anchor: none;
+  background: var(--color-surface);
+}
+
+.month-list--screen {
+  flex: 1;
+  padding-bottom: var(--safe-bottom);
+}
+
+.month-list--dialog {
+  height: min(60vh, 480px);
+}
+
+.month {
+  padding: 0 6px 10px;
 }
 
 .month__title {
+  margin: 0;
+  padding: 18px 0 6px;
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
   font-weight: 600;
   font-size: 16px;
 }
@@ -1026,7 +1046,6 @@ h4 {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
   gap: 2px;
-  padding: 6px;
 }
 
 .month__dow {
