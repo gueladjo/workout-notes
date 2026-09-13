@@ -39,6 +39,7 @@ import { Tabs } from '@/ui/components/Tabs';
 import { NumberField, formatNumber } from '@/ui/components/NumberField';
 import { Checkbox } from '@/ui/components/Toggle';
 import { SetValues } from '@/ui/components/SetValues';
+import { useDragReorder } from '@/ui/components/useDragReorder';
 import { Dialog } from '@/ui/components/Dialog';
 import { useToast } from '@/ui/components/Toast';
 import { CommentDialog } from './Home';
@@ -304,6 +305,18 @@ function TrackTab({
     setSelectedId(null); // ids change on reorder
   };
   const selectedIndex = sets.findIndex((s) => s.id === selectedId);
+  // Press-and-hold a set and drag it, as in FitNotes; the up/down buttons above stay as the
+  // keyboard and desktop alternative.
+  const { listRef, order, draggingId, listProps, rowProps, clickWasDrag } = useDragReorder(
+    sets.map((s) => s.id),
+    (order) => {
+      reorderSets(db, order);
+      setSelectedId(null); // ids change on reorder
+    },
+  );
+  const shownSets = order
+    .map((id) => sets.find((s) => s.id === id))
+    .filter((s): s is TrainingSetWithComment => s !== undefined);
 
   return (
     <div className="screen__content">
@@ -397,7 +410,12 @@ function TrackTab({
         </div>
       )}
       <div className="container" style={{ paddingTop: 0 }}>
-        <div className="list" data-testid="set-list">
+        <div
+          className={`list${draggingId !== null ? ' list--dragging' : ''}`}
+          data-testid="set-list"
+          ref={listRef}
+          {...listProps}
+        >
           {sets.length === 0 && (
             <div className="muted" style={{ padding: 16, textAlign: 'center' }}>
               {previous
@@ -405,10 +423,11 @@ function TrackTab({
                 : 'No sets yet. Enter your first set and tap Save.'}
             </div>
           )}
-          {sets.map((s, i) => (
+          {shownSets.map((s, i) => (
             <div key={s.id}>
               <div
-                className={`set-row${s.id === selectedId ? ' set-row--selected' : ''}${s.isComplete && settings.markSetsComplete ? ' set-row--complete' : ''}`}
+                className={`set-row${s.id === selectedId ? ' set-row--selected' : ''}${s.isComplete && settings.markSetsComplete ? ' set-row--complete' : ''}${s.id === draggingId ? ' set-row--dragging' : ''}`}
+                {...rowProps(s.id)}
               >
                 {settings.markSetsComplete && (
                   <Checkbox checked={s.isComplete} onChange={() => toggleComplete(s)} label="Set complete" />
@@ -435,7 +454,9 @@ function TrackTab({
                   className="set-row__value"
                   aria-label={`Set ${i + 1}: ${formatSet(s, exercise.typeId, wu, settings)}`}
                   aria-pressed={s.id === selectedId}
-                  onClick={() => select(s)}
+                  onClick={() => {
+                    if (!clickWasDrag()) select(s);
+                  }}
                 >
                   <span className="set-row__index" aria-hidden="true">
                     {i + 1}

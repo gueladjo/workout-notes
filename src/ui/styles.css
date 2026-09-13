@@ -486,10 +486,25 @@ h4 {
   width: 100%;
   text-align: left;
   color: var(--color-text);
+  /* Press-and-hold drag (useDragReorder): no text selection or iOS callout while holding. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .set-row:last-child {
   border-bottom: none;
+}
+
+.list--dragging {
+  touch-action: none;
+}
+
+.set-row--dragging {
+  position: relative;
+  z-index: 1;
+  background: var(--color-selected);
+  box-shadow: var(--shadow-lg);
 }
 
 .set-row--selected {

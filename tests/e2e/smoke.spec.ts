@@ -46,6 +46,36 @@ test('logs a set and keeps it after a reload', async ({ page }) => {
   await expect(page.getByText('1 exercise · 1 set')).toBeVisible();
 });
 
+test('reorders sets on the Track tab with press-and-hold drag', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  const weight = page.getByRole('textbox', { name: /^Weight/ });
+  const reps = page.getByRole('textbox', { name: 'Reps', exact: true });
+  await weight.fill('100');
+  await reps.fill('5');
+  await page.getByTestId('save-set').click();
+  await weight.fill('80');
+  await reps.fill('8');
+  await page.getByTestId('save-set').click();
+  const list = page.getByTestId('set-list');
+  await expect(list.getByRole('button', { name: 'Set 2: 80 kg × 8 reps' })).toBeVisible();
+  // Hold the second set, then drag it over the first and release.
+  const from = await list.getByRole('button', { name: 'Set 2: 80 kg × 8 reps' }).boundingBox();
+  const to = await list.getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }).boundingBox();
+  if (!from || !to) throw new Error('set rows not laid out');
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await page.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 6 });
+  await page.mouse.up();
+  await expect(list.getByRole('button', { name: 'Set 1: 80 kg × 8 reps' })).toBeVisible();
+  await expect(list.getByRole('button', { name: 'Set 2: 100 kg × 5 reps' })).toBeVisible();
+  // The release did not also select the dragged set.
+  await expect(page.getByTestId('save-set')).toBeVisible();
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();
