@@ -13,7 +13,6 @@ import {
 import { androidColourToHex } from '@/domain/colour';
 import {
   allWorkoutDates,
-  copySets,
   deleteWorkoutExercises,
   getWorkout,
   moveWorkout,
@@ -30,7 +29,6 @@ import { SetValues } from '@/ui/components/SetValues';
 import { MenuButton } from '@/ui/components/Menu';
 import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
 import { DatePickerDialog } from '@/ui/components/DatePickerDialog';
-import { SetSelectionDialog, type SelectableExercise } from '@/ui/components/SetSelectionDialog';
 import { ToggleRow } from '@/ui/components/Toggle';
 import { useToast } from '@/ui/components/Toast';
 import type { Workout } from '@/db/types';
@@ -44,10 +42,7 @@ export function HomeScreen() {
   const workout = useQuery((d) => getWorkout(d, date), [date]);
   const dates = useQuery((d) => allWorkoutDates(d));
   const [selected, setSelected] = useState<Set<number> | null>(null);
-  const [dialog, setDialog] = useState<
-    'none' | 'copyPick' | 'copySelect' | 'movePick' | 'comment' | 'share' | 'deleteConfirm'
-  >('none');
-  const [copySource, setCopySource] = useState<Workout | null>(null);
+  const [dialog, setDialog] = useState<'none' | 'movePick' | 'comment' | 'share' | 'deleteConfirm'>('none');
 
   const goTo = (iso: string) => {
     setSelected(null);
@@ -81,28 +76,11 @@ export function HomeScreen() {
   const totalSets = workout.exercises.reduce((n, e) => n + e.sets.length, 0);
   const isToday = date === todayIso();
 
-  const openCopyFrom = (iso: string) => {
-    setCopySource(getWorkout(db, iso));
-    setDialog('copySelect');
-  };
-  const selectable: SelectableExercise[] = useMemo(
-    () =>
-      (copySource?.exercises ?? []).map((we) => ({
-        exercise: we.exercise,
-        sets: we.sets.map((s) => ({
-          key: String(s.id),
-          metricWeight: s.metricWeight,
-          reps: s.reps,
-          distanceMetres: s.distanceMetres,
-          durationSeconds: s.durationSeconds,
-          unit: s.unit,
-        })),
-      })),
-    [copySource],
-  );
+  // Copy Workout works like FitNotes: pick the workout on the calendar first, then choose its sets.
+  const openCopyCalendar = () => navigate(`/calendar?date=${date}&copy=1`);
 
   const menuItems = [
-    { label: 'Copy Workout', icon: 'copy' as const, onSelect: () => setDialog('copyPick') },
+    { label: 'Copy Workout', icon: 'copy' as const, onSelect: openCopyCalendar },
     {
       label: 'Move Workout',
       icon: 'swap' as const,
@@ -193,12 +171,7 @@ export function HomeScreen() {
                   Start New Workout
                 </Button>
                 {previousWorkoutDate && (
-                  <Button
-                    variant="outline"
-                    large
-                    icon="copy"
-                    onClick={() => openCopyFrom(previousWorkoutDate)}
-                  >
+                  <Button variant="outline" large icon="copy" onClick={openCopyCalendar}>
                     Copy Previous Workout
                   </Button>
                 )}
@@ -290,29 +263,6 @@ export function HomeScreen() {
         </button>
       )}
 
-      <DatePickerDialog
-        open={dialog === 'copyPick'}
-        onClose={() => setDialog('none')}
-        title="Copy workout from"
-        initialDate={previousWorkoutDate ?? date}
-        onlyWorkoutDates
-        onPick={openCopyFrom}
-      />
-      <SetSelectionDialog
-        open={dialog === 'copySelect'}
-        onClose={() => setDialog('none')}
-        title={copySource ? `Copy from ${formatLongDate(copySource.date)}` : 'Copy'}
-        exercises={selectable}
-        confirmLabel="Copy"
-        onConfirm={(sel) => {
-          copySets(
-            db,
-            sel.map(({ exercise, set }) => ({ exerciseId: exercise.id, ...set })),
-            date,
-          );
-          toast(`Copied ${sel.length} set${sel.length === 1 ? '' : 's'}`);
-        }}
-      />
       <DatePickerDialog
         open={dialog === 'movePick'}
         onClose={() => setDialog('none')}

@@ -76,6 +76,11 @@ try {
   await page.getByRole('button', { name: '2026-09-08' }).click();
   await settle();
   await shot('11-calendar-popup');
+  await page.goto(base + '#/calendar?date=2026-09-08&copy=1');
+  await settle();
+  await page.getByRole('button', { name: '2026-09-01' }).click();
+  await settle();
+  await shot('11b-calendar-copy');
   await page.goto(base + '#/routine/1?date=2026-09-08');
   await settle();
   await shot('12-routine');

@@ -73,6 +73,36 @@ test('restores a FitNotes backup and exports one', async ({ page }) => {
   expect(bytes.subarray(0, 15).toString()).toBe('SQLite format 3');
 });
 
+test('Copy Previous Workout picks the workout on the calendar first', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/settings');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Restore Backup…' }).click();
+  await (await chooser).setFiles(FIXTURE);
+  await page.getByRole('button', { name: 'Restore', exact: true }).click();
+  await expect(page.getByText('Backup restored')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'OK' }).click();
+
+  // An empty day after the last workout offers Copy Previous Workout.
+  await page.goto('/#/workout/2026-09-10');
+  await page.getByRole('button', { name: 'Copy Previous Workout' }).click();
+  // First step: the calendar asks which workout to copy.
+  await expect(page.getByText('Select the workout you would like to copy')).toBeVisible();
+  // Days without a workout do nothing.
+  await page.getByRole('button', { name: '2026-09-09' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // Tapping a workout opens the set-selection dialog.
+  await page.getByRole('button', { name: '2026-09-08' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Copy from')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Copy', exact: true }).click();
+  await expect(page.getByText('Copied 3 sets')).toBeVisible();
+  // Back on the target day with the copied sets.
+  await expect(page).toHaveURL(/#\/workout\/2026-09-10$/);
+  await expect(page.getByText('2 exercises · 3 sets')).toBeVisible();
+  await expect(page.getByRole('button', { name: /Flat Barbell Bench Press 85 kg × 5 reps/ })).toBeVisible();
+});
+
 test('works offline after the first load (service worker)', async ({ page, context }) => {
   await openApp(page);
   await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, null, { timeout: 30_000 });

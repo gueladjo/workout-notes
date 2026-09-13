@@ -1,9 +1,15 @@
 import { useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useRouteDate, useSettings } from '@/app/hooks';
 import { listCategories } from '@/db/repo/categories';
-import { allSetsForExercise, exercisesWithHistory, getWorkout, workoutDates } from '@/db/repo/workouts';
+import {
+  allSetsForExercise,
+  copySets,
+  exercisesWithHistory,
+  getWorkout,
+  workoutDates,
+} from '@/db/repo/workouts';
 import { updateSettings } from '@/db/repo/settings';
 import { androidColourToHex } from '@/domain/colour';
 import { addDays, formatLongDate, formatMediumDate, todayIso } from '@/domain/dates';
@@ -14,9 +20,11 @@ import { IconButton, Button } from '@/ui/components/Button';
 import { MenuButton } from '@/ui/components/Menu';
 import { MonthGrid, type DayMarker } from '@/ui/components/MonthGrid';
 import { Dialog } from '@/ui/components/Dialog';
+import { SetSelectionDialog, type SelectableExercise } from '@/ui/components/SetSelectionDialog';
 import { WorkoutView } from '@/ui/components/WorkoutView';
 import { Checkbox } from '@/ui/components/Toggle';
 import { Icon } from '@/ui/components/Icon';
+import { useToast } from '@/ui/components/Toast';
 import type { Workout } from '@/db/types';
 
 interface ExerciseFilter {
@@ -25,12 +33,19 @@ interface ExerciseFilter {
   minReps: number;
 }
 
-/** Calendar: Month View and List View of past workouts with category / exercise filters. */
+/**
+ * Calendar: Month View and List View of past workouts with category / exercise filters.
+ * With `?copy=1` it is the first step of Copy Workout (as in FitNotes): tapping a workout opens
+ * the set-selection dialog and the chosen sets are copied to the route date.
+ */
 export function CalendarScreen() {
   const db = useDb();
   const navigate = useNavigate();
+  const toast = useToast();
   const settings = useSettings();
   const routeDate = useRouteDate();
+  const [search] = useSearchParams();
+  const copyMode = search.get('copy') === '1';
   const [view, setView] = useState<'month' | 'list'>('month');
   const [month, setMonth] = useState(routeDate);
   const [selected, setSelected] = useState<string | null>(null);
@@ -73,6 +88,26 @@ export function CalendarScreen() {
   const filtering = categoryFilter.size > 0 || exerciseFilter !== null;
 
   const selectedWorkout = useQuery((d) => (selected ? getWorkout(d, selected) : null), [selected]);
+  const selectable: SelectableExercise[] = useMemo(
+    () =>
+      (selectedWorkout?.exercises ?? []).map((we) => ({
+        exercise: we.exercise,
+        sets: we.sets.map((s) => ({
+          key: String(s.id),
+          metricWeight: s.metricWeight,
+          reps: s.reps,
+          distanceMetres: s.distanceMetres,
+          durationSeconds: s.durationSeconds,
+          unit: s.unit,
+        })),
+      })),
+    [selectedWorkout],
+  );
+  // In copy mode only days that hold a workout can be chosen.
+  const pick = (iso: string) => {
+    if (copyMode && !markers.has(iso)) return;
+    setSelected(iso);
+  };
   const jump = (dir: -1 | 1) => {
     const cur = selected ?? month;
     const next =
@@ -137,13 +172,18 @@ export function CalendarScreen() {
               label="Today"
               onClick={() => {
                 setMonth(todayIso());
-                setSelected(todayIso());
+                if (!copyMode) setSelected(todayIso());
               }}
             />
             <MenuButton items={view === 'month' ? monthMenu.slice(1) : listMenu} />
           </>
         }
       />
+      {copyMode && (
+        <div className="banner banner--prompt" role="status">
+          Select the workout you would like to copy
+        </div>
+      )}
       {view === 'month' ? (
         <>
           <div className="screen__content">
@@ -153,7 +193,7 @@ export function CalendarScreen() {
                   month={month}
                   onMonthChange={setMonth}
                   selected={selected ?? undefined}
-                  onSelect={(iso) => setSelected(iso)}
+                  onSelect={pick}
                   markers={markers}
                   weekStart={settings.firstDayOfWeek}
                   showDots={settings.calendarCategoryDots}
@@ -195,12 +235,30 @@ export function CalendarScreen() {
           )}
         </>
       ) : (
-        <ListView dates={filteredDates} onOpen={(d) => setSelected(d)} />
+        <ListView dates={filteredDates} onOpen={pick} />
       )}
+
+      {/* Copy Workout: choose the sets of the tapped workout, then copy them to the route date. */}
+      <SetSelectionDialog
+        open={copyMode && selected !== null}
+        onClose={() => setSelected(null)}
+        title={selected ? `Copy from ${formatLongDate(selected)}` : 'Copy'}
+        exercises={selectable}
+        confirmLabel="Copy"
+        onConfirm={(sel) => {
+          copySets(
+            db,
+            sel.map(({ exercise, set }) => ({ exerciseId: exercise.id, ...set })),
+            routeDate,
+          );
+          toast(`Copied ${sel.length} set${sel.length === 1 ? '' : 's'}`);
+          navigate(routeDate === todayIso() ? '/' : `/workout/${routeDate}`, { replace: true });
+        }}
+      />
 
       {/* Workout popup */}
       <Dialog
-        open={selected !== null}
+        open={!copyMode && selected !== null}
         onClose={() => setSelected(null)}
         title={selected ? formatLongDate(selected) : ''}
         flush

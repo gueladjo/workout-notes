@@ -14,15 +14,12 @@ export function DatePickerDialog({
   onPick,
   title,
   initialDate,
-  onlyWorkoutDates,
 }: {
   open: boolean;
   onClose: () => void;
   onPick: (iso: string) => void;
   title: string;
   initialDate: string;
-  /** Only allow choosing dates that contain a workout (Copy Workout). */
-  onlyWorkoutDates?: boolean;
 }) {
   const settings = useSettings();
   const [month, setMonth] = useState(initialDate);
@@ -54,7 +51,6 @@ export function DatePickerDialog({
         showDots={settings.calendarCategoryDots}
         compact
         onSelect={(iso) => {
-          if (onlyWorkoutDates && !markers.has(iso)) return;
           onPick(iso);
           onClose();
         }}
