@@ -492,7 +492,20 @@ h4 {
   -webkit-touch-callout: none;
 }
 
-.set-row:last-child {
+/* Rows sit in a wrapper with their comment, so "last" means the last wrapper of the list. A
+   comment carries the rule instead of its row so the line follows the comment. */
+.list > :last-child > .set-row,
+.list > .set-row:last-child,
+.set-row:has(+ .set-row__comment) {
+  border-bottom: none;
+}
+
+.list > :not(:last-child) > .set-row__comment {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+/* FitNotes' History tab draws no lines between the sets of a day. */
+.set-row--history {
   border-bottom: none;
 }
 
