@@ -45,6 +45,31 @@ export function setValueParts(
   return parts;
 }
 
+export interface SetValueColumn {
+  value: string;
+  unit: string;
+}
+
+/** The values of a set as number/unit pairs in display order: weight, distance, reps, time. */
+export function setValueColumns(
+  set: Pick<TrainingSet, 'metricWeight' | 'reps' | 'distanceMetres' | 'durationSeconds' | 'unit'>,
+  typeId: ExerciseTypeId,
+  weightUnit: WeightUnit,
+  settings: Settings,
+): SetValueColumn[] {
+  const fields = exerciseTypeFields(typeId);
+  const columns: SetValueColumn[] = [];
+  if (fields.includes('weight'))
+    columns.push({ value: fmt(kgToDisplay(set.metricWeight, weightUnit)), unit: weightUnit });
+  if (fields.includes('distance')) {
+    const du = resolveDistanceUnit(set.unit, settings.metric);
+    columns.push({ value: fmt(metresToDisplay(set.distanceMetres, du)), unit: distanceUnitShort(du) });
+  }
+  if (fields.includes('reps')) columns.push({ value: String(set.reps), unit: 'reps' });
+  if (fields.includes('time')) columns.push({ value: formatDuration(set.durationSeconds), unit: '' });
+  return columns;
+}
+
 /** "100 kg × 5 reps", "5 km · 25:00", ... */
 export function formatSet(
   set: Pick<TrainingSet, 'metricWeight' | 'reps' | 'distanceMetres' | 'durationSeconds' | 'unit'>,

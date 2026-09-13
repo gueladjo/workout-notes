@@ -2,7 +2,14 @@ import { useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useRouteDate, useSettings } from '@/app/hooks';
-import { addDays, formatLongDate, relativeDays, todayIso, weekdayName } from '@/domain/dates';
+import {
+  addDays,
+  formatLongDate,
+  formatShortDate,
+  relativeDays,
+  todayIso,
+  weekdayName,
+} from '@/domain/dates';
 import { androidColourToHex } from '@/domain/colour';
 import {
   allWorkoutDates,
@@ -14,11 +21,12 @@ import {
 } from '@/db/repo/workouts';
 import { setWorkoutComment } from '@/db/repo/comments';
 import { HomeScreenCategoryVisibility, HomeScreenSetLimitType } from '@/db/constants';
-import { formatSet, weightUnitFor } from '@/ui/format';
+import { weightUnitFor } from '@/ui/format';
 import { workoutToText } from '@/domain/share';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button, IconButton } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
+import { SetValues } from '@/ui/components/SetValues';
 import { MenuButton } from '@/ui/components/Menu';
 import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
 import { DatePickerDialog } from '@/ui/components/DatePickerDialog';
@@ -71,6 +79,7 @@ export function HomeScreen() {
 
   const previousWorkoutDate = useMemo(() => [...dates].reverse().find((d) => d < date), [dates, date]);
   const totalSets = workout.exercises.reduce((n, e) => n + e.sets.length, 0);
+  const isToday = date === todayIso();
 
   const openCopyFrom = (iso: string) => {
     setCopySource(getWorkout(db, iso));
@@ -139,9 +148,7 @@ export function HomeScreen() {
         />
       ) : (
         <TopBar
-          title={relativeDays(date)}
-          subtitle={formatLongDate(date)}
-          onTitleClick={() => goTo(todayIso())}
+          title="WorkoutNotes"
           primary
           actions={
             <>
@@ -162,14 +169,16 @@ export function HomeScreen() {
       )}
       <div className="home-nav">
         <IconButton icon="chevronLeft" label="Previous day" primary onClick={() => step(-1)} />
-        <div className="home-nav__date">
+        <button className="home-nav__date" onClick={() => goTo(todayIso())} aria-label="Go to today">
           <div className="home-nav__title">{weekdayName(date)}</div>
           <div className="home-nav__sub">
+            {isToday && 'Today · '}
+            {formatShortDate(date)} ·{' '}
             {workout.exercises.length
               ? `${plural(workout.exercises.length, 'exercise')} · ${plural(totalSets, 'set')}`
               : 'No workout'}
           </div>
-        </div>
+        </button>
         <IconButton icon="chevronRight" label="Next day" primary onClick={() => step(1)} />
       </div>
       <div className="screen__content">
@@ -250,11 +259,19 @@ export function HomeScreen() {
                             key={s.id}
                             className={s.isComplete && settings.markSetsComplete ? 'faint' : undefined}
                           >
-                            <span>{formatSet(s, we.exercise.typeId, wu, settings)}</span>
-                            {s.isPersonalRecord && settings.trackPersonalRecords && (
-                              <Icon name="trophy" size={15} className="trophy" />
-                            )}
-                            {s.comment && <Icon name="comment" size={15} className="faint" />}
+                            <SetValues
+                              set={s}
+                              typeId={we.exercise.typeId}
+                              weightUnit={wu}
+                              settings={settings}
+                              small
+                            />
+                            <span className="exercise-card__set-icons">
+                              {s.isPersonalRecord && settings.trackPersonalRecords && (
+                                <Icon name="trophy" size={15} className="trophy" />
+                              )}
+                              {s.comment && <Icon name="comment" size={15} className="faint" />}
+                            </span>
                           </li>
                         ))}
                       </ul>

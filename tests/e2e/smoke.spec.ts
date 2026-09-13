@@ -28,13 +28,17 @@ test('logs a set and keeps it after a reload', async ({ page }) => {
   await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
   await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
   await page.getByTestId('save-set').click();
-  await expect(page.getByTestId('set-list')).toContainText('100 kg × 5 reps');
+  await expect(
+    page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }),
+  ).toBeVisible();
   // The trophy shows because it is the first (record) set.
   await expect(page.getByRole('button', { name: 'Personal record' })).toBeVisible();
   // Wait for the debounced persist, then reload.
   await page.waitForTimeout(1200);
   await page.reload();
-  await expect(page.getByTestId('set-list')).toContainText('100 kg × 5 reps', { timeout: 30_000 });
+  await expect(
+    page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }),
+  ).toBeVisible({ timeout: 30_000 });
   // Home screen shows the exercise.
   await page.getByRole('button', { name: 'Navigation panel' }).click();
   await page.getByRole('button', { name: 'Home' }).click();
@@ -56,7 +60,7 @@ test('restores a FitNotes backup and exports one', async ({ page }) => {
   // The restored workout of 2026-09-08 is visible from the calendar.
   await page.goto('/#/workout/2026-09-08');
   await expect(page.getByText('Deload next week')).toBeVisible();
-  await expect(page.getByText('85 kg × 5 reps')).toBeVisible();
+  await expect(page.getByRole('button', { name: /85 kg × 5 reps/ })).toBeVisible();
 
   // Export produces a SQLite file with the FitNotes header.
   await page.goto('/#/settings');

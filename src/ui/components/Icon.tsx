@@ -95,3 +95,26 @@ export function Icon({
     </svg>
   );
 }
+
+/**
+ * App logo (same artwork as `public/icons/icon.svg`) shown at the left of every app bar. Colours
+ * come from `--logo-bg` / `--logo-fg`, which the top bar styles set so the badge reads on both the
+ * primary-coloured home bar and the plain bars, in both themes.
+ */
+export function AppLogo({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 100 100" aria-hidden="true" className="app-logo">
+      <rect width="100" height="100" rx="22" fill="var(--logo-bg, var(--color-primary))" />
+      <g
+        fill="var(--logo-fg, var(--color-on-primary))"
+        transform="translate(50 50) scale(0.86) translate(-50 -50)"
+      >
+        <rect x="22" y="46" width="56" height="8" rx="3" />
+        <rect x="22.5" y="29" width="9" height="42" rx="3" />
+        <rect x="32.5" y="35" width="7" height="30" rx="2.5" />
+        <rect x="68.5" y="29" width="9" height="42" rx="3" />
+        <rect x="60.5" y="35" width="7" height="30" rx="2.5" />
+      </g>
+    </svg>
+  );
+}

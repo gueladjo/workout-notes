@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { IconButton } from './Button';
-import type { IconName } from './Icon';
+import { AppLogo, type IconName } from './Icon';
 
 /**
- * App bar shared by every screen. `leading` defaults to a back button when `back` is set.
+ * App bar shared by every screen: leading button, app logo (as FitNotes shows on every screen),
+ * title and actions. `leading` defaults to a back button when `back` is set.
  */
 export function TopBar({
   title,
@@ -48,6 +49,7 @@ export function TopBar({
       ) : (
         <span style={{ width: 8 }} />
       )}
+      <AppLogo />
       {onTitleClick ? (
         <button className="topbar__title" onClick={onTitleClick} id={titleId} style={{ textAlign: 'left' }}>
           {title}

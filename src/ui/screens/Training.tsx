@@ -38,6 +38,7 @@ import { MenuButton } from '@/ui/components/Menu';
 import { Tabs } from '@/ui/components/Tabs';
 import { NumberField, formatNumber } from '@/ui/components/NumberField';
 import { Checkbox } from '@/ui/components/Toggle';
+import { SetValues } from '@/ui/components/SetValues';
 import { Dialog } from '@/ui/components/Dialog';
 import { useToast } from '@/ui/components/Toast';
 import { CommentDialog } from './Home';
@@ -316,6 +317,30 @@ function TrackTab({
             name="weight"
           />
         )}
+        {fields.includes('distance') && (
+          <NumberField
+            label="Distance"
+            value={values.distance}
+            onChange={(v) => set({ distance: v })}
+            step={settings.metric ? 0.5 : 0.25}
+            decimals={3}
+            name="distance"
+            trailing={
+              <select
+                className="select select--inline"
+                value={values.distanceUnit}
+                onChange={(e) => set({ distanceUnit: Number(e.target.value) })}
+                aria-label="Distance unit"
+              >
+                {ALL_DISTANCE_UNITS.map((u) => (
+                  <option key={u} value={u}>
+                    {distanceUnitShort(u)}
+                  </option>
+                ))}
+              </select>
+            }
+          />
+        )}
         {fields.includes('reps') && (
           <NumberField
             label="Reps"
@@ -327,39 +352,8 @@ function TrackTab({
             name="reps"
           />
         )}
+        {fields.includes('time') && <DurationField value={values.time} onChange={(v) => set({ time: v })} />}
       </div>
-      {(fields.includes('distance') || fields.includes('time')) && (
-        <div className="track-fields" style={{ paddingTop: 0 }}>
-          {fields.includes('distance') && (
-            <div className="numfield">
-              <NumberField
-                label="Distance"
-                value={values.distance}
-                onChange={(v) => set({ distance: v })}
-                step={settings.metric ? 0.5 : 0.25}
-                decimals={3}
-                name="distance"
-              />
-              <select
-                className="select"
-                style={{ minHeight: 36, padding: '4px 8px' }}
-                value={values.distanceUnit}
-                onChange={(e) => set({ distanceUnit: Number(e.target.value) })}
-                aria-label="Distance unit"
-              >
-                {ALL_DISTANCE_UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {distanceUnitShort(u)}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-          {fields.includes('time') && (
-            <DurationField value={values.time} onChange={(v) => set({ time: v })} />
-          )}
-        </div>
-      )}
       <div className="track-actions">
         {selectedId === null ? (
           <>
@@ -426,21 +420,28 @@ function TrackTab({
                   primary={!!s.comment}
                   onClick={() => setCommentSet(s)}
                 />
-                <button className="set-row__value" style={{ textAlign: 'left' }} onClick={() => select(s)}>
-                  <span className="set-row__index" style={{ display: 'inline-block', marginRight: 8 }}>
+                <span className="set-row__trophy">
+                  {s.isPersonalRecord && settings.trackPersonalRecords && (
+                    <IconButton
+                      icon="trophy"
+                      label="Personal record"
+                      small
+                      className="trophy"
+                      onClick={() => navigate(`/exercise/${exerciseId}/records?date=${date}&reps=${s.reps}`)}
+                    />
+                  )}
+                </span>
+                <button
+                  className="set-row__value"
+                  aria-label={`Set ${i + 1}: ${formatSet(s, exercise.typeId, wu, settings)}`}
+                  aria-pressed={s.id === selectedId}
+                  onClick={() => select(s)}
+                >
+                  <span className="set-row__index" aria-hidden="true">
                     {i + 1}
                   </span>
-                  {formatSet(s, exercise.typeId, wu, settings)}
+                  <SetValues set={s} typeId={exercise.typeId} weightUnit={wu} settings={settings} />
                 </button>
-                {s.isPersonalRecord && settings.trackPersonalRecords && (
-                  <IconButton
-                    icon="trophy"
-                    label="Personal record"
-                    small
-                    className="trophy"
-                    onClick={() => navigate(`/exercise/${exerciseId}/records?date=${date}&reps=${s.reps}`)}
-                  />
-                )}
               </div>
               {s.comment && <div className="set-row__comment">{s.comment}</div>}
             </div>
@@ -497,6 +498,9 @@ export function DurationField({ value, onChange }: { value: string; onChange: (v
   };
   return (
     <div className="numfield">
+      <div className="numfield__label">
+        <span>Time (h:mm:ss)</span>
+      </div>
       <div className="numfield__row">
         <button className="numfield__btn" onClick={() => adjust(-60)} aria-label="Decrease time">
           <Icon name="remove" />
@@ -514,7 +518,6 @@ export function DurationField({ value, onChange }: { value: string; onChange: (v
           <Icon name="add" />
         </button>
       </div>
-      <div className="numfield__label">Time (h:mm:ss)</div>
     </div>
   );
 }

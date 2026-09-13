@@ -164,7 +164,7 @@ h4 {
   min-width: 0;
   font-size: 18px;
   font-weight: 600;
-  padding: 0 6px;
+  padding: 0 6px 0 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -175,6 +175,19 @@ h4 {
   font-size: 12px;
   font-weight: 400;
   color: var(--color-text-muted);
+}
+
+.topbar .app-logo {
+  flex: none;
+  display: block;
+  margin-left: 4px;
+  --logo-bg: var(--color-primary);
+  --logo-fg: var(--color-on-primary);
+}
+
+.topbar--primary .app-logo {
+  --logo-bg: var(--color-on-primary);
+  --logo-fg: var(--color-primary);
 }
 
 .topbar__actions {
@@ -450,10 +463,10 @@ h4 {
 .set-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
+  gap: 6px;
+  padding: 6px 10px 6px 6px;
   border-bottom: 1px solid var(--color-divider);
-  min-height: 44px;
+  min-height: 52px;
   width: 100%;
   text-align: left;
   color: var(--color-text);
@@ -472,29 +485,75 @@ h4 {
 }
 
 .set-row__index {
-  width: 22px;
+  width: 28px;
+  flex: none;
   text-align: center;
-  font-size: 12px;
-  color: var(--color-text-faint);
+  font-size: 15px;
+  color: var(--color-text-muted);
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }
 
 .set-row__value {
   flex: 1;
-  font-variant-numeric: tabular-nums;
-  font-size: 16px;
-}
-
-.set-row__unit {
-  color: var(--color-text-muted);
-  font-size: 13px;
-  margin-left: 2px;
-}
-
-.set-row__icons {
+  min-width: 0;
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
+  padding-right: 8px;
+  min-height: 44px;
+  text-align: left;
+  color: inherit;
+}
+
+/* One column per value: big number, small unit ("100 kg   5 reps"). Columns share the row width
+   equally and are right-aligned so units line up from row to row. */
+.set-values {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: baseline;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-value {
+  flex: 1;
+  min-width: 0;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: flex-end;
+  gap: 4px;
+  white-space: nowrap;
+}
+
+.set-value__num {
+  font-size: 19px;
+  font-weight: 700;
+}
+
+.set-value__unit {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+}
+
+.set-values--small .set-value__num {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.set-values--small .set-value__unit {
+  font-size: 12px;
+}
+
+/* Fixed-width slot for the record trophy so rows without one keep the same column positions. */
+.set-row__trophy {
+  width: 36px;
+  flex: none;
+  display: flex;
+  justify-content: center;
 }
 
 .set-row__comment {
@@ -596,12 +655,28 @@ h4 {
 }
 
 .numfield__label {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 22px;
+  padding-bottom: 3px;
+  border-bottom: 2px solid var(--color-primary);
   font-size: 12px;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--color-text-muted);
+  color: var(--color-text);
+}
+
+.select--inline {
+  width: auto;
+  min-height: 28px;
+  padding: 2px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
 }
 
 .toggle {
@@ -1068,6 +1143,13 @@ h4 {
   text-align: center;
   flex: 1;
   min-width: 0;
+  padding: 4px 0;
+  border-radius: var(--radius-sm);
+  color: var(--color-text);
+}
+
+.home-nav__date:active {
+  background: var(--color-surface-2);
 }
 
 .home-nav__title {
@@ -1134,7 +1216,16 @@ h4 {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 0;
+  padding: 3px 0;
+}
+
+.exercise-card__set-icons {
+  width: 40px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
 }
 
 .exercise-card__more {
@@ -1248,14 +1339,21 @@ h4 {
 /* ---------- Training screen ---------- */
 .track-fields {
   display: flex;
-  gap: 10px;
-  padding: 12px 12px 6px;
+  flex-direction: column;
+  gap: 14px;
+  padding: 12px 12px 8px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .track-actions {
   display: flex;
   gap: 10px;
-  padding: 6px 12px 12px;
+  padding: 8px 12px 12px;
+  max-width: 480px;
+  margin: 0 auto;
+  width: 100%;
 }
 
 .track-actions .btn {
