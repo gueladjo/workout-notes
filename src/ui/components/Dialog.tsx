@@ -3,6 +3,8 @@ import { Button } from './Button';
 
 /**
  * Modal dialog on top of the native <dialog> element (focus trapping, Escape, backdrop for free).
+ * `holo` gives it FitNotes' (Android Holo) look: light-blue title over an accent rule and the
+ * actions as full-width buttons split by a divider at the bottom.
  */
 export function Dialog({
   open,
@@ -12,6 +14,7 @@ export function Dialog({
   actions,
   wide,
   flush,
+  holo,
 }: {
   open: boolean;
   onClose: () => void;
@@ -20,6 +23,7 @@ export function Dialog({
   actions?: ReactNode;
   wide?: boolean;
   flush?: boolean;
+  holo?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   // Layout effect so the dialog is open (and laid out) before its children's effects run.
@@ -33,7 +37,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className={`dialog${wide ? ' dialog--wide' : ''}`}
+      className={`dialog${wide ? ' dialog--wide' : ''}${holo ? ' dialog--holo' : ''}`}
       onClose={onClose}
       onCancel={(e) => {
         e.preventDefault();

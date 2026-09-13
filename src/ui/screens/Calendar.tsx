@@ -253,25 +253,25 @@ export function CalendarScreen() {
         }}
       />
 
-      {/* Workout popup */}
+      {/* Workout popup: FitNotes' date dialog with Cancel / Go To. */}
       <Dialog
         open={!copyMode && selected !== null}
         onClose={() => setSelected(null)}
         title={selected ? formatLongDate(selected) : ''}
         flush
-        wide
+        holo
         actions={
           <>
+            <Button variant="text" onClick={() => setSelected(null)}>
+              Cancel
+            </Button>
             <Button
               variant="text"
               onClick={() => {
                 if (selected) navigate(selected === todayIso() ? '/' : `/workout/${selected}`);
               }}
             >
-              Open
-            </Button>
-            <Button variant="text" onClick={() => setSelected(null)}>
-              Close
+              Go To
             </Button>
           </>
         }
