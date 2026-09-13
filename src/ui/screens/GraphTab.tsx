@@ -129,7 +129,7 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
   const needsReps = options.find((o) => o.id === graph)?.needsReps;
 
   return (
-    <div className="screen__content">
+    <div className="screen__content screen__content--flush graph-tab">
       <div className="row" style={{ padding: '10px 12px 0', gap: 6 }}>
         <select
           className="select"
@@ -204,54 +204,53 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
           </span>
         )}
       </div>
-      <div className="container" style={{ paddingTop: 0 }}>
-        <LineChart
-          points={points}
-          selectedIndex={selected}
-          onSelect={setSelected}
-          showPoints={settings.graphShowPoints}
-          trend={trend}
-          yFromZero={settings.graphStartAtZero}
-          formatY={(v) => fmt(v, 0)}
-        />
-        {series.length > 0 && (
-          <div className="point-details">
-            <IconButton
-              icon="chevronLeft"
-              label="Previous point"
-              onClick={() => setSelected((i) => (i === null ? series.length - 1 : Math.max(0, i - 1)))}
-            />
-            <button
-              className="point-details__body"
-              onClick={() => sel && setViewDate(sel.date)}
-              disabled={!sel}
-            >
-              {sel ? (
-                <>
-                  <div className="point-details__value">{formatValue(displayValue(sel.value))}</div>
-                  {sel.set && (
-                    <div className="muted" style={{ fontSize: 13 }}>
-                      {formatSet(sel.set, exercise.typeId, wu, settings)}
-                    </div>
-                  )}
+      <LineChart
+        points={points}
+        selectedIndex={selected}
+        onSelect={setSelected}
+        showPoints={settings.graphShowPoints}
+        trend={trend}
+        yFromZero={settings.graphStartAtZero}
+        formatY={(v) => fmt(v, 0)}
+        fill
+      />
+      {series.length > 0 && (
+        <div className="point-details graph-tab__details">
+          <IconButton
+            icon="chevronLeft"
+            label="Previous point"
+            onClick={() => setSelected((i) => (i === null ? series.length - 1 : Math.max(0, i - 1)))}
+          />
+          <button
+            className="point-details__body"
+            onClick={() => sel && setViewDate(sel.date)}
+            disabled={!sel}
+          >
+            {sel ? (
+              <>
+                <div className="point-details__value">{formatValue(displayValue(sel.value))}</div>
+                {sel.set && (
                   <div className="muted" style={{ fontSize: 13 }}>
-                    {formatLongDate(sel.date)}
+                    {formatSet(sel.set, exercise.typeId, wu, settings)}
                   </div>
-                </>
-              ) : (
-                <div className="muted">
-                  Tap a point for details · {series.length} workout{series.length === 1 ? '' : 's'}
+                )}
+                <div className="muted" style={{ fontSize: 13 }}>
+                  {formatLongDate(sel.date)}
                 </div>
-              )}
-            </button>
-            <IconButton
-              icon="chevronRight"
-              label="Next point"
-              onClick={() => setSelected((i) => (i === null ? 0 : Math.min(series.length - 1, i + 1)))}
-            />
-          </div>
-        )}
-      </div>
+              </>
+            ) : (
+              <div className="muted">
+                Tap a point for details · {series.length} workout{series.length === 1 ? '' : 's'}
+              </div>
+            )}
+          </button>
+          <IconButton
+            icon="chevronRight"
+            label="Next point"
+            onClick={() => setSelected((i) => (i === null ? 0 : Math.min(series.length - 1, i + 1)))}
+          />
+        </div>
+      )}
       <Dialog
         open={viewDate !== null}
         onClose={() => setViewDate(null)}

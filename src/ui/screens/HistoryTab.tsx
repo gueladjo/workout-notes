@@ -28,6 +28,7 @@ import {
 } from '@/ui/components/SetSelectionDialog';
 import { useToast } from '@/ui/components/Toast';
 import { EmptyState } from '@/ui/components/EmptyState';
+import { SetValues } from '@/ui/components/SetValues';
 
 /** Training History tab: every past workout of the exercise, with quick stats and edit/copy actions. */
 export function HistoryTab({
@@ -82,29 +83,32 @@ export function HistoryTab({
   return (
     <div className="screen__content">
       <div className="container">
-        <div className="list">
-          {history.map((h) => (
-            <div key={h.date}>
-              <button className="history-date" onClick={() => setDayDialog(h.date)}>
-                <span style={{ flex: 1 }}>{formatLongDate(h.date)}</span>
-                {h.date === date && <span className="chip chip--active">Current</span>}
-              </button>
-              {h.sets.map((s, i) => (
-                <div key={s.id}>
-                  <button className="set-row" onClick={() => setSetDialog(s)}>
-                    <span className="set-row__index">{i + 1}</span>
-                    <span className="set-row__value">{formatSet(s, exercise.typeId, wu, settings)}</span>
-                    {s.comment && <Icon name="comment" size={18} className="faint" />}
+        {history.map((h) => (
+          <div key={h.date}>
+            <button className="history-day" onClick={() => setDayDialog(h.date)}>
+              <span style={{ flex: 1 }}>{formatLongDate(h.date)}</span>
+              {h.date === date && <span className="chip chip--active">Current</span>}
+            </button>
+            {h.sets.map((s, i) => (
+              <div key={s.id}>
+                <button
+                  className="set-row set-row--history"
+                  aria-label={`Set ${i + 1}: ${formatSet(s, exercise.typeId, wu, settings)}`}
+                  onClick={() => setSetDialog(s)}
+                >
+                  <span className="set-row__trophy" aria-hidden="true">
                     {s.isPersonalRecord && settings.trackPersonalRecords && (
                       <Icon name="trophy" size={18} className="trophy" />
                     )}
-                  </button>
-                  {s.comment && <div className="set-row__comment">{s.comment}</div>}
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
+                    {s.comment && <Icon name="comment" size={18} className="faint" />}
+                  </span>
+                  <SetValues set={s} typeId={exercise.typeId} weightUnit={wu} settings={settings} />
+                </button>
+                {s.comment && <div className="set-row__comment">{s.comment}</div>}
+              </div>
+            ))}
+          </div>
+        ))}
       </div>
 
       {/* Workout-day quick stats */}

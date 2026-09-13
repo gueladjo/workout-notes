@@ -550,10 +550,17 @@ h4 {
 
 /* Fixed-width slot for the record trophy so rows without one keep the same column positions. */
 .set-row__trophy {
-  width: 36px;
+  min-width: 36px;
   flex: none;
   display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 2px;
+}
+
+.set-row--history {
+  padding: 4px 14px 4px 10px;
+  min-height: 46px;
 }
 
 .set-row__comment {
@@ -615,11 +622,12 @@ h4 {
 .numfield__row {
   display: flex;
   align-items: stretch;
-  gap: 6px;
+  justify-content: center;
+  gap: 8px;
 }
 
 .numfield__btn {
-  width: 48px;
+  width: 64px;
   min-height: 48px;
   border-radius: var(--radius-sm);
   background: var(--color-surface-2);
@@ -636,7 +644,7 @@ h4 {
 }
 
 .numfield__input {
-  flex: 1;
+  flex: 0 1 150px;
   min-width: 0;
   text-align: center;
   font-size: 22px;
@@ -1295,6 +1303,17 @@ h4 {
   background: var(--color-surface);
   border-radius: var(--radius);
   touch-action: manipulation;
+  overflow: hidden;
+}
+
+.chart__svg {
+  display: block;
+}
+
+.chart--fill {
+  flex: 1;
+  min-height: 220px;
+  border-radius: 0;
 }
 
 .chart--empty {
@@ -1314,22 +1333,26 @@ h4 {
   fill: var(--color-text-faint);
 }
 
+.chart__area {
+  fill: var(--color-primary);
+  opacity: 0.14;
+}
+
 .chart__line {
   fill: none;
   stroke: var(--color-primary);
-  stroke-width: 2.5;
+  stroke-width: 1.75;
   stroke-linejoin: round;
   stroke-linecap: round;
 }
 
 .chart__point {
-  fill: var(--color-surface);
-  stroke: var(--color-primary);
-  stroke-width: 2;
+  fill: var(--color-primary);
 }
 
 .chart__point--selected {
-  fill: var(--color-primary);
+  stroke: var(--color-surface);
+  stroke-width: 2;
 }
 
 .chart__trend {
@@ -1349,6 +1372,17 @@ h4 {
   align-items: center;
   gap: 6px;
   margin-top: 8px;
+}
+
+/* Graph tab: the chart fills the space between the controls and the point details. */
+.graph-tab {
+  display: flex;
+  flex-direction: column;
+}
+
+.graph-tab__details {
+  flex: none;
+  margin: 8px 12px calc(var(--safe-bottom) + 8px);
 }
 
 .point-details__body {
@@ -1387,6 +1421,32 @@ h4 {
 
 .track-actions .btn {
   flex: 1;
+}
+
+/* Exercise history: FitNotes-style day header, uppercase with a primary underline. */
+.history-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  margin: 12px 0 2px;
+  padding: 0 4px 4px;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  text-align: left;
+  color: var(--color-text);
+  border-bottom: 2px solid var(--color-primary);
+}
+
+.history-day:first-child {
+  margin-top: 0;
+}
+
+.history-day .chip {
+  text-transform: none;
+  letter-spacing: normal;
 }
 
 .history-date {
