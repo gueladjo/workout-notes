@@ -4,7 +4,7 @@ The UI follows the structure of FitNotes' help pages (Home Screen, Workout Track
 Progress Tracking, Routines, Calendar, Body Tracker, Settings) and its look: black app bars,
 tab strips and date bar with white text, light-blue accent rules (tab indicator, Track field
 labels, History day headers, the rule under each exercise name on Home), flat white cards on a
-light grey ground with thin separators between sets, green Save / blue Clear buttons, app logo at
+light grey ground (thin separators between sets on the Track tab only), green Save / blue Clear buttons, app logo at
 the left of every app bar. Colours are tokens in `src/ui/styles.css` (`--color-bar`,
 `--color-accent`, `--color-primary`, `--color-success`); the dark theme keeps the same bars and
 accents over dark surfaces.

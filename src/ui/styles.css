@@ -1283,22 +1283,18 @@ h4 {
 
 .exercise-card__sets {
   list-style: none;
-  padding: 0 14px;
+  padding: 4px 14px;
   margin: 0;
   color: var(--color-text-muted);
   font-variant-numeric: tabular-nums;
 }
 
+/* No rules between sets here: FitNotes' home cards list them plainly (the Track tab has them). */
 .exercise-card__sets li {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--color-divider);
-}
-
-.exercise-card__sets li:last-child {
-  border-bottom: none;
+  padding: 6px 0;
 }
 
 .exercise-card__set-icons {
