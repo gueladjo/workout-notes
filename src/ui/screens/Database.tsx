@@ -12,7 +12,8 @@ export function DatabaseScreen() {
       columns: columnNames(d.raw, name),
       known: name in TABLES,
     }));
-    return { tables, version: Number(d.scalar('PRAGMA user_version')), size: d.export().byteLength };
+    const size = Number(d.scalar('PRAGMA page_count')) * Number(d.scalar('PRAGMA page_size'));
+    return { tables, version: Number(d.scalar('PRAGMA user_version')), size };
   });
   return (
     <div className="screen">
