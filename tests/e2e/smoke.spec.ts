@@ -141,6 +141,31 @@ test('Copy Previous Workout picks the workout on the calendar first', async ({ p
   await expect(page.getByRole('button', { name: /Flat Barbell Bench Press 85 kg × 5 reps/ })).toBeVisible();
 });
 
+test('a second tab takes the database over and the first one stops', async ({ page, context }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  // Open a second tab straight away: the first must flush its (still debounced) set and stop.
+  const second = await context.newPage();
+  await second.goto('/');
+  await expect(page.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
+  await expect(second.getByRole('button', { name: 'Flat Barbell Bench Press 100 kg × 5 reps' })).toBeVisible({
+    timeout: 30_000,
+  });
+  // Taking it back reloads the first tab where it was (the Track tab) and stops the second one.
+  await page.getByRole('button', { name: 'Use WorkoutNotes here' }).click();
+  await expect(
+    page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }),
+  ).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(second.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
+});
+
 test('works offline after the first load (service worker)', async ({ page, context }) => {
   await openApp(page);
   await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, null, { timeout: 30_000 });

@@ -41,7 +41,8 @@ src/
     repo/            one module per concept; the only place SQL is written
   domain/            pure functions: units, dates, records (Brzycki/PRs), graphs, stats, colours
   backup/            restore/export of .fitnotes, CSV export, file download/share helpers
-  app/               bootstrap (open db), start-up recovery, React contexts/hooks, routes, return-to protocol
+  app/               bootstrap (open db), single-instance lock, start-up recovery, update hand-off,
+                     React contexts/hooks, routes, return-to protocol
   ui/
     components/      TopBar, Menu, Dialog, Tabs, NumberField, MonthGrid, LineChart, ...
     screens/         one file per screen (Home, ExerciseList, Training, Calendar, Routines, ...)

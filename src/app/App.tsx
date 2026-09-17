@@ -3,6 +3,7 @@ import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { bootstrap, type BootResult } from './bootstrap';
 import { UnreadableDatabaseError } from './recovery';
 import { RecoveryScreen } from '@/ui/screens/Recovery';
+import { TakenOverScreen, WaitingForInstanceScreen } from '@/ui/screens/Instance';
 import { DbProvider, useQuery } from './db-context';
 import { SqlProvider } from './sql-context';
 import { ToastProvider } from '@/ui/components/Toast';
@@ -25,10 +26,21 @@ export function App() {
   const [boot, setBoot] = useState<BootResult | null>(null);
   const [failure, setFailure] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
+  const [waiting, setWaiting] = useState(false);
+  const [takenOver, setTakenOver] = useState<{ unsaved: boolean } | null>(null);
   useEffect(() => {
-    bootstrap().then(setBoot).catch(setFailure);
+    bootstrap({
+      onWaiting: () => setWaiting(true),
+      onTakenOver: (unsaved) => setTakenOver({ unsaved }),
+    })
+      .then((result) => {
+        setWaiting(false);
+        setBoot(result);
+      })
+      .catch(setFailure);
   }, [attempt]);
 
+  if (takenOver) return <TakenOverScreen unsaved={takenOver.unsaved} />;
   if (failure instanceof UnreadableDatabaseError) {
     return (
       <RecoveryScreen
@@ -49,6 +61,7 @@ export function App() {
     );
   }
   if (!boot) {
+    if (waiting) return <WaitingForInstanceScreen />;
     return (
       <div className="screen">
         <div className="spinner" aria-label="Loading" />

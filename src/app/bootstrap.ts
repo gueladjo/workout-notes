@@ -9,6 +9,7 @@ import { AppDatabase } from '@/db/store';
 import { MAIN_KEY, readBlob, requestPersistentStorage, writeBlob } from '@/db/persistence';
 import { defaultMetric, openStoredDatabase } from './recovery';
 import { reloadIfUpdatePending } from './update';
+import { acquireInstanceLock } from './instance';
 
 export interface BootResult {
   app: AppDatabase;
@@ -17,12 +18,23 @@ export interface BootResult {
   fresh: boolean;
 }
 
+export interface BootOptions {
+  /** Another instance holds the database and is still handing it over. */
+  onWaiting?: () => void;
+  /** Another instance took over; this one has flushed (or failed to) and must stop. */
+  onTakenOver?: (unsaved: boolean) => void;
+}
+
 /**
- * Opens the app database. Rejects with `UnreadableDatabaseError` (see `recovery.ts`) when the stored
- * bytes cannot be opened or reconciled, so the app can offer recovery instead of a dead end.
+ * Opens the app database once this is the only running instance (see `instance.ts`). Rejects with
+ * `UnreadableDatabaseError` (see `recovery.ts`) when the stored bytes cannot be opened or
+ * reconciled, so the app can offer recovery instead of a dead end.
  */
-export async function bootstrap(): Promise<BootResult> {
-  const SQL = await loadSqlJs(() => sqlWasmUrl);
+export async function bootstrap(options: BootOptions = {}): Promise<BootResult> {
+  const [SQL, lock] = await Promise.all([
+    loadSqlJs(() => sqlWasmUrl),
+    acquireInstanceLock(() => options.onWaiting?.()),
+  ]);
   const saved = await readBlob(MAIN_KEY);
   const db = saved ? openStoredDatabase(SQL, saved) : createEmptyDatabase(SQL, { metric: defaultMetric() });
   if (!saved) ensureSchema(db);
@@ -41,5 +53,9 @@ export async function bootstrap(): Promise<BootResult> {
     flush().then(reloadIfUpdatePending, () => {});
   });
   window.addEventListener('pagehide', () => void flush().catch(() => {}));
+  lock.onTakeover(async () => {
+    await flush().catch(() => {});
+    options.onTakenOver?.(app.hasUnsavedChanges);
+  });
   return { app, SQL, fresh: !saved };
 }
