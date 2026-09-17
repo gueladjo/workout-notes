@@ -125,6 +125,9 @@ describe('sets and workouts', () => {
     expect(after.map((s) => s.metricWeight)).toEqual([80, 60, 80]);
     expect(after.map((s) => s.id)).toEqual(newIds);
     expect(after[2]!.comment).toBe('Felt strong');
+    // Re-ordering the first exercise's sets must not move it behind the others.
+    expect(getWorkout(app, '2026-09-01').exercises.map((e) => e.exercise.id)).toEqual([BENCH, SQUAT]);
+    expect(listSets(app, SQUAT, '2026-09-01').map((s) => s.metricWeight)).toEqual([100]);
     reorderWorkoutExercises(app, '2026-09-01', [SQUAT, BENCH]);
     expect(getWorkout(app, '2026-09-01').exercises.map((e) => e.exercise.id)).toEqual([SQUAT, BENCH]);
     expect(getWorkout(app, '2026-09-01').exercises[1]!.sets.find((s) => s.comment)?.comment).toBe(

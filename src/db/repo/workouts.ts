@@ -261,11 +261,25 @@ export function deleteWorkoutExercises(db: AppDatabase, date: string, exerciseId
 
 /**
  * Re-order the sets of one exercise on one date. Set order is id order, so rows are re-inserted in
- * the new order (ids change) and comments are re-pointed. Returns the new ids, in the same order,
- * so a caller can keep a set selected across the move.
+ * the new order (ids change) and comments are re-pointed. Exercise order within the workout is
+ * MIN(_id) per exercise, so every set of the date is re-inserted in the current exercise order to
+ * keep the exercise where it is. Returns the new ids of `orderedSetIds`, in the same order, so a
+ * caller can keep a set selected across the move.
  */
 export function reorderSets(db: AppDatabase, orderedSetIds: number[]): number[] {
-  return db.mutate(() => reinsertSets(db, orderedSetIds));
+  return db.mutate(() => {
+    const first = orderedSetIds[0];
+    const target = first === undefined ? undefined : getSet(db, first);
+    if (!target) return [];
+    const all: number[] = [];
+    for (const exerciseId of workoutExerciseIds(db, target.date)) {
+      if (exerciseId === target.exerciseId) all.push(...orderedSetIds);
+      else for (const s of listSets(db, exerciseId, target.date)) all.push(s.id);
+    }
+    const newIds = reinsertSets(db, all);
+    const start = all.indexOf(orderedSetIds[0]!);
+    return newIds.slice(start, start + orderedSetIds.length);
+  });
 }
 
 /** Re-order the exercises of a workout by re-inserting their sets in the new exercise order. */
