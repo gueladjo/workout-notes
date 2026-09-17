@@ -8,6 +8,7 @@ import { createEmptyDatabase, ensureSchema } from '@/db/schema';
 import { AppDatabase } from '@/db/store';
 import { MAIN_KEY, readBlob, requestPersistentStorage, writeBlob } from '@/db/persistence';
 import { defaultMetric, openStoredDatabase } from './recovery';
+import { reloadIfUpdatePending } from './update';
 
 export interface BootResult {
   app: AppDatabase;
@@ -33,12 +34,12 @@ export async function bootstrap(): Promise<BootResult> {
   void requestPersistentStorage();
 
   // Flush pending changes when the page is hidden or unloaded (mobile browsers kill tabs freely).
-  const flush = () => {
-    if (app.hasUnsavedChanges) void app.flush().catch(() => {});
-  };
+  // A downloaded update is applied once the app is hidden and everything is saved.
+  const flush = () => (app.hasUnsavedChanges ? app.flush() : Promise.resolve());
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') flush();
+    if (document.visibilityState !== 'hidden') return;
+    flush().then(reloadIfUpdatePending, () => {});
   });
-  window.addEventListener('pagehide', flush);
+  window.addEventListener('pagehide', () => void flush().catch(() => {}));
   return { app, SQL, fresh: !saved };
 }
