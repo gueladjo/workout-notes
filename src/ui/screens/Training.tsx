@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
-import { useSettings } from '@/app/hooks';
+import { useRouteDate, useSettings } from '@/app/hooks';
 import { useKeepScreenOn } from '@/app/wake-lock';
 import { getExercise } from '@/db/repo/exercises';
 import {
@@ -59,7 +59,7 @@ export function TrainingScreen() {
   const navigate = useNavigate();
   const params = useParams();
   const [search, setSearch] = useSearchParams();
-  const date = params.date!;
+  const date = useRouteDate();
   const exerciseId = Number(params.exerciseId);
   const exercise = useQuery((d) => getExercise(d, exerciseId), [exerciseId]);
   const tab = (search.get('tab') as Tab) || 'track';
