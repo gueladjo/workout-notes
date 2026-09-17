@@ -73,6 +73,24 @@ export function backupFileName(now = new Date()): string {
   return `FitNotes_Backup_${now.getFullYear()}_${p(now.getMonth() + 1)}_${p(now.getDate())}_${p(now.getHours())}_${p(now.getMinutes())}_${p(now.getSeconds())}.fitnotes`;
 }
 
+/**
+ * Build the backup to save or share. Flushing first keeps IndexedDB in step with the file, but a
+ * failing flush must not block the export: the in-memory database is intact and the backup is the
+ * user's way out of a broken store. `persistError` tells the caller to say so.
+ */
+export async function prepareBackup(
+  app: AppDatabase,
+  now = new Date(),
+): Promise<{ blob: Blob; name: string; persistError: string | null }> {
+  let persistError: string | null = null;
+  try {
+    await app.flush();
+  } catch (err) {
+    persistError = err instanceof Error ? err.message : String(err);
+  }
+  return { blob: exportBackupBlob(app), name: backupFileName(now), persistError };
+}
+
 export function exportBackupBlob(app: AppDatabase): Blob {
   const bytes = app.export();
   return new Blob(

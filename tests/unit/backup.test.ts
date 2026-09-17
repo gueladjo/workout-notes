@@ -3,7 +3,14 @@ import 'fake-indexeddb/auto';
 import { loadSqlJs, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
-import { BackupError, backupFileName, openBackup, restoreBackup, summarize } from '../../src/backup/fitnotes';
+import {
+  BackupError,
+  backupFileName,
+  openBackup,
+  prepareBackup,
+  restoreBackup,
+  summarize,
+} from '../../src/backup/fitnotes';
 import { seedSampleWorkouts } from '../helpers/sample';
 import { listSnapshots, readBlob, writeBlob, saveSnapshot, MAX_SNAPSHOTS } from '../../src/db/persistence';
 import { workoutCsv } from '../../src/backup/csv';
@@ -25,6 +32,21 @@ describe('backup round trip', () => {
     expect(opened.schema).toEqual({ createdTables: [], addedColumns: [], migrations: [] });
     const again = new AppDatabase(opened.db).export();
     expect(again).toEqual(bytes);
+  });
+
+  it('still produces a backup when saving to IndexedDB fails', async () => {
+    const app = new AppDatabase(createEmptyDatabase(SQL), {
+      persist: async () => {
+        throw new Error('quota');
+      },
+    });
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    const { blob, name, persistError } = await prepareBackup(app, new Date(2026, 8, 12, 18, 30, 0));
+    expect(persistError).toBe('quota');
+    expect(name).toBe('FitNotes_Backup_2026_09_12_18_30_00.fitnotes');
+    const reopened = openBackup(SQL, new Uint8Array(await blob.arrayBuffer()));
+    expect(new AppDatabase(reopened.db).scalar('SELECT COUNT(*) FROM Routine')).toBe(1);
+    expect(app.hasUnsavedChanges).toBe(true);
   });
 
   it('restores into the live database with a rollback snapshot', async () => {

@@ -8,14 +8,7 @@ import { recalculatePersonalRecords } from '@/db/repo/records';
 import { deleteWorkoutHistory, exercisesWithHistory } from '@/db/repo/workouts';
 import { AppTheme, HomeScreenCategoryVisibility, HomeScreenSetLimitType } from '@/db/constants';
 import { listSnapshots, readBlob, saveSnapshot, storageStatus, type StoredFileMeta } from '@/db/persistence';
-import {
-  BackupError,
-  backupFileName,
-  exportBackupBlob,
-  restoreBackup,
-  summarize,
-  type RestoreSummary,
-} from '@/backup/fitnotes';
+import { BackupError, prepareBackup, restoreBackup, summarize, type RestoreSummary } from '@/backup/fitnotes';
 import { pickFile, shareOrDownload, downloadBlob } from '@/backup/download';
 import { bodyTrackerCsv, csvFileName, workoutCsv } from '@/backup/csv';
 import { ensureSchema } from '@/db/schema';
@@ -52,15 +45,18 @@ export function SettingsScreen() {
   const exportBackup = async (mode: 'save' | 'share') => {
     setBusy('Preparing backup…');
     try {
-      await db.flush();
-      const blob = exportBackupBlob(db);
-      const name = backupFileName();
+      const { blob, name, persistError } = await prepareBackup(db);
       const result =
         mode === 'share'
           ? await shareOrDownload(blob, name, 'FitNotes backup')
           : (downloadBlob(blob, name), 'downloaded');
       setLastBackup(markBackupSaved());
-      toast(result === 'shared' ? 'Backup shared' : `Saved ${name}`);
+      toast(
+        (result === 'shared' ? 'Backup shared' : `Saved ${name}`) +
+          (persistError ? '. Saving to this device failed; the backup has everything.' : ''),
+      );
+    } catch (err) {
+      toast(`Backup failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(null);
     }
