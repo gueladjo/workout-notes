@@ -8,6 +8,7 @@ import {
   type ExerciseTypeId,
 } from '../constants';
 import { recalculatePersonalRecords } from './records';
+import { deleteEmptyGroups } from './groups';
 
 export interface ExerciseRow {
   _id: number;
@@ -191,6 +192,7 @@ export function deleteExercise(db: AppDatabase, id: number): void {
     );
     db.run('DELETE FROM RoutineSectionExercise WHERE exercise_id = ?', [id]);
     db.run('DELETE FROM WorkoutGroupExercise WHERE exercise_id = ?', [id]);
+    deleteEmptyGroups(db);
     db.run('DELETE FROM ExerciseGraphFavourite WHERE exercise_id = ?', [id]);
     db.run('DELETE FROM Barbell WHERE exercise_id = ?', [id]);
     db.run('DELETE FROM exercise WHERE _id = ?', [id]);

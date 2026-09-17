@@ -28,7 +28,7 @@ import {
   updateExercise,
 } from '../../src/db/repo/exercises';
 import { createCategory, deleteCategory, listCategories } from '../../src/db/repo/categories';
-import { createGroup, listGroups } from '../../src/db/repo/groups';
+import { createGroup, listGroups, nextGroupName } from '../../src/db/repo/groups';
 import { getSettings, updateSettings, DEFAULT_SETTINGS } from '../../src/db/repo/settings';
 import {
   addSection,
@@ -163,6 +163,52 @@ describe('sets and workouts', () => {
     expect(getWorkout(app, '2026-09-01').exercises[0]!.group?.id).toBe(gid);
     deleteWorkoutExercises(app, '2026-09-01', [SQUAT]);
     expect(listGroups(app, '2026-09-01')[0]!.exerciseIds).toEqual([BENCH]);
+  });
+
+  it('leaves no orphan group, membership or time rows behind', () => {
+    const group = (date: string, ids: number[]) =>
+      createGroup(app, { date, name: nextGroupName(app, date), colour: -1, exerciseIds: ids });
+    const { cycling } = sampleExerciseIds(app.raw);
+    // Deleting history for some exercises drops their membership where no sets remain.
+    group('2026-09-01', [BENCH, SQUAT]);
+    deleteWorkoutHistory(app, { exerciseIds: [SQUAT] });
+    expect(listGroups(app, '2026-09-01')[0]!.exerciseIds).toEqual([BENCH]);
+    expect(listGroups(app, '2026-09-08')).toHaveLength(0);
+    // Deleting an exercise removes the groups it leaves empty.
+    deleteExercise(app, BENCH);
+    expect(listGroups(app, '2026-09-01')).toHaveLength(0);
+    expect(nextGroupName(app, '2026-09-01')).toBe('Group 1');
+    // Merging workouts keeps one membership per exercise and one workout time per date.
+    const g4 = group('2026-09-04', [cycling]);
+    copySets(
+      app,
+      [
+        {
+          exerciseId: cycling,
+          metricWeight: 0,
+          reps: 0,
+          distanceMetres: 1000,
+          durationSeconds: 300,
+          unit: 3,
+        },
+      ],
+      '2026-09-12',
+    );
+    group('2026-09-12', [cycling]);
+    app.mutate(() => {
+      for (const d of ['2026-09-04', '2026-09-12'])
+        app.run('INSERT INTO WorkoutTime (workout_date, start_date_time, end_date_time) VALUES (?, ?, ?)', [
+          d,
+          `${d}T10:00:00`,
+          `${d}T11:00:00`,
+        ]);
+    });
+    moveWorkout(app, '2026-09-12', '2026-09-04');
+    const merged = listGroups(app, '2026-09-04');
+    expect(merged.map((g) => g.id)).toEqual([g4]);
+    expect(merged[0]!.exerciseIds).toEqual([cycling]);
+    expect(app.all('SELECT * FROM WorkoutTime')).toHaveLength(1);
+    expect(getWorkout(app, '2026-09-04').time?.start).toBe('2026-09-04T10:00:00');
   });
 });
 

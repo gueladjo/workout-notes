@@ -8,7 +8,7 @@ import type { TrainingSetWithComment, Workout, WorkoutExercise, WorkoutTime } fr
 import { CommentOwnerType } from '../constants';
 import { getExercise, toExercise, type ExerciseRow } from './exercises';
 import { recalculatePersonalRecords } from './records';
-import { listGroups } from './groups';
+import { deleteEmptyGroups, listGroups } from './groups';
 import { getWorkoutComment } from './comments';
 
 export interface SetRow {
@@ -238,10 +238,7 @@ function cleanupGroupMembership(db: AppDatabase, date: string, exerciseId: numbe
   );
   if (remaining > 0) return;
   db.run('DELETE FROM WorkoutGroupExercise WHERE date = ? AND exercise_id = ?', [date, exerciseId]);
-  db.run(
-    'DELETE FROM WorkoutGroup WHERE date = ? AND _id NOT IN (SELECT workout_group_id FROM WorkoutGroupExercise WHERE date = ?)',
-    [date, date],
-  );
+  deleteEmptyGroups(db, date);
 }
 
 /** Delete all sets of the given exercises on a date. */
@@ -331,7 +328,11 @@ function reinsertSets(db: AppDatabase, orderedSetIds: number[]): number[] {
   return newIds;
 }
 
-/** Move every part of a workout to another date (merging into whatever is already there). */
+/**
+ * Move every part of a workout to another date, merging into whatever is already there. Where the
+ * target already has a workout comment or workout time, the target's row wins and the moved one is
+ * dropped; an exercise already in a group on the target date keeps that group.
+ */
 export function moveWorkout(db: AppDatabase, fromDate: string, toDate: string): void {
   if (fromDate === toDate) return;
   db.mutate(() => {
@@ -343,7 +344,15 @@ export function moveWorkout(db: AppDatabase, fromDate: string, toDate: string): 
     ]);
     db.run('UPDATE WorkoutGroup SET date = ? WHERE date = ?', [toDate, fromDate]);
     db.run('UPDATE WorkoutGroupExercise SET date = ? WHERE date = ?', [toDate, fromDate]);
-    db.run('UPDATE WorkoutTime SET workout_date = ? WHERE workout_date = ?', [toDate, fromDate]);
+    // An exercise can only be in one group per date: keep its earliest membership on the target.
+    db.run(
+      `DELETE FROM WorkoutGroupExercise WHERE date = ? AND _id NOT IN (
+         SELECT MIN(_id) FROM WorkoutGroupExercise WHERE date = ? GROUP BY exercise_id)`,
+      [toDate, toDate],
+    );
+    deleteEmptyGroups(db, toDate);
+    if (getWorkoutTime(db, toDate)) db.run('DELETE FROM WorkoutTime WHERE workout_date = ?', [fromDate]);
+    else db.run('UPDATE WorkoutTime SET workout_date = ? WHERE workout_date = ?', [toDate, fromDate]);
     const targetHasComment = getWorkoutComment(db, toDate) !== null;
     if (targetHasComment) db.run('DELETE FROM WorkoutComment WHERE date = ?', [fromDate]);
     else db.run('UPDATE WorkoutComment SET date = ? WHERE date = ?', [toDate, fromDate]);
@@ -422,7 +431,17 @@ export function deleteWorkoutHistory(
       params,
     );
     db.run(`DELETE FROM training_log${clause}`, params);
-    if (!opts.exerciseIds?.length) {
+    if (opts.exerciseIds?.length) {
+      // Sets of only some exercises were removed: drop their group membership on dates where they
+      // have no sets left, then any group that became empty.
+      const exClause = `exercise_id IN (${opts.exerciseIds.map(() => '?').join(',')})`;
+      db.run(
+        `DELETE FROM WorkoutGroupExercise WHERE date != '' AND ${exClause} AND NOT EXISTS (
+           SELECT 1 FROM training_log t WHERE t.date = WorkoutGroupExercise.date AND t.exercise_id = WorkoutGroupExercise.exercise_id)`,
+        opts.exerciseIds,
+      );
+      deleteEmptyGroups(db);
+    } else {
       const dateClause = where.filter((w) => w.startsWith('date')).join(' AND ');
       const dateParams = params.filter((p) => typeof p === 'string');
       const dc = dateClause ? ' WHERE ' + dateClause : '';

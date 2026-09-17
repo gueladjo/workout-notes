@@ -161,6 +161,19 @@ export function removeExerciseFromGroup(db: AppDatabase, groupId: number, exerci
   });
 }
 
+/**
+ * Drop workout groups that no longer contain any exercise (optionally only on one date). Used by
+ * every path that removes group membership so empty groups do not linger and inflate "Group N"
+ * naming. Must be called inside a mutation.
+ */
+export function deleteEmptyGroups(db: AppDatabase, date?: string): void {
+  const dateClause = date === undefined ? '' : ' AND date = ?';
+  db.run(
+    `DELETE FROM WorkoutGroup WHERE _id NOT IN (SELECT workout_group_id FROM WorkoutGroupExercise)${dateClause}`,
+    date === undefined ? [] : [date],
+  );
+}
+
 export function deleteGroup(db: AppDatabase, groupId: number): void {
   db.mutate(() => {
     db.run('DELETE FROM WorkoutGroupExercise WHERE workout_group_id = ?', [groupId]);
