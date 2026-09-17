@@ -56,7 +56,7 @@ npm run screenshots      # phone-sized PNGs of every main screen in ./screenshot
 - Real backups contain personal data: never commit them (`*.fitnotes` is git-ignored except
   `tests/fixtures`). Generated fixtures come from `npm run make-fixture`.
 - Completion also requires affected canonical docs updated, and no personal data, credentials,
-unrelated changes, or unintended artifacts in the diff.
+  unrelated changes, or unintended artifacts in the diff.
 
 ## Conventions
 
