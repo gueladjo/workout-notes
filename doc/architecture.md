@@ -85,6 +85,15 @@ forces it); iOS keeps the values it read when the app was added, which is why `i
 the `black-translucent` status bar style so the app bar itself shows through. Reinstalling the app
 also picks up the new colour.
 
+### Content Security Policy
+
+`vite.config.ts` injects a `Content-Security-Policy` meta into the built `index.html` (not in
+development, where React Fast Refresh needs inline scripts). It allows only same-origin scripts,
+styles, images, fonts, workers, the manifest and fetches, plus `'wasm-unsafe-eval'` for sql.js and
+`'unsafe-inline'` styles for React's `style` props, so a stray network request would be blocked by
+the browser rather than merely being against the rules. The e2e suite runs the built app with the
+policy in place and fails on any violation logged to the console.
+
 ## Cross-cutting rules
 
 - Storage units are metric (kg, metres, seconds). `domain/units.ts` converts for display using the

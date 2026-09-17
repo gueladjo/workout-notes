@@ -4,6 +4,26 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { fileURLToPath } from 'node:url';
 
+/**
+ * Content Security Policy for the built app: it makes invariant 1 ("no data leaves the device")
+ * browser-enforced. Only same-origin scripts, styles, images, fonts, workers and fetches are
+ * allowed; `wasm-unsafe-eval` is what sql.js needs to instantiate SQLite. Injected at build time
+ * only because the dev server needs inline scripts for React Fast Refresh.
+ */
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self' 'wasm-unsafe-eval'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "connect-src 'self'",
+  "font-src 'self'",
+  "worker-src 'self'",
+  "manifest-src 'self'",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'none'",
+].join('; ');
+
 export default defineConfig({
   // Relative base so the built app works from any sub-path (e.g. GitHub Pages) with hash routing.
   base: './',
@@ -12,6 +32,17 @@ export default defineConfig({
   },
   plugins: [
     react(),
+    {
+      name: 'content-security-policy',
+      apply: 'build',
+      transformIndexHtml: () => [
+        {
+          tag: 'meta',
+          attrs: { 'http-equiv': 'Content-Security-Policy', content: CSP },
+          injectTo: 'head-prepend',
+        },
+      ],
+    },
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['icons/*.png', 'icons/*.svg'],

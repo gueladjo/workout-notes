@@ -6,6 +6,8 @@ memory by sql.js and persisted to IndexedDB. Read this file, then only the doc t
 ## Invariants (do not break)
 
 1. **No data leaves the device.** No network requests after the app shell is loaded; no analytics.
+   The built page carries a Content-Security-Policy (`vite.config.ts`) that only allows same-origin
+   resources and connections; keep it that way.
 2. **The database is the FitNotes format.** Table and column names, ids and encodings in
    `src/db/schema.ts` and `src/db/constants.ts` are FitNotes' own. Never rename, retype or drop
    them; never add columns to FitNotes tables. App-only state goes in the `settings` row or in

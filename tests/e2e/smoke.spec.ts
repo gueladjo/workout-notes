@@ -166,6 +166,31 @@ test('a second tab takes the database over and the first one stops', async ({ pa
   await expect(second.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
 });
 
+test('ships a Content Security Policy that the app runs cleanly under', async ({ page }) => {
+  const violations: string[] = [];
+  page.on('console', (msg) => {
+    if (/Content.Security.Policy/i.test(msg.text())) violations.push(msg.text());
+  });
+  await openApp(page);
+  const csp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content');
+  expect(csp).toContain("connect-src 'self'");
+  // Exercise the WASM database, styles and a download under the policy.
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  await expect(
+    page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }),
+  ).toBeVisible();
+  await page.goto('/#/settings');
+  const download = page.waitForEvent('download');
+  await page.getByRole('button', { name: 'Save Backup' }).click();
+  expect((await download).suggestedFilename()).toMatch(/^FitNotes_Backup_.*\.fitnotes$/);
+  expect(violations).toEqual([]);
+});
+
 test('works offline after the first load (service worker)', async ({ page, context }) => {
   await openApp(page);
   await page.waitForFunction(() => navigator.serviceWorker?.controller !== null, null, { timeout: 30_000 });
