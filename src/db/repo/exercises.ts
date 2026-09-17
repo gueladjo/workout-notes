@@ -58,8 +58,8 @@ export function listExercises(
   if (opts.search && opts.search.trim()) {
     // FitNotes: every whitespace-separated term must appear somewhere in the name.
     for (const term of opts.search.trim().split(/\s+/)) {
-      where.push('e.name LIKE ? COLLATE NOCASE');
-      params.push(`%${term.replace(/[%_]/g, (m) => '\\' + m)}%`);
+      where.push("e.name LIKE ? COLLATE NOCASE ESCAPE '\\'");
+      params.push(`%${term.replace(/[\\%_]/g, (m) => '\\' + m)}%`);
     }
   }
   const sql = `${SELECT}${where.length ? ' WHERE ' + where.join(' AND ') : ''} ORDER BY e.name COLLATE NOCASE ASC`;

@@ -200,6 +200,14 @@ describe('exercises and categories', () => {
 
   it('searches by every term and manages categories', () => {
     expect(listExercises(app, { search: 'dum press' }).map((e) => e.name)).toContain('Seated Dumbbell Press');
+    // LIKE wildcards and the escape character are matched literally.
+    createExercise(app, { name: '100% Row', categoryId: 1, typeId: 0 });
+    createExercise(app, { name: 'Push_Up', categoryId: 1, typeId: 0 });
+    createExercise(app, { name: 'A\\B', categoryId: 1, typeId: 0 });
+    expect(listExercises(app, { search: '%' }).map((e) => e.name)).toEqual(['100% Row']);
+    expect(listExercises(app, { search: 'push_' }).map((e) => e.name)).toEqual(['Push_Up']);
+    expect(listExercises(app, { search: 'pushu' })).toHaveLength(0);
+    expect(listExercises(app, { search: '\\' }).map((e) => e.name)).toEqual(['A\\B']);
     const c = createCategory(app, 'Forearms');
     expect(listCategories(app).some((x) => x.id === c.id)).toBe(true);
     createExercise(app, { name: 'Wrist Curl', categoryId: c.id, typeId: 0 });
