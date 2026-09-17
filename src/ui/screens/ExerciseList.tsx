@@ -20,6 +20,8 @@ import { IconButton } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
 import { Menu, MenuButton, type MenuItem } from '@/ui/components/Menu';
 import { ConfirmDialog } from '@/ui/components/Dialog';
+import { useToast } from '@/ui/components/Toast';
+import { saveSnapshot } from '@/db/persistence';
 import { EmptyState } from '@/ui/components/EmptyState';
 import type { ExerciseWithCategory } from '@/db/types';
 import { completeReturnTo } from '@/app/return-to';
@@ -42,6 +44,7 @@ export function ExerciseListScreen() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dropdownAnchor, setDropdownAnchor] = useState<HTMLElement | null>(null);
   const [reordering, setReordering] = useState(false);
+  const toast = useToast();
   const [confirm, setConfirm] = useState<{ kind: 'exercise' | 'category'; id: number; name: string } | null>(
     null,
   );
@@ -396,18 +399,29 @@ export function ExerciseListScreen() {
           confirm?.kind === 'category' ? `Delete category "${confirm.name}"?` : `Delete "${confirm?.name}"?`
         }
         message={
-          confirm?.kind === 'category'
-            ? 'All exercises in this category, along with their training history, personal records and goals, will be permanently deleted.'
-            : 'All training history, personal records and goals for this exercise will be permanently deleted.'
+          (confirm?.kind === 'category'
+            ? 'All exercises in this category, along with their training history, personal records and goals, will be permanently deleted'
+            : 'All training history, personal records and goals for this exercise will be permanently deleted') +
+          ' (a rollback snapshot is taken first).'
         }
         confirmLabel="Delete"
         danger
         onConfirm={() => {
           if (!confirm) return;
-          if (confirm.kind === 'category') {
-            deleteCategory(db, confirm.id);
-            if (categoryId === confirm.id) navigate(`/exercises?date=${date}`, { replace: true });
-          } else deleteExercise(db, confirm.id);
+          const target = confirm;
+          void (async () => {
+            try {
+              await saveSnapshot(db.export(), `Before deleting ${target.kind} "${target.name}"`);
+            } catch (err) {
+              toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
+              return;
+            }
+            if (target.kind === 'category') {
+              deleteCategory(db, target.id);
+              if (categoryId === target.id) navigate(`/exercises?date=${date}`, { replace: true });
+            } else deleteExercise(db, target.id);
+            toast(`Deleted ${target.name}`);
+          })();
         }}
       />
     </div>

@@ -46,7 +46,8 @@ home-screen apps; Chrome grants it to installed apps and engaged sites.
   4. The new database replaces the live one and is persisted immediately.
      A `RestoreSummary` (counts plus the schema report) is shown to the user.
 - **Rollback**: Settings lists snapshots; restoring one snapshots the current database first.
-- **Delete workout history** snapshots first, too.
+- **Delete workout history**, **delete exercise** and **delete category** snapshot first, too
+  (labelled with what is about to be deleted); if the snapshot cannot be written nothing is deleted.
 
 ## Failure modes and mitigations
 
