@@ -6,7 +6,8 @@
  *   - `meta`:  key -> { savedAt, label, size } so snapshots can be listed without loading bytes
  *
  * Keys: `main` is the live database. `snapshot:<ISO timestamp>` are rollback copies created before
- * destructive operations (restore, delete history). See doc/storage.md for the contract.
+ * destructive operations (restore, delete history, ...) and of a database the app could not open
+ * (`src/app/recovery.ts`). See doc/storage.md for the contract.
  */
 
 const IDB_NAME = 'workoutnotes';

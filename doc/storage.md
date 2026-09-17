@@ -51,13 +51,14 @@ home-screen apps; Chrome grants it to installed apps and engaged sites.
 
 ## Failure modes and mitigations
 
-| Risk                             | Mitigation                                                                                                                                                                                                          |
-| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Browser evicts storage           | persistent storage request; prominent Backup buttons and "last backup" note; Home shows a quiet reminder when the last backup (or first use) is over 14 days old, snoozable for 7 days, gone once a backup is saved |
-| Tab killed before debounce fires | flush on hide/pagehide; at most a few hundred ms of work lost                                                                                                                                                       |
-| Corrupt or wrong file restored   | header/table validation, transaction-wrapped reconciliation, snapshot before swap                                                                                                                                   |
-| Bug in a migration               | `ensureSchema` only adds; unknown data untouched; snapshots for rollback                                                                                                                                            |
-| Two tabs open                    | not supported; the last writer wins. The installed PWA is single-instance.                                                                                                                                          |
+| Risk                             | Mitigation                                                                                                                                                                                                                                     |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Browser evicts storage           | persistent storage request; prominent Backup buttons and "last backup" note; Home shows a quiet reminder when the last backup (or first use) is over 14 days old, snoozable for 7 days, gone once a backup is saved                            |
+| Tab killed before debounce fires | flush on hide/pagehide; at most a few hundred ms of work lost                                                                                                                                                                                  |
+| Corrupt or wrong file restored   | header/table validation, transaction-wrapped reconciliation, snapshot before swap                                                                                                                                                              |
+| Bug in a migration               | `ensureSchema` only adds; unknown data untouched; snapshots for rollback                                                                                                                                                                       |
+| Two tabs open                    | not supported; the last writer wins. The installed PWA is single-instance.                                                                                                                                                                     |
+| Stored database cannot be opened | `bootstrap()` rejects with `UnreadableDatabaseError` carrying the bytes; the Recovery screen offers to save them as a file, restore a snapshot or start fresh, always keeping the unreadable bytes as a snapshot first (`src/app/recovery.ts`) |
 
 ## Size expectations
 

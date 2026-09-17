@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react';
 import { HashRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { bootstrap, type BootResult } from './bootstrap';
+import { UnreadableDatabaseError } from './recovery';
+import { RecoveryScreen } from '@/ui/screens/Recovery';
 import { DbProvider, useQuery } from './db-context';
 import { SqlProvider } from './sql-context';
 import { ToastProvider } from '@/ui/components/Toast';
@@ -21,18 +23,28 @@ import { DatabaseScreen } from '@/ui/screens/Database';
 
 export function App() {
   const [boot, setBoot] = useState<BootResult | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  const [failure, setFailure] = useState<unknown>(null);
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
-    bootstrap()
-      .then(setBoot)
-      .catch((err: unknown) => setError(err instanceof Error ? err.message : String(err)));
-  }, []);
+    bootstrap().then(setBoot).catch(setFailure);
+  }, [attempt]);
 
-  if (error) {
+  if (failure instanceof UnreadableDatabaseError) {
+    return (
+      <RecoveryScreen
+        error={failure}
+        onRecovered={() => {
+          setFailure(null);
+          setAttempt((n) => n + 1);
+        }}
+      />
+    );
+  }
+  if (failure) {
     return (
       <div className="empty">
         <div className="empty__title">WorkoutNotes could not start</div>
-        <div>{error}</div>
+        <div>{failure instanceof Error ? failure.message : String(failure)}</div>
       </div>
     );
   }

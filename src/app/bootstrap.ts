@@ -7,6 +7,7 @@ import { loadSqlJs, type SqlJsStatic } from '@/db/sqlite';
 import { createEmptyDatabase, ensureSchema } from '@/db/schema';
 import { AppDatabase } from '@/db/store';
 import { MAIN_KEY, readBlob, requestPersistentStorage, writeBlob } from '@/db/persistence';
+import { defaultMetric, openStoredDatabase } from './recovery';
 
 export interface BootResult {
   app: AppDatabase;
@@ -15,12 +16,15 @@ export interface BootResult {
   fresh: boolean;
 }
 
+/**
+ * Opens the app database. Rejects with `UnreadableDatabaseError` (see `recovery.ts`) when the stored
+ * bytes cannot be opened or reconciled, so the app can offer recovery instead of a dead end.
+ */
 export async function bootstrap(): Promise<BootResult> {
   const SQL = await loadSqlJs(() => sqlWasmUrl);
   const saved = await readBlob(MAIN_KEY);
-  const metric = !navigator.language.startsWith('en-US');
-  const db = saved ? new SQL.Database(saved) : createEmptyDatabase(SQL, { metric });
-  ensureSchema(db);
+  const db = saved ? openStoredDatabase(SQL, saved) : createEmptyDatabase(SQL, { metric: defaultMetric() });
+  if (!saved) ensureSchema(db);
   const app = new AppDatabase(db, { persist: (bytes) => writeBlob(MAIN_KEY, bytes, 'live database') });
   if (!saved) {
     app.changed();
