@@ -7,9 +7,9 @@ import {
   kgToDisplay,
   metresToDisplay,
   resolveDistanceUnit,
-  resolveWeightUnit,
   distanceUnitShort,
   fmt,
+  type WeightUnit,
 } from '@/domain/units';
 import { formatDuration } from '@/domain/dates';
 import { CommentOwnerType } from '@/db/constants';
@@ -21,6 +21,8 @@ function csvEscape(v: string | number): string {
 
 export function workoutCsv(db: AppDatabase): string {
   const settings = getSettings(db);
+  // One unit for the whole file, named in the header: an exercise's own display unit is ignored.
+  const weightUnit: WeightUnit = settings.metric ? 'kg' : 'lbs';
   const unitLabel = settings.metric ? 'kgs' : 'lbs';
   const rows = db.all<{
     date: string;
@@ -31,20 +33,16 @@ export function workoutCsv(db: AppDatabase): string {
     distance: number;
     unit: number;
     duration_seconds: number;
-    weight_unit_id: number;
     comment: string | null;
   }>(
-    `SELECT t.date, e.name AS exercise, c.name AS category, t.metric_weight, t.reps, t.distance, t.unit, t.duration_seconds, e.weight_unit_id, co.comment
+    `SELECT t.date, e.name AS exercise, c.name AS category, t.metric_weight, t.reps, t.distance, t.unit, t.duration_seconds, co.comment
      FROM training_log t INNER JOIN exercise e ON e._id = t.exercise_id LEFT JOIN Category c ON c._id = e.category_id
      LEFT JOIN Comment co ON co.owner_id = t._id AND co.owner_type_id = ${CommentOwnerType.TRAINING_LOG_SET}
      ORDER BY t.date ASC, t._id ASC`,
   );
   const lines = [`Date,Exercise,Category,Weight (${unitLabel}),Reps,Distance,Distance Unit,Time,Comment`];
   for (const r of rows) {
-    const wu = resolveWeightUnit(r.weight_unit_id, settings.metric);
-    const weight = Number(r.metric_weight)
-      ? fmt(kgToDisplay(Number(r.metric_weight), wu === 'kg' ? 'kg' : 'lbs'), 3)
-      : '';
+    const weight = Number(r.metric_weight) ? fmt(kgToDisplay(Number(r.metric_weight), weightUnit), 3) : '';
     const du = resolveDistanceUnit(r.unit, settings.metric);
     const distance = Number(r.distance) ? fmt(metresToDisplay(Number(r.distance), du), 3) : '';
     const time = Number(r.duration_seconds) ? formatDuration(Number(r.duration_seconds)) : '';

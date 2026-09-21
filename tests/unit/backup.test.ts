@@ -14,6 +14,7 @@ import {
 import { seedSampleWorkouts } from '../helpers/sample';
 import { listSnapshots, readBlob, writeBlob, saveSnapshot, MAX_SNAPSHOTS } from '../../src/db/persistence';
 import { workoutCsv } from '../../src/backup/csv';
+import { ExerciseWeightUnit } from '../../src/db/constants';
 
 let SQL: SqlJsStatic;
 beforeAll(async () => {
@@ -90,6 +91,24 @@ describe('backup round trip', () => {
     expect(lines[0]).toBe('Date,Exercise,Category,Weight (kgs),Reps,Distance,Distance Unit,Time,Comment');
     expect(lines[1]).toBe('2026-09-01,Flat Barbell Bench Press,Chest,60,10,,,,');
     expect(lines).toContain('2026-09-04,Cycling,Cardio,,,12,km,30:00,');
+  });
+
+  it('writes every weight in the unit named in the CSV header', () => {
+    const db = createEmptyDatabase(SQL);
+    seedSampleWorkouts(db);
+    const app = new AppDatabase(db);
+    // An exercise pinned to pounds in a metric database: the header says kgs, so the rows must too.
+    app.mutate(() =>
+      app.run('UPDATE exercise SET weight_unit_id = ? WHERE name = ?', [
+        ExerciseWeightUnit.IMPERIAL,
+        'Flat Barbell Bench Press',
+      ]),
+    );
+    expect(workoutCsv(app).split('\n')[1]).toBe('2026-09-01,Flat Barbell Bench Press,Chest,60,10,,,,');
+    app.mutate(() => app.run('UPDATE settings SET metric = 0'));
+    const imperial = workoutCsv(app).split('\n');
+    expect(imperial[0]).toBe('Date,Exercise,Category,Weight (lbs),Reps,Distance,Distance Unit,Time,Comment');
+    expect(imperial[1]).toBe('2026-09-01,Flat Barbell Bench Press,Chest,132.277,10,,,,');
   });
 });
 
