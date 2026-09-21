@@ -178,23 +178,27 @@ describe('sets and workouts', () => {
     deleteExercise(app, BENCH);
     expect(listGroups(app, '2026-09-01')).toHaveLength(0);
     expect(nextGroupName(app, '2026-09-01')).toBe('Group 1');
-    // Merging workouts keeps one membership per exercise and one workout time per date.
+    // Merging workouts: an exercise already grouped on the target keeps that group even when the
+    // moved group is older; the moved group keeps its other exercises; one workout time per date.
+    const cardio = {
+      exerciseId: cycling,
+      metricWeight: 0,
+      reps: 0,
+      distanceMetres: 1000,
+      durationSeconds: 300,
+      unit: 3,
+    };
+    const squats = {
+      exerciseId: SQUAT,
+      metricWeight: 100,
+      reps: 5,
+      distanceMetres: 0,
+      durationSeconds: 0,
+      unit: 0,
+    };
+    copySets(app, [cardio, squats], '2026-09-12');
+    const g12 = group('2026-09-12', [cycling, SQUAT]);
     const g4 = group('2026-09-04', [cycling]);
-    copySets(
-      app,
-      [
-        {
-          exerciseId: cycling,
-          metricWeight: 0,
-          reps: 0,
-          distanceMetres: 1000,
-          durationSeconds: 300,
-          unit: 3,
-        },
-      ],
-      '2026-09-12',
-    );
-    group('2026-09-12', [cycling]);
     app.mutate(() => {
       for (const d of ['2026-09-04', '2026-09-12'])
         app.run('INSERT INTO WorkoutTime (workout_date, start_date_time, end_date_time) VALUES (?, ?, ?)', [
@@ -204,9 +208,13 @@ describe('sets and workouts', () => {
         ]);
     });
     moveWorkout(app, '2026-09-12', '2026-09-04');
-    const merged = listGroups(app, '2026-09-04');
-    expect(merged.map((g) => g.id)).toEqual([g4]);
-    expect(merged[0]!.exerciseIds).toEqual([cycling]);
+    const merged = listGroups(app, '2026-09-04').sort((a, b) => a.id - b.id);
+    expect(merged.map((g) => [g.id, g.exerciseIds])).toEqual([
+      [g12, [SQUAT]],
+      [g4, [cycling]],
+    ]);
+    expect(listGroups(app, '2026-09-12')).toHaveLength(0);
+    expect(app.scalar('SELECT COUNT(*) FROM WorkoutGroupExercise WHERE date = ?', ['2026-09-12'])).toBe(0);
     expect(app.all('SELECT * FROM WorkoutTime')).toHaveLength(1);
     expect(getWorkout(app, '2026-09-04').time?.start).toBe('2026-09-04T10:00:00');
   });

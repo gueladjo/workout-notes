@@ -342,14 +342,15 @@ export function moveWorkout(db: AppDatabase, fromDate: string, toDate: string): 
       fromDate,
       CommentOwnerType.TRAINING_LOG_SET,
     ]);
+    // An exercise can only be in one group per date: one already grouped on the target keeps that
+    // group, so its membership in the moved group is dropped before the two dates merge.
+    db.run(
+      `DELETE FROM WorkoutGroupExercise WHERE date = ? AND exercise_id IN (
+         SELECT exercise_id FROM WorkoutGroupExercise WHERE date = ?)`,
+      [fromDate, toDate],
+    );
     db.run('UPDATE WorkoutGroup SET date = ? WHERE date = ?', [toDate, fromDate]);
     db.run('UPDATE WorkoutGroupExercise SET date = ? WHERE date = ?', [toDate, fromDate]);
-    // An exercise can only be in one group per date: keep its earliest membership on the target.
-    db.run(
-      `DELETE FROM WorkoutGroupExercise WHERE date = ? AND _id NOT IN (
-         SELECT MIN(_id) FROM WorkoutGroupExercise WHERE date = ? GROUP BY exercise_id)`,
-      [toDate, toDate],
-    );
     deleteEmptyGroups(db, toDate);
     if (getWorkoutTime(db, toDate)) db.run('DELETE FROM WorkoutTime WHERE workout_date = ?', [fromDate]);
     else db.run('UPDATE WorkoutTime SET workout_date = ? WHERE workout_date = ?', [toDate, fromDate]);
