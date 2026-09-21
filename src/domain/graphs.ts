@@ -88,6 +88,8 @@ export function computeSeries(
           if (opts.maxRepsFor1rm && s.reps > opts.maxRepsFor1rm) continue;
           pick(estimatedOneRepMax(s.metricWeight, s.reps), s);
         }
+        // A workout where every set is over the rep cap has no estimate, not an estimate of 0.
+        if (!best) continue;
         break;
       case GraphType.MAX_WEIGHT:
         for (const s of day) pick(s.metricWeight, s);
@@ -134,11 +136,13 @@ export function computeSeries(
         break;
       case GraphType.MAX_SPEED:
         for (const s of day) if (s.durationSeconds > 0) pick(s.distanceMetres / s.durationSeconds, s);
+        if (!best) continue;
         break;
       case GraphType.MAX_PACE:
         // Best pace = fewest seconds per metre; store as negative so "max" picks it, then flip.
         for (const s of day)
           if (s.distanceMetres > 0 && s.durationSeconds > 0) pick(-(s.durationSeconds / s.distanceMetres), s);
+        if (!best) continue;
         value = -value;
         break;
       case GraphType.TOTAL_DISTANCE:
