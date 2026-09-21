@@ -50,6 +50,8 @@ export function SettingsScreen() {
         mode === 'share'
           ? await shareOrDownload(blob, name, 'FitNotes backup')
           : (downloadBlob(blob, name), 'downloaded');
+      // A dismissed share sheet delivered nothing: neither a backup nor a reason to quiet the reminder.
+      if (result === 'cancelled') return;
       setLastBackup(markBackupSaved());
       toast(
         (result === 'shared' ? 'Backup shared' : `Saved ${name}`) +

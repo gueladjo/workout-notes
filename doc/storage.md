@@ -33,7 +33,8 @@ home-screen apps; Chrome grants it to installed apps and engaged sites.
 
 - **Export** (`prepareBackup`): the live bytes, named `FitNotes_Backup_YYYY_MM_DD_HH_MM_SS.fitnotes`
   like FitNotes' "Include Timestamp" option. Delivered through the Web Share API (files) when
-  available (home-screen iOS/Android), otherwise as a download. The export flushes first but never
+  available (home-screen iOS/Android), otherwise as a download. Dismissing the share sheet counts
+  as nothing happened: no "last backup" is recorded. The export flushes first but never
   fails because of a failed flush: the in-memory database is intact and the backup is the way out of
   a broken store, so the toast just says that saving to the device failed.
 - **Restore** (`src/backup/fitnotes.ts`):

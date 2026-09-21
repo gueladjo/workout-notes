@@ -3,11 +3,13 @@
  * with a download-link fallback.
  */
 
-export async function shareOrDownload(
-  blob: Blob,
-  fileName: string,
-  title: string,
-): Promise<'shared' | 'downloaded'> {
+export type ShareResult = 'shared' | 'downloaded' | 'cancelled';
+
+/**
+ * Hand the file to the share sheet, or download it where sharing files is not supported.
+ * `cancelled` means the user dismissed the share sheet: the file went nowhere.
+ */
+export async function shareOrDownload(blob: Blob, fileName: string, title: string): Promise<ShareResult> {
   const file = new File([blob], fileName, { type: blob.type });
   const nav = navigator as Navigator & { canShare?: (data: ShareData) => boolean };
   if (nav.share && nav.canShare && nav.canShare({ files: [file] })) {
@@ -15,8 +17,7 @@ export async function shareOrDownload(
       await nav.share({ files: [file], title });
       return 'shared';
     } catch (err) {
-      // User cancelled the share sheet: nothing else to do.
-      if (err instanceof DOMException && err.name === 'AbortError') return 'shared';
+      if (err instanceof DOMException && err.name === 'AbortError') return 'cancelled';
     }
   }
   downloadBlob(blob, fileName);
