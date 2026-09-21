@@ -539,7 +539,12 @@ function DeleteHistoryDialog({ open, onClose }: { open: boolean; onClose: () => 
         danger
         onConfirm={() => {
           void (async () => {
-            await saveSnapshot(db.export(), 'Before deleting history');
+            try {
+              await saveSnapshot(db.export(), 'Before deleting history');
+            } catch (err) {
+              toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
+              return;
+            }
             const n = deleteWorkoutHistory(db, {
               from: from || undefined,
               to: to || undefined,
