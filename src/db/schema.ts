@@ -112,21 +112,22 @@ export function ensureSchema(db: Database): SchemaReport {
       run(db, "INSERT INTO android_metadata VALUES ('en_US')");
     }
 
-    // --- Data migrations mirrored from FitNotes' upgrade path (all idempotent) ---
-    if (Number(scalar(db, 'SELECT COUNT(*) FROM MeasurementUnit')) === 0) {
+    // --- Data migrations mirrored from FitNotes' upgrade path ---
+    // Seeds and migrations run only when their destination table was created just now, as in
+    // FitNotes' own upgrade steps. An existing table is the user's, even when empty: rows they
+    // deleted must not come back on the next open. Legacy source rows are left in place.
+    const created = (table: string) => report.createdTables.includes(table);
+    if (created('MeasurementUnit')) {
       seedMeasurementUnits(db);
       report.migrations.push('seed MeasurementUnit');
     }
-    if (Number(scalar(db, 'SELECT COUNT(*) FROM Measurement')) === 0) {
+    if (created('Measurement')) {
       const metric = Number(scalar(db, 'SELECT COALESCE((SELECT metric FROM settings LIMIT 1), 1)')) !== 0;
       seedMeasurements(db, metric);
       report.migrations.push('seed Measurement');
     }
     // Legacy BodyWeight table -> MeasurementRecord (measurement 1 = Bodyweight, 2 = Body Fat).
-    if (
-      Number(scalar(db, 'SELECT COUNT(*) FROM BodyWeight')) > 0 &&
-      Number(scalar(db, 'SELECT COUNT(*) FROM MeasurementRecord')) === 0
-    ) {
+    if (created('MeasurementRecord') && Number(scalar(db, 'SELECT COUNT(*) FROM BodyWeight')) > 0) {
       const rows = all<{
         date: string;
         body_weight_metric: number;
@@ -154,8 +155,8 @@ export function ensureSchema(db: Database): SchemaReport {
     }
     // Legacy workout comments (Comment.owner_type_id = 2) -> WorkoutComment.
     if (
-      Number(scalar(db, 'SELECT COUNT(*) FROM Comment WHERE owner_type_id = 2')) > 0 &&
-      Number(scalar(db, 'SELECT COUNT(*) FROM WorkoutComment')) === 0
+      created('WorkoutComment') &&
+      Number(scalar(db, 'SELECT COUNT(*) FROM Comment WHERE owner_type_id = 2')) > 0
     ) {
       run(
         db,

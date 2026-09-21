@@ -138,9 +138,12 @@ upgrade it normally.
 
 1. Create missing tables with FitNotes' statements; add missing columns with
    `ALTER TABLE ADD COLUMN` (adding a default for NOT NULL columns, as FitNotes' own upgrades do).
-2. Seed `MeasurementUnit` / `Measurement` when empty; migrate `BodyWeight` rows into
-   `MeasurementRecord` when the latter is empty; move legacy workout comments
-   (`Comment.owner_type_id = 2`) into `WorkoutComment`; give colourless categories a palette colour.
+2. Seed `MeasurementUnit` / `Measurement`, migrate `BodyWeight` rows into `MeasurementRecord` and
+   move legacy workout comments (`Comment.owner_type_id = 2`) into `WorkoutComment`, each only when
+   the destination table was created in this run (FitNotes' own upgrade steps do the same). An
+   existing table is the user's even when empty, so rows they deleted do not come back on the next
+   open; the legacy `BodyWeight` and `Comment` rows are left in place. Give colourless categories a
+   palette colour.
 3. Raise `user_version` to 22 if lower. Never lower it; never touch unknown tables or columns.
 
 Its `SchemaReport` is shown after a restore and asserted empty in tests for an up-to-date database.

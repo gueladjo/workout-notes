@@ -111,6 +111,48 @@ describe('ensureSchema', () => {
     expect(scalar(db, 'SELECT metric_weight FROM training_log')).toBe(100);
     // Running again changes nothing
     expect(ensureSchema(db)).toEqual({ createdTables: [], addedColumns: [], migrations: [] });
+    // Rows the user deletes afterwards stay deleted although the legacy sources are still there.
+    run(db, 'DELETE FROM MeasurementRecord');
+    run(db, 'DELETE FROM WorkoutComment');
+    run(db, 'DELETE FROM Measurement');
+    expect(ensureSchema(db)).toEqual({ createdTables: [], addedColumns: [], migrations: [] });
+    expect(scalar(db, 'SELECT COUNT(*) FROM MeasurementRecord')).toBe(0);
+    expect(scalar(db, 'SELECT COUNT(*) FROM WorkoutComment')).toBe(0);
+    expect(scalar(db, 'SELECT COUNT(*) FROM Measurement')).toBe(0);
+    expect(scalar(db, 'SELECT COUNT(*) FROM BodyWeight')).toBe(1);
+    expect(scalar(db, 'SELECT COUNT(*) FROM Comment WHERE owner_type_id = 2')).toBe(1);
+    db.close();
+  });
+
+  it('migrates only into tables it created, not into existing empty ones', () => {
+    const db = new SQL.Database();
+    run(db, 'CREATE TABLE Category(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
+    run(
+      db,
+      'CREATE TABLE exercise(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category_id INTEGER NOT NULL)',
+    );
+    run(
+      db,
+      'CREATE TABLE training_log (_id INTEGER PRIMARY KEY AUTOINCREMENT, exercise_id INTEGER NOT NULL, date DATE NOT NULL, metric_weight INTEGER NOT NULL, reps INTEGER NOT NULL)',
+    );
+    run(
+      db,
+      'CREATE TABLE BodyWeight (_id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, body_weight_metric REAL NOT NULL, body_fat REAL NOT NULL, comments TEXT)',
+    );
+    run(
+      db,
+      "INSERT INTO BodyWeight (date, body_weight_metric, body_fat) VALUES ('2015-01-01 08:30:00', 80.5, 0)",
+    );
+    // FitNotes created these in the same upgrade that migrated BodyWeight: their presence means the
+    // migration already happened, whatever they hold now.
+    run(db, TABLES.MeasurementRecord!);
+    run(db, TABLES.Measurement!);
+    const report = ensureSchema(db);
+    expect(report.createdTables).not.toContain('MeasurementRecord');
+    expect(report.migrations.filter((m) => /BodyWeight|seed Measurement$/.test(m))).toEqual([]);
+    expect(scalar(db, 'SELECT COUNT(*) FROM MeasurementRecord')).toBe(0);
+    expect(scalar(db, 'SELECT COUNT(*) FROM Measurement')).toBe(0);
+    expect(scalar(db, 'SELECT COUNT(*) FROM MeasurementUnit')).toBeGreaterThan(0);
     db.close();
   });
 
