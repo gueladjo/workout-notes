@@ -39,6 +39,41 @@ describe('AppDatabase', () => {
     vi.useRealTimers();
   });
 
+  it('flush() waits for an in-flight persist and includes changes made during it', async () => {
+    vi.useFakeTimers();
+    const pending: Array<() => void> = [];
+    const written: Uint8Array[] = [];
+    const persist = vi.fn((bytes: Uint8Array) => {
+      written.push(bytes);
+      return new Promise<void>((resolve) => pending.push(resolve));
+    });
+    const app = new AppDatabase(createEmptyDatabase(SQL), { persist, persistDelayMs: 1 });
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    await vi.advanceTimersByTimeAsync(5);
+    expect(persist).toHaveBeenCalledTimes(1);
+    // The write is still in flight, yet nothing is dirty: callers must not treat this as saved.
+    expect(app.hasUnsavedChanges).toBe(false);
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('b')"));
+    let settled = false;
+    const flushed = app.flush().then(() => {
+      settled = true;
+    });
+    await vi.advanceTimersByTimeAsync(5);
+    expect(settled).toBe(false);
+    expect(persist).toHaveBeenCalledTimes(1);
+    pending.shift()!();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(persist).toHaveBeenCalledTimes(2);
+    expect(settled).toBe(false);
+    pending.shift()!();
+    await flushed;
+    expect(app.hasUnsavedChanges).toBe(false);
+    const saved = new SQL.Database(written[1]);
+    expect(saved.exec('SELECT COUNT(*) FROM Routine')[0]!.values[0]![0]).toBe(2);
+    saved.close();
+    vi.useRealTimers();
+  });
+
   it('retries persistence after a failure', async () => {
     let fail = true;
     const persist = vi.fn(async () => {

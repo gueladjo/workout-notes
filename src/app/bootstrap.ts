@@ -46,15 +46,25 @@ export async function bootstrap(options: BootOptions = {}): Promise<BootResult> 
   void requestPersistentStorage();
 
   // Flush pending changes when the page is hidden or unloaded (mobile browsers kill tabs freely).
-  // A downloaded update is applied once the app is hidden and everything is saved.
-  const flush = () => (app.hasUnsavedChanges ? app.flush() : Promise.resolve());
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState !== 'hidden') return;
-    flush().then(reloadIfUpdatePending, () => {});
-  });
-  window.addEventListener('pagehide', () => void flush().catch(() => {}));
+  // Always `app.flush()`: it waits for an in-flight write and returns once nothing is dirty, whereas
+  // `hasUnsavedChanges` is already false while bytes are still being written. A downloaded update
+  // is applied once the app is hidden and everything is saved.
+  const listeners = new AbortController();
+  const { signal } = listeners;
+  document.addEventListener(
+    'visibilitychange',
+    () => {
+      if (document.visibilityState !== 'hidden') return;
+      app.flush().then(reloadIfUpdatePending, () => {});
+    },
+    { signal },
+  );
+  window.addEventListener('pagehide', () => void app.flush().catch(() => {}), { signal });
   lock.onTakeover(async () => {
-    await flush().catch(() => {});
+    // Once the lock is released the other instance owns the stored bytes: stop the hide handlers
+    // first so a failed handover flush is not retried over the other instance's writes.
+    listeners.abort();
+    await app.flush().catch(() => {});
     options.onTakenOver?.(app.hasUnsavedChanges);
   });
   return { app, SQL, fresh: !saved };
