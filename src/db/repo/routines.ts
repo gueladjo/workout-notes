@@ -289,23 +289,39 @@ export interface PlannedSet {
 /**
  * Sets a routine day would add to a workout: predefined sets, with empty (zero) fields filled from
  * the last time this predefined set was logged, else from the previous workout of the exercise.
- * Exercises without predefined sets get one empty set.
+ * An exercise FitNotes set to copy the previous workout (`populate_sets_type` 2) gets every set of
+ * that workout; any other exercise without predefined sets gets one empty set.
  */
 export function plannedSetsForSection(db: AppDatabase, sectionId: number, date: string): PlannedSet[] {
   const result: PlannedSet[] = [];
   for (const ex of listSectionExercises(db, sectionId)) {
     const prev = previousWorkoutSets(db, ex.exerciseId, date);
     if (ex.sets.length === 0) {
-      result.push({
-        routineExerciseId: ex.id,
-        exerciseId: ex.exerciseId,
-        routineSetId: 0,
-        metricWeight: 0,
-        reps: 0,
-        distanceMetres: 0,
-        durationSeconds: 0,
-        unit: prev?.sets[0]?.unit ?? 0,
-      });
+      const copied = ex.populateSetsType === PopulateSetsType.COPY_PREVIOUS_WORKOUT && prev ? prev.sets : [];
+      if (copied.length === 0) {
+        result.push({
+          routineExerciseId: ex.id,
+          exerciseId: ex.exerciseId,
+          routineSetId: 0,
+          metricWeight: 0,
+          reps: 0,
+          distanceMetres: 0,
+          durationSeconds: 0,
+          unit: prev?.sets[0]?.unit ?? 0,
+        });
+      }
+      for (const s of copied) {
+        result.push({
+          routineExerciseId: ex.id,
+          exerciseId: ex.exerciseId,
+          routineSetId: 0,
+          metricWeight: s.metricWeight,
+          reps: s.reps,
+          distanceMetres: s.distanceMetres,
+          durationSeconds: s.durationSeconds,
+          unit: s.unit,
+        });
+      }
       continue;
     }
     ex.sets.forEach((s, i) => {

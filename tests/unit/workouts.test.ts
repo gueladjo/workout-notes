@@ -40,6 +40,7 @@ import {
   listSectionExercises,
   addSectionExercise,
   copyRoutine,
+  PopulateSetsType,
 } from '../../src/db/repo/routines';
 import {
   addRecord,
@@ -335,6 +336,47 @@ describe('routines', () => {
     );
     const copyId = copyRoutine(app, routineId, 'PPL copy');
     expect(listSectionExercises(app, getRoutine(app, copyId)!.sections[0]!.id)).toHaveLength(1);
+  });
+});
+
+describe('routines', () => {
+  it('copies the previous workout for exercises FitNotes set to do so', () => {
+    const { cycling } = sampleExerciseIds(app.raw);
+    const sectionId = addSection(app, createRoutine(app, 'Imported'), 'Day 1');
+    const bench = addSectionExercise(app, sectionId, BENCH);
+    const ride = addSectionExercise(app, sectionId, cycling);
+    setPredefinedSets(app, bench, [], PopulateSetsType.COPY_PREVIOUS_WORKOUT);
+    setPredefinedSets(app, ride, [], PopulateSetsType.COPY_PREVIOUS_WORKOUT);
+    const summary = (s: { metricWeight: number; reps: number; distanceMetres: number; unit: number }) => [
+      s.metricWeight,
+      s.reps,
+      s.distanceMetres,
+      s.unit,
+    ];
+    // The previous workout before the date (2026-09-04), with every set and its distance unit.
+    const planned = plannedSetsForSection(app, sectionId, '2026-09-05');
+    expect(planned.map(summary)).toEqual([
+      [82.5, 5, 0, 0],
+      [82.5, 4, 0, 0],
+      [0, 0, 12000, 3],
+    ]);
+    expect(planned.every((s) => s.routineSetId === 0)).toBe(true);
+    logRoutineSection(app, sectionId, '2026-09-05', planned);
+    expect(listSets(app, BENCH, '2026-09-05').map(summary)).toEqual([
+      [82.5, 5, 0, 0],
+      [82.5, 4, 0, 0],
+    ]);
+    expect(listSets(app, cycling, '2026-09-05').map((s) => s.durationSeconds)).toEqual([1800]);
+    // No previous workout yet: one empty set, as for an exercise without predefined sets.
+    expect(plannedSetsForSection(app, sectionId, '2026-09-01').map(summary)).toEqual([
+      [0, 0, 0, 0],
+      [0, 0, 0, 0],
+    ]);
+    setPredefinedSets(app, bench, []);
+    expect(plannedSetsForSection(app, sectionId, '2026-09-05').map(summary)).toEqual([
+      [0, 0, 0, 0],
+      [0, 0, 12000, 3],
+    ]);
   });
 });
 
