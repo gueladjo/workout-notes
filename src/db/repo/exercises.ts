@@ -7,6 +7,7 @@ import {
   KG_PER_LB,
   type ExerciseTypeId,
 } from '../constants';
+import { goalTypesForExercise } from '@/domain/stats';
 import { recalculatePersonalRecords } from './records';
 import { deleteEmptyGroups } from './groups';
 
@@ -137,8 +138,14 @@ export function updateExercise(db: AppDatabase, id: number, patch: ExerciseUpdat
     if (patch.typeId !== undefined) sets.push(['exercise_type_id', patch.typeId]);
     for (const [col, val] of sets) db.run(`UPDATE exercise SET ${col} = ? WHERE _id = ?`, [val as never, id]);
 
-    // Changing the type drops fields that the new type does not have (FitNotes behaviour).
+    // Changing the type drops fields that the new type does not have (FitNotes behaviour), and
+    // with them the goals that measured those fields: they could never progress or be edited again.
     if (patch.typeId !== undefined && patch.typeId !== current.typeId) {
+      const keep = goalTypesForExercise(patch.typeId);
+      db.run(
+        `DELETE FROM Goal WHERE exercise_id = ? AND type_id NOT IN (${keep.map(() => '?').join(', ')})`,
+        [id, ...keep],
+      );
       const clears: string[] = [];
       if (!exerciseTypeHas(patch.typeId, 'weight')) clears.push('metric_weight = 0');
       if (!exerciseTypeHas(patch.typeId, 'reps')) clears.push('reps = 0');

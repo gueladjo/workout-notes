@@ -183,7 +183,7 @@ export function ExerciseEditorScreen() {
               {editId && existing && typeId !== existing.typeId && (
                 <span className="muted" style={{ fontSize: 13 }}>
                   Changing the type deletes values of fields the new type does not have from this exercise's
-                  history.
+                  history, and goals that measure those fields.
                 </span>
               )}
             </label>

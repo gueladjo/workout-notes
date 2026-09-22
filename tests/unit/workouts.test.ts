@@ -50,7 +50,8 @@ import {
   createMeasurement,
   deleteMeasurement,
 } from '../../src/db/repo/measurements';
-import { ExerciseType, DistanceUnit } from '../../src/db/constants';
+import { createGoal, listGoals } from '../../src/db/repo/goals';
+import { ExerciseType, DistanceUnit, GoalType } from '../../src/db/constants';
 
 let SQL: SqlJsStatic;
 let app: AppDatabase;
@@ -317,10 +318,31 @@ describe('exercises and categories', () => {
       durationSeconds: 0,
       unit: DistanceUnit.METRES,
     });
+    const goal = (typeId: number, fields: Partial<Parameters<typeof createGoal>[1]>) =>
+      createGoal(app, {
+        typeId,
+        exerciseId: id,
+        metricWeight: 0,
+        reps: 0,
+        distanceMetres: 0,
+        durationSeconds: 0,
+        unit: 0,
+        title: null,
+        targetDate: null,
+        startDate: null,
+        ...fields,
+      });
+    goal(GoalType.MAX_DISTANCE, { distanceMetres: 100, unit: DistanceUnit.METRES });
+    goal(GoalType.MAX_WEIGHT, { metricWeight: 60 });
     updateExercise(app, id, { typeId: ExerciseType.WEIGHT });
     const s = listSets(app, id, '2026-09-12')[0]!;
     expect(s.distanceMetres).toBe(0);
     expect(s.metricWeight).toBe(40);
+    // Goals of the dropped field go with it; the weight goal still applies.
+    expect(listGoals(app, id).map((g) => [g.typeId, g.metricWeight])).toEqual([[GoalType.MAX_WEIGHT, 60]]);
+    // Unchanged type: goals are left alone.
+    updateExercise(app, id, { name: 'Farmer Hold' });
+    expect(listGoals(app, id)).toHaveLength(1);
     deleteExercise(app, id);
     expect(getExercise(app, id)).toBeUndefined();
     expect(listSets(app, id, '2026-09-12')).toHaveLength(0);
