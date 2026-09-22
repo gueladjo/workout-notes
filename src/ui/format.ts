@@ -6,6 +6,7 @@ import type { Settings } from '@/db/repo/settings';
 import type { Exercise, TrainingSet } from '@/db/types';
 import { formatDuration } from '@/domain/dates';
 import {
+  displayToMetres,
   distanceUnitShort,
   fmt,
   kgToDisplay,
@@ -112,9 +113,9 @@ export function formatStatValue(
       return `${fmt(metresToDisplay(value, du) * 3600, 1)} ${distanceUnitShort(du)}/h`;
     }
     case 'pace': {
+      // `value` is seconds per metre (see graphDisplayValue): scale to seconds per display unit.
       const du = resolveDistanceUnit(0, settings.metric);
-      const secPerUnit = value > 0 ? 1 / metresToDisplay(value, du) : 0;
-      return `${formatDuration(secPerUnit)} /${distanceUnitShort(du)}`;
+      return `${formatDuration(displayToMetres(value, du))} /${distanceUnitShort(du)}`;
     }
   }
 }
