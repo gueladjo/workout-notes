@@ -23,7 +23,7 @@ seed rows in `src/db/seed.ts`. This document explains them.
 | `Routine`, `RoutineSection`, `RoutineSectionExercise`, `RoutineSectionExerciseSet` | routines, days, exercises, predefined sets | `populate_sets_type`: 0 none, 1 predefined sets, 2 copy previous workout                                                                        |
 | `Goal`                                                                             | exercise goals                             | `type_id` (GoalType), `metric_weight`, `reps`, `distance` (m), `duration_seconds`, `unit` (distance unit), `title`, `start_date`, `target_date` |
 | `Measurement`, `MeasurementUnit`, `MeasurementRecord`                              | body tracker                               | `Measurement.custom`/`enabled`; `MeasurementRecord.time` is `HH:MM:SS`                                                                          |
-| `BodyWeight`                                                                       | legacy (pre-body-tracker)                  | migrated into `MeasurementRecord` ids 1 (Bodyweight) and 2 (Body Fat)                                                                           |
+| `BodyWeight`                                                                       | legacy (pre-body-tracker)                  | migrated into `MeasurementRecord` ids 1 (Bodyweight) and 2 (Body Fat); `body_weight_metric` is kg, stored in the Bodyweight measurement's unit  |
 | `WorkoutTime`                                                                      | workout timer                              | `workout_date`, `start_date_time`, `end_date_time` (`YYYY-MM-DD HH:MM:SS`)                                                                      |
 | `ExerciseGraphFavourite`, `RepMaxGridFavourite`                                    | analysis favourites                        | preserved, not used by WorkoutNotes                                                                                                             |
 | `Plate`, `Barbell`                                                                 | plate calculator config                    | preserved, not used                                                                                                                             |
@@ -140,7 +140,9 @@ upgrade it normally.
 
 1. Create missing tables with FitNotes' statements; add missing columns with
    `ALTER TABLE ADD COLUMN` (adding a default for NOT NULL columns, as FitNotes' own upgrades do).
-2. Seed `MeasurementUnit` / `Measurement`, migrate `BodyWeight` rows into `MeasurementRecord` and
+2. Seed `MeasurementUnit` / `Measurement`, migrate `BodyWeight` rows into `MeasurementRecord`
+   (`body_weight_metric` is kilograms; a record holds its measurement's unit, so it is converted to
+   pounds when Bodyweight was seeded in pounds, i.e. the backup's `settings.metric` is 0) and
    move legacy workout comments (`Comment.owner_type_id = 2`) into `WorkoutComment`, each only when
    the destination table was created in this run (FitNotes' own upgrade steps do the same). An
    existing table is the user's even when empty, so rows they deleted do not come back on the next

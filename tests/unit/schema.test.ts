@@ -7,7 +7,7 @@ import {
   columnDefinitions,
   validateBackupDatabase,
 } from '../../src/db/schema';
-import { FITNOTES_DB_VERSION } from '../../src/db/constants';
+import { FITNOTES_DB_VERSION, KG_PER_LB } from '../../src/db/constants';
 import { DEFAULT_CATEGORIES, DEFAULT_EXERCISES, DEFAULT_MEASUREMENTS } from '../../src/db/seed';
 
 let SQL: SqlJsStatic;
@@ -121,6 +121,44 @@ describe('ensureSchema', () => {
     expect(scalar(db, 'SELECT COUNT(*) FROM Measurement')).toBe(0);
     expect(scalar(db, 'SELECT COUNT(*) FROM BodyWeight')).toBe(1);
     expect(scalar(db, 'SELECT COUNT(*) FROM Comment WHERE owner_type_id = 2')).toBe(1);
+    db.close();
+  });
+
+  it('converts legacy bodyweight kilograms to pounds for an imperial backup', () => {
+    const db = new SQL.Database();
+    run(db, 'CREATE TABLE Category(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
+    run(
+      db,
+      'CREATE TABLE exercise(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category_id INTEGER NOT NULL)',
+    );
+    run(
+      db,
+      'CREATE TABLE training_log (_id INTEGER PRIMARY KEY AUTOINCREMENT, exercise_id INTEGER NOT NULL, date DATE NOT NULL, metric_weight INTEGER NOT NULL, reps INTEGER NOT NULL)',
+    );
+    run(
+      db,
+      'CREATE TABLE BodyWeight (_id INTEGER PRIMARY KEY AUTOINCREMENT, date TEXT NOT NULL, body_weight_metric REAL NOT NULL, body_fat REAL NOT NULL, comments TEXT)',
+    );
+    run(
+      db,
+      'CREATE TABLE settings (_id INTEGER PRIMARY KEY AUTOINCREMENT, metric INTEGER NOT NULL DEFAULT 0)',
+    );
+    run(db, 'INSERT INTO settings (metric) VALUES (0)');
+    run(
+      db,
+      "INSERT INTO BodyWeight (date, body_weight_metric, body_fat) VALUES ('2015-01-01 08:30:00', 80, 15)",
+    );
+    const report = ensureSchema(db);
+    // The Bodyweight measurement was seeded in pounds, so its record is in pounds; Body Fat stays a percentage.
+    expect(scalar(db, 'SELECT unit_id FROM Measurement WHERE _id = 1')).toBe(2);
+    expect(Number(scalar(db, 'SELECT value FROM MeasurementRecord WHERE measurement_id = 1'))).toBeCloseTo(
+      80 / KG_PER_LB,
+      6,
+    );
+    expect(scalar(db, 'SELECT value FROM MeasurementRecord WHERE measurement_id = 2')).toBe(15);
+    expect(report.migrations).toContain('BodyWeight -> MeasurementRecord (1 rows, kg -> lbs)');
+    expect(scalar(db, 'SELECT body_weight_metric FROM BodyWeight')).toBe(80);
+    expect(ensureSchema(db)).toEqual({ createdTables: [], addedColumns: [], migrations: [] });
     db.close();
   });
 

@@ -9,8 +9,8 @@
  */
 import type { Database, SqlJsStatic } from './sqlite';
 import { all, columnNames, hasTable, run, scalar, transaction } from './sqlite';
-import { FITNOTES_DB_VERSION } from './constants';
-import { seedDefaults, seedMeasurementUnits, seedMeasurements } from './seed';
+import { FITNOTES_DB_VERSION, KG_PER_LB } from './constants';
+import { MEASUREMENT_UNIT, seedDefaults, seedMeasurementUnits, seedMeasurements } from './seed';
 
 /** Table name -> CREATE TABLE statement (FitNotes 25.1). Order matters only for readability. */
 export const TABLES: Record<string, string> = {
@@ -127,7 +127,15 @@ export function ensureSchema(db: Database): SchemaReport {
       report.migrations.push('seed Measurement');
     }
     // Legacy BodyWeight table -> MeasurementRecord (measurement 1 = Bodyweight, 2 = Body Fat).
+    // BodyWeight holds kilograms; a record holds the value in its measurement's unit, so a
+    // Bodyweight measurement in pounds (imperial settings) gets the converted value.
     if (created('MeasurementRecord') && Number(scalar(db, 'SELECT COUNT(*) FROM BodyWeight')) > 0) {
+      const bodyweightUnit = Number(
+        scalar(db, 'SELECT COALESCE((SELECT unit_id FROM Measurement WHERE _id = 1), ?)', [
+          MEASUREMENT_UNIT.KILOGRAMS,
+        ]),
+      );
+      const inPounds = bodyweightUnit === MEASUREMENT_UNIT.POUNDS;
       const rows = all<{
         date: string;
         body_weight_metric: number;
@@ -140,7 +148,12 @@ export function ensureSchema(db: Database): SchemaReport {
           run(
             db,
             'INSERT INTO MeasurementRecord (measurement_id, date, time, value, comment) VALUES (1, ?, ?, ?, ?)',
-            [date ?? '', time, r.body_weight_metric, r.comments ?? null],
+            [
+              date ?? '',
+              time,
+              inPounds ? r.body_weight_metric / KG_PER_LB : r.body_weight_metric,
+              r.comments ?? null,
+            ],
           );
         }
         if (r.body_fat > 0) {
@@ -151,7 +164,9 @@ export function ensureSchema(db: Database): SchemaReport {
           );
         }
       }
-      report.migrations.push(`BodyWeight -> MeasurementRecord (${rows.length} rows)`);
+      report.migrations.push(
+        `BodyWeight -> MeasurementRecord (${rows.length} rows${inPounds ? ', kg -> lbs' : ''})`,
+      );
     }
     // Legacy workout comments (Comment.owner_type_id = 2) -> WorkoutComment.
     if (

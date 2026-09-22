@@ -129,6 +129,16 @@ export const DEFAULT_MEASUREMENT_UNITS: [number, number, string, string][] = [
 
 export const MEASUREMENT_UNIT_TYPE = { WEIGHT: 0, LENGTH: 1, PERCENT: 2, NONE: 3 } as const;
 
+/** Ids of the default MeasurementUnit rows. */
+export const MEASUREMENT_UNIT = {
+  KILOGRAMS: 1,
+  POUNDS: 2,
+  CENTIMETRES: 3,
+  INCHES: 4,
+  PERCENT: 5,
+  NONE: 6,
+} as const;
+
 /** Default Measurement rows in FitNotes order (ids 1..15). Only the first two are enabled. */
 export const DEFAULT_MEASUREMENTS: { name: string; unitType: number; enabled: boolean }[] = [
   { name: 'Bodyweight', unitType: 0, enabled: true },
@@ -161,7 +171,16 @@ export function seedMeasurementUnits(db: Database): void {
 
 export function seedMeasurements(db: Database, metric: boolean): void {
   DEFAULT_MEASUREMENTS.forEach((m, i) => {
-    const unitId = m.unitType === 0 ? (metric ? 1 : 2) : m.unitType === 1 ? (metric ? 3 : 4) : 5;
+    const unitId =
+      m.unitType === MEASUREMENT_UNIT_TYPE.WEIGHT
+        ? metric
+          ? MEASUREMENT_UNIT.KILOGRAMS
+          : MEASUREMENT_UNIT.POUNDS
+        : m.unitType === MEASUREMENT_UNIT_TYPE.LENGTH
+          ? metric
+            ? MEASUREMENT_UNIT.CENTIMETRES
+            : MEASUREMENT_UNIT.INCHES
+          : MEASUREMENT_UNIT.PERCENT;
     run(
       db,
       'INSERT INTO Measurement (_id, name, unit_id, goal_type, goal_value, custom, enabled, sort_order) VALUES (?, ?, ?, 0, 0, 0, ?, ?)',
