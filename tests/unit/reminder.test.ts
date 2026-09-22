@@ -54,6 +54,10 @@ describe('backup reminder rule', () => {
   it('describes the age in weeks or months', () => {
     expect(describeBackupAge({ daysSinceBackup: null })).toBe('Your workouts have never been backed up.');
     expect(describeBackupAge({ daysSinceBackup: 14 })).toBe('Last backup was 2 weeks ago.');
+    expect(describeBackupAge({ daysSinceBackup: 55 })).toBe('Last backup was 7 weeks ago.');
+    // Eight weeks is the first "months" text and is still under two months: singular.
+    expect(describeBackupAge({ daysSinceBackup: 56 })).toBe('Last backup was 1 month ago.');
+    expect(describeBackupAge({ daysSinceBackup: 59 })).toBe('Last backup was 1 month ago.');
     expect(describeBackupAge({ daysSinceBackup: 70 })).toBe('Last backup was 2 months ago.');
   });
 });

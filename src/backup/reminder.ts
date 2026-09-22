@@ -47,7 +47,10 @@ export function describeBackupAge(reminder: BackupReminder): string {
   const days = reminder.daysSinceBackup;
   if (days === null) return 'Your workouts have never been backed up.';
   const weeks = Math.floor(days / 7);
-  if (weeks >= 8) return `Last backup was ${Math.floor(days / 30)} months ago.`;
+  if (weeks >= 8) {
+    const months = Math.floor(days / 30);
+    return `Last backup was ${months} month${months === 1 ? '' : 's'} ago.`;
+  }
   return `Last backup was ${weeks} week${weeks === 1 ? '' : 's'} ago.`;
 }
 
