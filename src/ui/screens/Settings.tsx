@@ -109,13 +109,23 @@ export function SettingsScreen() {
   };
 
   const exportCsv = async (kind: 'workout' | 'body') => {
-    const csv = kind === 'workout' ? workoutCsv(db) : bodyTrackerCsv(db);
-    const blob = new Blob([csv], { type: 'text/csv' });
-    await shareOrDownload(
-      blob,
-      csvFileName(kind),
-      kind === 'workout' ? 'Workout export' : 'Body tracker export',
-    );
+    setBusy('Preparing export…');
+    try {
+      const csv = kind === 'workout' ? workoutCsv(db) : bodyTrackerCsv(db);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const name = csvFileName(kind);
+      const result = await shareOrDownload(
+        blob,
+        name,
+        kind === 'workout' ? 'Workout export' : 'Body tracker export',
+      );
+      if (result === 'cancelled') return;
+      toast(result === 'shared' ? 'Export shared' : `Saved ${name}`);
+    } catch (err) {
+      toast(`Export failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBusy(null);
+    }
   };
 
   return (
