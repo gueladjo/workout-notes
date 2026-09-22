@@ -547,12 +547,18 @@ function GoalEditor({
   const [targetDate, setTargetDate] = useState('');
   const [startDate, setStartDate] = useState('');
   const [seen, setSeen] = useState(false);
+  // The weight and distance fields show rounded text; remember it so a field the user did not
+  // touch saves the stored value back exactly instead of its rounding.
+  const [shown, setShown] = useState({ weight: '', distance: '' });
   if (open && !seen) {
     setSeen(true);
+    const weightText = goal?.metricWeight ? fmt(kgToDisplay(goal.metricWeight, wu)) : '';
+    const distanceText = goal?.distanceMetres ? fmt(metresToDisplay(goal.distanceMetres, du)) : '';
+    setShown({ weight: weightText, distance: distanceText });
     setTypeId(goal?.typeId ?? types[0] ?? 0);
-    setWeight(goal?.metricWeight ? fmt(kgToDisplay(goal.metricWeight, wu)) : '');
+    setWeight(weightText);
     setReps(goal?.reps ? String(goal.reps) : '');
-    setDistance(goal?.distanceMetres ? fmt(metresToDisplay(goal.distanceMetres, du)) : '');
+    setDistance(distanceText);
     setTime(goal?.durationSeconds ? formatDuration(goal.durationSeconds) : '');
     setTitle(goal?.title ?? '');
     setTargetDate(goal?.targetDate ?? '');
@@ -586,9 +592,17 @@ function GoalEditor({
     onSave({
       typeId,
       exerciseId: exercise.id,
-      metricWeight: needsWeight ? displayToKg(Number(weight) || 0, wu) : 0,
+      metricWeight: !needsWeight
+        ? 0
+        : goal && weight === shown.weight
+          ? goal.metricWeight
+          : displayToKg(Number(weight) || 0, wu),
       reps: needsReps ? Number(reps) || 0 : 0,
-      distanceMetres: needsDistance ? displayToMetres(Number(distance) || 0, du) : 0,
+      distanceMetres: !needsDistance
+        ? 0
+        : goal && distance === shown.distance
+          ? goal.distanceMetres
+          : displayToMetres(Number(distance) || 0, du),
       durationSeconds: needsTime && Number.isFinite(t) ? t : 0,
       unit: needsDistance ? du : 0,
       title: title.trim() || null,
