@@ -30,6 +30,7 @@ import {
 import { createCategory, deleteCategory, listCategories } from '../../src/db/repo/categories';
 import { createGroup, listGroups, listRoutineSectionGroups, nextGroupName } from '../../src/db/repo/groups';
 import { getSettings, updateSettings, DEFAULT_SETTINGS } from '../../src/db/repo/settings';
+import { recalculatePersonalRecords } from '../../src/db/repo/records';
 import {
   addSection,
   createRoutine,
@@ -152,6 +153,30 @@ describe('sets and workouts', () => {
     const removed = deleteWorkoutHistory(app, { from: '2026-09-04', to: '2026-09-04' });
     expect(removed).toBe(3);
     expect(workoutDates(app).has('2026-09-04')).toBe(false);
+  });
+
+  it('re-awards a tied record to the earliest set after a reorder or a move', () => {
+    recalculatePersonalRecords(app, SQUAT);
+    const flagged = (date: string) => listSets(app, SQUAT, date).map((s) => s.isPersonalRecord);
+    // 105 x 5 twice on 2026-09-08: the first set holds the 5-rep record.
+    expect(flagged('2026-09-08')).toEqual([true, false]);
+    const [first, second] = listSets(app, SQUAT, '2026-09-08');
+    reorderSets(app, [second!.id, first!.id]);
+    expect(flagged('2026-09-08')).toEqual([true, false]);
+    // An equal set on a later date does not take the record...
+    copySets(
+      app,
+      [{ exerciseId: SQUAT, metricWeight: 105, reps: 5, distanceMetres: 0, durationSeconds: 0, unit: 0 }],
+      '2026-09-12',
+    );
+    expect(flagged('2026-09-12')).toEqual([false]);
+    // ...until the record workout is moved behind it.
+    moveWorkout(app, '2026-09-08', '2026-09-13');
+    expect(flagged('2026-09-12')).toEqual([true]);
+    expect(flagged('2026-09-13')).toEqual([false, false]);
+    moveWorkout(app, '2026-09-13', '2026-09-08');
+    expect(flagged('2026-09-08')).toEqual([true, false]);
+    expect(flagged('2026-09-12')).toEqual([false]);
   });
 
   it('keeps routine supersets when deleting workout history', () => {

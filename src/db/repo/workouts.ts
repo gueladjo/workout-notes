@@ -274,6 +274,8 @@ export function reorderSets(db: AppDatabase, orderedSetIds: number[]): number[] 
       else for (const s of listSets(db, exerciseId, target.date)) all.push(s.id);
     }
     const newIds = reinsertSets(db, all);
+    // Ids changed: a record tied between sets of one day belongs to the one that is now first.
+    for (const exerciseId of workoutExerciseIds(db, target.date)) recalculatePersonalRecords(db, exerciseId);
     const start = all.indexOf(orderedSetIds[0]!);
     return newIds.slice(start, start + orderedSetIds.length);
   });
@@ -287,6 +289,7 @@ export function reorderWorkoutExercises(db: AppDatabase, date: string, orderedEx
       for (const s of listSets(db, exerciseId, date)) ids.push(s.id);
     }
     reinsertSets(db, ids);
+    for (const exerciseId of orderedExerciseIds) recalculatePersonalRecords(db, exerciseId);
   });
 }
 
@@ -331,11 +334,13 @@ function reinsertSets(db: AppDatabase, orderedSetIds: number[]): number[] {
 /**
  * Move every part of a workout to another date, merging into whatever is already there. Where the
  * target already has a workout comment or workout time, the target's row wins and the moved one is
- * dropped; an exercise already in a group on the target date keeps that group.
+ * dropped; an exercise already in a group on the target date keeps that group. Records are
+ * re-awarded: an equal set on a date the workout moves past becomes the earlier one.
  */
 export function moveWorkout(db: AppDatabase, fromDate: string, toDate: string): void {
   if (fromDate === toDate) return;
   db.mutate(() => {
+    const moved = workoutExerciseIds(db, fromDate);
     db.run('UPDATE training_log SET date = ? WHERE date = ?', [toDate, fromDate]);
     db.run('UPDATE Comment SET date = ? WHERE date = ? AND owner_type_id = ?', [
       toDate,
@@ -357,6 +362,7 @@ export function moveWorkout(db: AppDatabase, fromDate: string, toDate: string): 
     const targetHasComment = getWorkoutComment(db, toDate) !== null;
     if (targetHasComment) db.run('DELETE FROM WorkoutComment WHERE date = ?', [fromDate]);
     else db.run('UPDATE WorkoutComment SET date = ? WHERE date = ?', [toDate, fromDate]);
+    for (const exerciseId of moved) recalculatePersonalRecords(db, exerciseId);
   });
 }
 

@@ -55,6 +55,8 @@ is_personal_record_first, is_complete, is_pending_update, distance (metres), dur
 - A workout exists for a date if `training_log`, `WorkoutComment` or `WorkoutTime` has the date.
 - `is_personal_record` is recalculated by FitNotes on every change; `is_personal_record_first` is
   set alongside it (semantics not fully known; WorkoutNotes writes the same value to both).
+  WorkoutNotes recalculates per exercise after every change to its sets, including copies, moves
+  and re-orders (a tie goes to the earliest date, then the lowest id, which those change).
 
 ### Exercise types (verified)
 
