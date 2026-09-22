@@ -3,9 +3,16 @@
  * sets (see FitNotes "Progress Graphs" help). Values are in storage units (kg, metres, seconds);
  * the UI converts for display.
  */
-import { GraphType, type GraphTypeId, exerciseTypeHas } from '@/db/constants';
+import {
+  DISTANCE_UNIT_TO_METRES,
+  GraphType,
+  type DistanceUnitId,
+  type GraphTypeId,
+  exerciseTypeHas,
+} from '@/db/constants';
 import type { TrainingSet } from '@/db/types';
 import { estimatedOneRepMax } from './records';
+import { kgToDisplay, metresToDisplay, type WeightUnit } from './units';
 
 export interface GraphPoint {
   date: string;
@@ -156,6 +163,39 @@ export function computeSeries(
     else points.push({ date, value });
   }
   return points;
+}
+
+/**
+ * A series value in the units the graph shows: weight in `weightUnit`, distance in `distanceUnit`,
+ * speed in distance units per hour, pace in minutes per distance unit, time in minutes. A pace
+ * series holds seconds per metre (see `computeSeries`), so a slower run is a larger value.
+ */
+export function graphDisplayValue(
+  graph: GraphTypeId,
+  value: number,
+  weightUnit: WeightUnit,
+  distanceUnit: DistanceUnitId,
+): number {
+  switch (graph) {
+    case GraphType.ESTIMATED_1RM:
+    case GraphType.MAX_WEIGHT:
+    case GraphType.WORKOUT_VOLUME:
+    case GraphType.WEIGHT_AND_REPS:
+    case GraphType.REP_MAXES:
+      return kgToDisplay(value, weightUnit);
+    case GraphType.MAX_DISTANCE:
+    case GraphType.TOTAL_DISTANCE:
+      return metresToDisplay(value, distanceUnit);
+    case GraphType.MAX_SPEED:
+      return metresToDisplay(value, distanceUnit) * 3600;
+    case GraphType.MAX_PACE:
+      return (value * DISTANCE_UNIT_TO_METRES[distanceUnit]) / 60;
+    case GraphType.MAX_TIME:
+    case GraphType.TOTAL_TIME:
+      return value / 60;
+    default:
+      return value;
+  }
 }
 
 /** Least-squares trend line over point indexes (x = days since first point). */

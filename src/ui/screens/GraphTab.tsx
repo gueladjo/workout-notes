@@ -6,7 +6,13 @@ import { allSetsForExercise, getWorkout } from '@/db/repo/workouts';
 import { updateSettings } from '@/db/repo/settings';
 import type { ExerciseWithCategory } from '@/db/types';
 import { GraphType, type GraphTypeId } from '@/db/constants';
-import { computeSeries, defaultGraphForType, graphOptionsForType, trendLine } from '@/domain/graphs';
+import {
+  computeSeries,
+  defaultGraphForType,
+  graphDisplayValue,
+  graphOptionsForType,
+  trendLine,
+} from '@/domain/graphs';
 import {
   addDays,
   addMonths,
@@ -17,7 +23,7 @@ import {
   todayIso,
 } from '@/domain/dates';
 import { formatSet, formatWeightValue, weightUnitFor } from '@/ui/format';
-import { fmt, kgToDisplay, metresToDisplay, resolveDistanceUnit, distanceUnitShort } from '@/domain/units';
+import { fmt, resolveDistanceUnit, distanceUnitShort } from '@/domain/units';
 import { LineChart } from '@/ui/components/LineChart';
 import { IconButton, Button } from '@/ui/components/Button';
 import { MenuButton } from '@/ui/components/Menu';
@@ -53,6 +59,7 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
   const [viewDate, setViewDate] = useState<string | null>(null);
   const viewWorkout = useQuery((d) => (viewDate ? getWorkout(d, viewDate) : null), [viewDate]);
   const wu = weightUnitFor(exercise, settings);
+  const du = resolveDistanceUnit(0, settings.metric);
 
   const filtered = useMemo(() => {
     const p = PERIODS.find((x) => x.id === period);
@@ -79,30 +86,9 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
       )
     : null;
 
-  function displayValue(v: number): number {
-    switch (graph) {
-      case GraphType.ESTIMATED_1RM:
-      case GraphType.MAX_WEIGHT:
-      case GraphType.WORKOUT_VOLUME:
-      case GraphType.WEIGHT_AND_REPS:
-      case GraphType.REP_MAXES:
-        return kgToDisplay(v, wu);
-      case GraphType.MAX_DISTANCE:
-      case GraphType.TOTAL_DISTANCE:
-        return metresToDisplay(v, resolveDistanceUnit(0, settings.metric));
-      case GraphType.MAX_SPEED:
-        return metresToDisplay(v, resolveDistanceUnit(0, settings.metric)) * 3600;
-      case GraphType.MAX_PACE:
-        return v > 0 ? 1 / metresToDisplay(v, resolveDistanceUnit(0, settings.metric)) / 60 : 0; // minutes per unit
-      case GraphType.MAX_TIME:
-      case GraphType.TOTAL_TIME:
-        return v / 60; // minutes
-      default:
-        return v;
-    }
-  }
+  const displayValue = (v: number) => graphDisplayValue(graph, v, wu, du);
   function formatValue(v: number): string {
-    const du = distanceUnitShort(resolveDistanceUnit(0, settings.metric));
+    const unit = distanceUnitShort(du);
     switch (graph) {
       case GraphType.ESTIMATED_1RM:
       case GraphType.MAX_WEIGHT:
@@ -112,11 +98,11 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
         return `${fmt(v, 1)} ${wu}`;
       case GraphType.MAX_DISTANCE:
       case GraphType.TOTAL_DISTANCE:
-        return `${fmt(v, 2)} ${du}`;
+        return `${fmt(v, 2)} ${unit}`;
       case GraphType.MAX_SPEED:
-        return `${fmt(v, 1)} ${du}/h`;
+        return `${fmt(v, 1)} ${unit}/h`;
       case GraphType.MAX_PACE:
-        return `${formatDuration(v * 60)} /${du}`;
+        return `${formatDuration(v * 60)} /${unit}`;
       case GraphType.MAX_TIME:
       case GraphType.TOTAL_TIME:
         return formatDuration(v * 60);

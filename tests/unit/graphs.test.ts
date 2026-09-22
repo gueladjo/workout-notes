@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { GraphType } from '../../src/db/constants';
+import { DistanceUnit, GraphType } from '../../src/db/constants';
 import type { TrainingSet } from '../../src/db/types';
-import { computeSeries } from '../../src/domain/graphs';
+import { computeSeries, graphDisplayValue } from '../../src/domain/graphs';
+import { formatDuration } from '../../src/domain/dates';
 import { estimatedOneRepMax } from '../../src/domain/records';
 
 let nextId = 1;
@@ -57,5 +58,36 @@ describe('computeSeries', () => {
     ]);
     // Distance-only graphs still plot every workout.
     expect(computeSeries(sets, GraphType.MAX_DISTANCE, {}).map((p) => p.value)).toEqual([5000, 3000, 0]);
+  });
+});
+
+describe('graphDisplayValue', () => {
+  it('shows pace as minutes per distance unit, lower for a faster run', () => {
+    const run = (metres: number, seconds: number) =>
+      computeSeries(
+        [set('2026-09-01', { distanceMetres: metres, durationSeconds: seconds })],
+        GraphType.MAX_PACE,
+        {},
+      )[0]!.value;
+    const fiveK = run(5000, 1800);
+    const perKm = graphDisplayValue(GraphType.MAX_PACE, fiveK, 'kg', DistanceUnit.KILOMETRES);
+    const perMile = graphDisplayValue(GraphType.MAX_PACE, fiveK, 'kg', DistanceUnit.MILES);
+    expect(perKm).toBeCloseTo(6, 9);
+    expect(formatDuration(perKm * 60)).toBe('6:00');
+    expect(formatDuration(perMile * 60)).toBe('9:39');
+    expect(
+      graphDisplayValue(GraphType.MAX_PACE, run(5000, 1500), 'kg', DistanceUnit.KILOMETRES),
+    ).toBeLessThan(perKm);
+    // The other conversions: kg -> lbs, m -> km, m/s -> km/h, s -> min.
+    expect(graphDisplayValue(GraphType.MAX_WEIGHT, 100, 'lbs', DistanceUnit.KILOMETRES)).toBeCloseTo(
+      220.46,
+      2,
+    );
+    expect(graphDisplayValue(GraphType.TOTAL_DISTANCE, 5000, 'kg', DistanceUnit.KILOMETRES)).toBe(5);
+    expect(graphDisplayValue(GraphType.MAX_SPEED, 5000 / 1800, 'kg', DistanceUnit.KILOMETRES)).toBeCloseTo(
+      10,
+      9,
+    );
+    expect(graphDisplayValue(GraphType.TOTAL_TIME, 1800, 'kg', DistanceUnit.KILOMETRES)).toBe(30);
   });
 });
