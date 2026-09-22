@@ -5,10 +5,18 @@ import { loadSqlJs, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
 import { seedSampleWorkouts } from '../helpers/sample';
-import { listSnapshots, MAIN_KEY, readBlob, saveSnapshot, writeBlob } from '../../src/db/persistence';
+import {
+  listSnapshots,
+  MAIN_KEY,
+  MAX_SNAPSHOTS,
+  readBlob,
+  saveSnapshot,
+  writeBlob,
+} from '../../src/db/persistence';
 import {
   openStoredDatabase,
   recoverFromSnapshot,
+  rollbackToSnapshot,
   startFresh,
   UnreadableDatabaseError,
   UNREADABLE_LABEL,
@@ -22,6 +30,8 @@ function goodBytes(): Uint8Array {
   seedSampleWorkouts(db);
   return new AppDatabase(db).export();
 }
+
+const nextMillisecond = () => new Promise((resolve) => setTimeout(resolve, 2));
 
 function setCount(bytes: Uint8Array | undefined): number {
   return new AppDatabase(openStoredDatabase(SQL, bytes!)).scalar('SELECT COUNT(*) FROM training_log');
@@ -72,6 +82,37 @@ describe('start-up recovery', () => {
     await expect(recoverFromSnapshot(SQL, key, garbage)).rejects.toThrow(UnreadableDatabaseError);
     expect(await readBlob(MAIN_KEY)).toEqual(garbage);
     expect((await listSnapshots()).map((s) => s.label)).toEqual(['Before restore']);
+  });
+
+  it('rolls the live database back to a snapshot, keeping the current data as a snapshot', async () => {
+    const persisted: Uint8Array[] = [];
+    const db = createEmptyDatabase(SQL);
+    seedSampleWorkouts(db);
+    const app = new AppDatabase(db, { persist: async (bytes) => void persisted.push(bytes) });
+    const key = await saveSnapshot(new AppDatabase(createEmptyDatabase(SQL)).export(), 'Before restore');
+    await rollbackToSnapshot(app, SQL, key);
+    expect(app.scalar('SELECT COUNT(*) FROM training_log')).toBe(0);
+    expect(setCount(persisted.at(-1))).toBe(0);
+    const snapshots = await listSnapshots();
+    expect(snapshots.map((s) => s.label)).toEqual(['Before rollback', 'Before restore']);
+    expect(setCount(await readBlob(snapshots[0]!.key))).toBe(10);
+  });
+
+  it('refuses an unreadable rollback snapshot before writing or pruning anything', async () => {
+    const app = new AppDatabase(openStoredDatabase(SQL, goodBytes()));
+    const labels: string[] = [];
+    for (let i = 1; i < MAX_SNAPSHOTS; i++) {
+      await saveSnapshot(goodBytes(), `Snapshot ${i}`);
+      labels.unshift(`Snapshot ${i}`);
+      await nextMillisecond(); // snapshot keys are timestamps
+    }
+    const key = await saveSnapshot(garbage, 'Damaged');
+    labels.unshift('Damaged');
+    expect(labels).toHaveLength(MAX_SNAPSHOTS);
+    await expect(rollbackToSnapshot(app, SQL, key)).rejects.toThrow(UnreadableDatabaseError);
+    expect(app.scalar('SELECT COUNT(*) FROM training_log')).toBe(10);
+    expect((await listSnapshots()).map((s) => s.label)).toEqual(labels);
+    await expect(rollbackToSnapshot(app, SQL, 'snapshot:missing')).rejects.toThrow('Snapshot not found');
   });
 
   it('starts fresh with an empty database, keeping the damaged bytes', async () => {

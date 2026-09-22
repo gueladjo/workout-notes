@@ -48,7 +48,10 @@ home-screen apps; Chrome grants it to installed apps and engaged sites.
   3. The current database is written to a snapshot labelled "Before restore".
   4. The new database replaces the live one and is persisted immediately.
      A `RestoreSummary` (counts plus the schema report) is shown to the user.
-- **Rollback**: Settings lists snapshots; restoring one snapshots the current database first.
+- **Rollback** (`rollbackToSnapshot` in `src/app/recovery.ts`): Settings lists snapshots; restoring
+  one opens and reconciles the snapshot first, then snapshots the current database ("Before
+  rollback"), then replaces the live one. An unreadable snapshot therefore changes nothing, and in
+  particular does not prune an older snapshot.
 - **Delete workout history**, **delete exercise** and **delete category** snapshot first, too
   (labelled with what is about to be deleted); if the snapshot cannot be written nothing is deleted.
   Delete workout history removes the sets, set and workout comments, supersets and workout times of

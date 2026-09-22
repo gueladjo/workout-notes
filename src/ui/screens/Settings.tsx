@@ -7,11 +7,11 @@ import { updateSettings } from '@/db/repo/settings';
 import { recalculatePersonalRecords } from '@/db/repo/records';
 import { deleteWorkoutHistory, exercisesWithHistory } from '@/db/repo/workouts';
 import { AppTheme, HomeScreenCategoryVisibility, HomeScreenSetLimitType } from '@/db/constants';
-import { listSnapshots, readBlob, saveSnapshot, storageStatus, type StoredFileMeta } from '@/db/persistence';
+import { listSnapshots, saveSnapshot, storageStatus, type StoredFileMeta } from '@/db/persistence';
+import { rollbackToSnapshot } from '@/app/recovery';
 import { BackupError, prepareBackup, restoreBackup, summarize, type RestoreSummary } from '@/backup/fitnotes';
 import { pickFile, shareOrDownload, downloadBlob } from '@/backup/download';
 import { bodyTrackerCsv, csvFileName, workoutCsv } from '@/backup/csv';
-import { ensureSchema } from '@/db/schema';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button } from '@/ui/components/Button';
 import { ToggleRow } from '@/ui/components/Toggle';
@@ -91,12 +91,7 @@ export function SettingsScreen() {
     if (!rollback) return;
     setBusy('Restoring snapshot…');
     try {
-      const bytes = await readBlob(rollback.key);
-      if (!bytes) throw new Error('Snapshot not found');
-      await saveSnapshot(db.export(), 'Before rollback');
-      const next = new SQL.Database(bytes);
-      ensureSchema(next);
-      await db.replaceDatabase(next);
+      await rollbackToSnapshot(db, SQL, rollback.key);
       toast('Snapshot restored');
       setRestoreResult(null);
       setSnapshots(await listSnapshots());

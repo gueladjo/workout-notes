@@ -5,6 +5,7 @@
  * No browser-only imports, so the whole path is unit-tested in Node with fake-indexeddb.
  */
 import type { Database, SqlJsStatic } from '@/db/sqlite';
+import type { AppDatabase } from '@/db/store';
 import { createEmptyDatabase, ensureSchema } from '@/db/schema';
 import { MAIN_KEY, readBlob, saveSnapshot, writeBlob } from '@/db/persistence';
 
@@ -65,6 +66,24 @@ export async function recoverFromSnapshot(SQL: SqlJsStatic, key: string, damaged
   const next = db.export();
   db.close();
   await replaceStoredDatabase(next, damaged);
+}
+
+/**
+ * Replace the live database with a rollback snapshot (Settings > Rollback snapshots). The snapshot
+ * is opened first so an unreadable one fails before the "Before rollback" snapshot is written,
+ * which would have pruned the oldest recovery point for nothing.
+ */
+export async function rollbackToSnapshot(app: AppDatabase, SQL: SqlJsStatic, key: string): Promise<void> {
+  const bytes = await readBlob(key);
+  if (!bytes) throw new Error('Snapshot not found');
+  const next = openStoredDatabase(SQL, bytes);
+  try {
+    await saveSnapshot(app.export(), 'Before rollback');
+  } catch (err) {
+    next.close();
+    throw err;
+  }
+  await app.replaceDatabase(next);
 }
 
 /** Replace the stored database with an empty one, keeping the damaged bytes as a snapshot. */
