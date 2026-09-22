@@ -28,7 +28,7 @@ import {
   updateExercise,
 } from '../../src/db/repo/exercises';
 import { createCategory, deleteCategory, listCategories } from '../../src/db/repo/categories';
-import { createGroup, listGroups, nextGroupName } from '../../src/db/repo/groups';
+import { createGroup, listGroups, listRoutineSectionGroups, nextGroupName } from '../../src/db/repo/groups';
 import { getSettings, updateSettings, DEFAULT_SETTINGS } from '../../src/db/repo/settings';
 import {
   addSection,
@@ -151,6 +151,36 @@ describe('sets and workouts', () => {
     const removed = deleteWorkoutHistory(app, { from: '2026-09-04', to: '2026-09-04' });
     expect(removed).toBe(3);
     expect(workoutDates(app).has('2026-09-04')).toBe(false);
+  });
+
+  it('keeps routine supersets when deleting workout history', () => {
+    // Routine groups live in the same tables as workout groups, with date = '' (see fitnotes-format.md).
+    const routineGroup = createGroup(app, {
+      date: '',
+      routineSectionId: 1,
+      name: 'Group 1',
+      colour: -1,
+      exerciseIds: [BENCH, SQUAT],
+    });
+    const workoutGroup = () =>
+      createGroup(app, { date: '2026-09-01', name: 'Group 1', colour: -1, exerciseIds: [BENCH, SQUAT] });
+    const routineGroups = () => listRoutineSectionGroups(app, 1).map((g) => [g.id, g.exerciseIds]);
+    workoutGroup();
+    // Only an upper bound: '' sorts before every date and must not be caught.
+    expect(deleteWorkoutHistory(app, { to: '2026-09-01' })).toBe(4);
+    expect(listGroups(app, '2026-09-01')).toHaveLength(0);
+    expect(routineGroups()).toEqual([[routineGroup, [BENCH, SQUAT]]]);
+    // Some exercises only.
+    deleteWorkoutHistory(app, { exerciseIds: [BENCH] });
+    expect(routineGroups()).toEqual([[routineGroup, [BENCH, SQUAT]]]);
+    // A lower bound, then all time.
+    deleteWorkoutHistory(app, { from: '2026-09-08' });
+    expect(routineGroups()).toEqual([[routineGroup, [BENCH, SQUAT]]]);
+    expect(deleteWorkoutHistory(app, {})).toBe(1);
+    expect(app.scalar('SELECT COUNT(*) FROM training_log')).toBe(0);
+    expect(app.scalar('SELECT COUNT(*) FROM WorkoutGroup')).toBe(1);
+    expect(app.scalar("SELECT COUNT(*) FROM WorkoutGroupExercise WHERE date = ''")).toBe(2);
+    expect(routineGroups()).toEqual([[routineGroup, [BENCH, SQUAT]]]);
   });
 
   it('keeps supersets in sync with exercise membership', () => {

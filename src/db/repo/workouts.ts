@@ -443,13 +443,14 @@ export function deleteWorkoutHistory(
       );
       deleteEmptyGroups(db);
     } else {
-      const dateClause = where.filter((w) => w.startsWith('date')).join(' AND ');
+      // Routine supersets share WorkoutGroup / WorkoutGroupExercise with `date = ''`: an open or
+      // upper-bound-only range must not match them, so every date predicate excludes the empty date.
+      const dateClause = ["date != ''", ...where.filter((w) => w.startsWith('date'))].join(' AND ');
       const dateParams = params.filter((p) => typeof p === 'string');
-      const dc = dateClause ? ' WHERE ' + dateClause : '';
-      db.run(`DELETE FROM WorkoutComment${dc}`, dateParams);
-      db.run(`DELETE FROM WorkoutGroupExercise${dc}`, dateParams);
-      db.run(`DELETE FROM WorkoutGroup${dc}`, dateParams);
-      db.run(`DELETE FROM WorkoutTime${dc.replace(/date/g, 'workout_date')}`, dateParams);
+      db.run(`DELETE FROM WorkoutComment WHERE ${dateClause}`, dateParams);
+      db.run(`DELETE FROM WorkoutGroupExercise WHERE ${dateClause}`, dateParams);
+      db.run(`DELETE FROM WorkoutGroup WHERE ${dateClause}`, dateParams);
+      db.run(`DELETE FROM WorkoutTime WHERE ${dateClause.replace(/date/g, 'workout_date')}`, dateParams);
     }
     recalculatePersonalRecords(db);
     return count;

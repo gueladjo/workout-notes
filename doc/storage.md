@@ -49,6 +49,9 @@ home-screen apps; Chrome grants it to installed apps and engaged sites.
 - **Rollback**: Settings lists snapshots; restoring one snapshots the current database first.
 - **Delete workout history**, **delete exercise** and **delete category** snapshot first, too
   (labelled with what is about to be deleted); if the snapshot cannot be written nothing is deleted.
+  Delete workout history removes the sets, set and workout comments, supersets and workout times of
+  the range; routine supersets (the same group tables with `date = ''`) and all other configuration
+  stay, whatever the range.
 
 ## Failure modes and mitigations
 
