@@ -198,6 +198,36 @@ test('a second tab takes the database over and the first one stops', async ({ pa
   await expect(second.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
 });
 
+test('a window on the Recovery screen hands the database over to a new one', async ({ page, context }) => {
+  await openApp(page);
+  // Replace the stored database with garbage, then reload into the Recovery screen.
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve, reject) => {
+        const req = indexedDB.open('workoutnotes', 1);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const tx = req.result.transaction('blobs', 'readwrite');
+          tx.objectStore('blobs').put(new Uint8Array(4096).fill(0x41), 'main');
+          tx.onerror = () => reject(tx.error);
+          tx.oncomplete = () => {
+            req.result.close();
+            resolve();
+          };
+        };
+      }),
+  );
+  await page.reload();
+  await expect(page.getByText('WorkoutNotes could not open its database')).toBeVisible({ timeout: 30_000 });
+  // A second window must not wait for the first one to close: it gets the lock and the same screen.
+  const second = await context.newPage();
+  await second.goto('/');
+  await expect(page.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
+  await expect(second.getByText('WorkoutNotes could not open its database')).toBeVisible({ timeout: 30_000 });
+  await second.getByRole('button', { name: 'Start with an empty database' }).click();
+  await expect(second.getByText('Start New Workout').first()).toBeVisible({ timeout: 30_000 });
+});
+
 test('ships a Content Security Policy that the app runs cleanly under', async ({ page }) => {
   const violations: string[] = [];
   page.on('console', (msg) => {

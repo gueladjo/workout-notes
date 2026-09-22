@@ -7,6 +7,7 @@ import {
   UNREADABLE_LABEL,
   type UnreadableDatabaseError,
 } from '@/app/recovery';
+import { holdInstanceLock } from '@/app/instance';
 import { listSnapshots, type StoredFileMeta } from '@/db/persistence';
 import { downloadBlob } from '@/backup/download';
 import { Button } from '@/ui/components/Button';
@@ -14,7 +15,8 @@ import { Button } from '@/ui/components/Button';
 /**
  * Shown instead of the app when the stored database cannot be opened. Rendered outside the router
  * and the database providers, so it only uses plain state. Every action keeps the unreadable bytes
- * as a snapshot before replacing them.
+ * as a snapshot before replacing them, and runs under the instance lock so another window that
+ * takes over meanwhile waits for it (see `src/app/instance.ts`).
  */
 export function RecoveryScreen({
   error,
@@ -38,7 +40,7 @@ export function RecoveryScreen({
       setBusy(true);
       setStatus(`${label}…`);
       try {
-        await fn();
+        await holdInstanceLock(fn);
         onRecovered();
       } catch (err) {
         setStatus(`${label} failed: ${err instanceof Error ? err.message : String(err)}`);

@@ -9,7 +9,7 @@ import { AppDatabase } from '@/db/store';
 import { MAIN_KEY, readBlob, requestPersistentStorage, writeBlob } from '@/db/persistence';
 import { defaultMetric, openStoredDatabase } from './recovery';
 import { reloadIfUpdatePending } from './update';
-import { acquireInstanceLock } from './instance';
+import { acquireInstanceLock, TAKEN_OVER_MESSAGE } from './instance';
 
 export interface BootResult {
   app: AppDatabase;
@@ -35,10 +35,22 @@ export async function bootstrap(options: BootOptions = {}): Promise<BootResult> 
     loadSqlJs(() => sqlWasmUrl),
     acquireInstanceLock(() => options.onWaiting?.()),
   ]);
+  // Registered before the stored bytes are read: a database that cannot be opened must hand the
+  // lock over too, or the Recovery screen would block every other window until this one closes.
+  let app: AppDatabase | null = null;
+  const listeners = new AbortController();
+  lock.onTakeover(async () => {
+    // Once the lock is released the other instance owns the stored bytes: stop the hide handlers
+    // first so a failed handover flush is not retried over the other instance's writes.
+    listeners.abort();
+    if (app) await app.flush().catch(() => {});
+    options.onTakenOver?.(app?.hasUnsavedChanges ?? false);
+  });
   const saved = await readBlob(MAIN_KEY);
+  if (lock.released) throw new Error(TAKEN_OVER_MESSAGE);
   const db = saved ? openStoredDatabase(SQL, saved) : createEmptyDatabase(SQL, { metric: defaultMetric() });
   if (!saved) ensureSchema(db);
-  const app = new AppDatabase(db, { persist: (bytes) => writeBlob(MAIN_KEY, bytes, 'live database') });
+  app = new AppDatabase(db, { persist: (bytes) => writeBlob(MAIN_KEY, bytes, 'live database') });
   if (!saved) {
     app.changed();
     await app.flush();
@@ -48,24 +60,18 @@ export async function bootstrap(options: BootOptions = {}): Promise<BootResult> 
   // Flush pending changes when the page is hidden or unloaded (mobile browsers kill tabs freely).
   // Always `app.flush()`: it waits for an in-flight write and returns once nothing is dirty, whereas
   // `hasUnsavedChanges` is already false while bytes are still being written. A downloaded update
-  // is applied once the app is hidden and everything is saved.
-  const listeners = new AbortController();
+  // is applied once the app is hidden and everything is saved. Nothing is added once a takeover
+  // aborted the controller.
   const { signal } = listeners;
+  const live = app;
   document.addEventListener(
     'visibilitychange',
     () => {
       if (document.visibilityState !== 'hidden') return;
-      app.flush().then(reloadIfUpdatePending, () => {});
+      live.flush().then(reloadIfUpdatePending, () => {});
     },
     { signal },
   );
-  window.addEventListener('pagehide', () => void app.flush().catch(() => {}), { signal });
-  lock.onTakeover(async () => {
-    // Once the lock is released the other instance owns the stored bytes: stop the hide handlers
-    // first so a failed handover flush is not retried over the other instance's writes.
-    listeners.abort();
-    await app.flush().catch(() => {});
-    options.onTakenOver?.(app.hasUnsavedChanges);
-  });
+  window.addEventListener('pagehide', () => void live.flush().catch(() => {}), { signal });
   return { app, SQL, fresh: !saved };
 }

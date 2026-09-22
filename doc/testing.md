@@ -40,6 +40,7 @@ mocks of the database. `fake-indexeddb` stands in for IndexedDB in persistence/b
 | `backup.test.ts`                   | export -> open -> export byte identity, restore with snapshot, rejection of non-backups, file naming, CSV layout, snapshot pruning                                                                                                                                                                       |
 | `download.test.ts`                 | Web Share wrapper: shared vs cancelled share sheet (an AbortError is not a backup)                                                                                                                                                                                                                       |
 | `reminder.test.ts`                 | backup reminder rule (14-day threshold, first-use clock, snooze) and its localStorage bookkeeping                                                                                                                                                                                                        |
+| `instance.test.ts`                 | single-instance lock with fake Web Locks and BroadcastChannels: a new window gets the lock only after the running one's takeover handler and held work (recovery writes) finish, no held work may start afterwards, a takeover requested before the handler exists runs once it is registered            |
 | `store.test.ts`                    | transaction rollback, `run()` outside `mutate()` refused, single notification per outer mutation, debounced persist, retry after failure                                                                                                                                                                 |
 | `graphs.test.ts`                   | progress-graph series: workouts with no set under the estimated 1RM rep cap, or without a timed set for speed/pace, get no point instead of a 0; display conversion of series values (pace as minutes per km or mile, speed, distance, weight, time)                                                     |
 | `records.test.ts`, `dates.test.ts` | domain maths: Brzycki, PR selection, actual/estimated rep maxes, date arithmetic and week starts, durations                                                                                                                                                                                              |
@@ -56,7 +57,9 @@ The journeys that matter for a local-first app:
    restored workout, then export a backup and check it is a SQLite file with FitNotes' file name,
 3. reload offline after the service worker is active,
 4. create a distance goal under Imperial, switch to Metric and save the goal untouched: it keeps its
-   unit and distance after a reload.
+   unit and distance after a reload,
+5. two windows: the second takes the database over from a running first one, and from one stuck on
+   the Recovery screen.
 
 ## Visual checks
 
