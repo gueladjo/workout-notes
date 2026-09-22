@@ -189,3 +189,4 @@ export const GraphType = {
 export type GraphTypeId = (typeof GraphType)[keyof typeof GraphType];
 
 export const KG_PER_LB = 0.45359237;
+export const CM_PER_INCH = 2.54;

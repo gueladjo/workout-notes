@@ -1,5 +1,6 @@
 import type { AppDatabase } from '../store';
 import type { MeasurementRecord, MeasurementUnit, MeasurementWithUnit } from '../types';
+import { measurementUnitFactor } from '@/domain/units';
 
 interface MeasurementRow {
   _id: number;
@@ -75,12 +76,25 @@ export function createMeasurement(
   });
 }
 
-export function updateMeasurement(
-  db: AppDatabase,
-  id: number,
-  patch: { name?: string; unitId?: number; goalType?: number; goalValue?: number; enabled?: boolean },
-): void {
+export interface MeasurementUpdate {
+  name?: string;
+  unitId?: number;
+  goalType?: number;
+  /** In the measurement's unit before this update (it is converted with the records). */
+  goalValue?: number;
+  enabled?: boolean;
+  /**
+   * When the unit changes: convert the recorded values and the goal so they keep their meaning
+   * (80 kgs -> 176.37 lbs, the default), or keep the numbers and only relabel them (false). Units
+   * that cannot be converted into each other (see `measurementUnitFactor`) are always relabelled.
+   */
+  convertValuesOnUnitChange?: boolean;
+}
+
+export function updateMeasurement(db: AppDatabase, id: number, patch: MeasurementUpdate): void {
   db.mutate(() => {
+    const current = getMeasurement(db, id);
+    if (!current) throw new Error(`measurement ${id} not found`);
     const cols: [string, unknown][] = [];
     if (patch.name !== undefined) cols.push(['name', patch.name.trim()]);
     if (patch.unitId !== undefined) cols.push(['unit_id', patch.unitId]);
@@ -88,6 +102,19 @@ export function updateMeasurement(
     if (patch.goalValue !== undefined) cols.push(['goal_value', patch.goalValue]);
     if (patch.enabled !== undefined) cols.push(['enabled', patch.enabled ? 1 : 0]);
     for (const [c, v] of cols) db.run(`UPDATE Measurement SET ${c} = ? WHERE _id = ?`, [v as never, id]);
+
+    // Records hold their value in the measurement's unit, so a new unit means converting them.
+    if (
+      patch.unitId !== undefined &&
+      patch.unitId !== current.unitId &&
+      patch.convertValuesOnUnitChange !== false
+    ) {
+      const factor = measurementUnitFactor(current.unitId, patch.unitId);
+      if (factor !== null && factor !== 1) {
+        db.run('UPDATE MeasurementRecord SET value = value * ? WHERE measurement_id = ?', [factor, id]);
+        db.run('UPDATE Measurement SET goal_value = goal_value * ? WHERE _id = ?', [factor, id]);
+      }
+    }
   });
 }
 

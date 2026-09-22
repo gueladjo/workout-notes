@@ -30,7 +30,7 @@ import {
   relativeDays,
   todayIso,
 } from '@/domain/dates';
-import { fmt } from '@/domain/units';
+import { fmt, measurementUnitFactor } from '@/domain/units';
 import { trendLine } from '@/domain/graphs';
 import { TopBar } from '@/ui/components/TopBar';
 import { Tabs } from '@/ui/components/Tabs';
@@ -551,13 +551,27 @@ export function MeasurementEditorScreen() {
   const [goalValue, setGoalValue] = useState(existing?.goalValue ? String(existing.goalValue) : '');
   const [unitDialog, setUnitDialog] = useState(false);
   const [confirm, setConfirm] = useState<'reset' | 'delete' | null>(null);
+  const [unitChange, setUnitChange] = useState(false);
+  const hasValues = useQuery((d) => (id ? latestRecord(d, id) !== undefined : false), [id]);
   const isDefault = existing ? !existing.custom : false;
-  const save = () => {
+  const unitShort = (unitId: number) => units.find((u) => u.id === unitId)?.shortName ?? '';
+  // Recorded values are in the measurement's unit: switching between convertible units asks
+  // whether to convert them or keep the numbers, as the exercise editor does for weights.
+  const factor =
+    existing && unitId !== existing.unitId ? measurementUnitFactor(existing.unitId, unitId) : null;
+  const save = (convertValues?: boolean) => {
     if (!name.trim() && !isDefault) return toast('Enter a name');
     const gv = goalType === MeasurementGoalType.SPECIFIC ? Number(goalValue) || 0 : 0;
-    if (id)
-      updateMeasurement(db, id, { name: isDefault ? undefined : name, unitId, goalType, goalValue: gv });
-    else createMeasurement(db, { name, unitId, goalType, goalValue: gv });
+    if (id && existing) {
+      if (factor !== null && convertValues === undefined && (hasValues || gv > 0)) return setUnitChange(true);
+      updateMeasurement(db, id, {
+        name: isDefault ? undefined : name,
+        unitId,
+        goalType,
+        goalValue: gv,
+        convertValuesOnUnitChange: convertValues,
+      });
+    } else createMeasurement(db, { name, unitId, goalType, goalValue: gv });
     navigate(-1);
   };
   return (
@@ -565,7 +579,7 @@ export function MeasurementEditorScreen() {
       <TopBar
         back
         title={id ? 'Edit Measurement' : 'New Measurement'}
-        actions={<IconButton icon="save" label="Save" primary onClick={save} />}
+        actions={<IconButton icon="save" label="Save" primary onClick={() => save()} />}
       />
       <div className="screen__content">
         <div className="container">
@@ -621,7 +635,7 @@ export function MeasurementEditorScreen() {
               </label>
             )}
           </div>
-          <Button block large onClick={save}>
+          <Button block large onClick={() => save()}>
             Save
           </Button>
           {id && (
@@ -639,6 +653,30 @@ export function MeasurementEditorScreen() {
         </div>
       </div>
       <UnitDialog open={unitDialog} onClose={() => setUnitDialog(false)} onCreated={setUnitId} />
+      <Dialog
+        open={unitChange}
+        onClose={() => setUnitChange(false)}
+        title="Change unit"
+        actions={
+          <>
+            <Button variant="text" onClick={() => setUnitChange(false)}>
+              Cancel
+            </Button>
+            <Button variant="outline" onClick={() => save(false)}>
+              Just change unit
+            </Button>
+            <Button onClick={() => save(true)}>Convert values</Button>
+          </>
+        }
+      >
+        <p>
+          <b>Convert existing values</b>: 80 {existing && unitShort(existing.unitId)} becomes{' '}
+          {fmt(80 * (factor ?? 1))} {unitShort(unitId)}.
+        </p>
+        <p>
+          <b>Just change unit</b>: 80 {existing && unitShort(existing.unitId)} becomes 80 {unitShort(unitId)}.
+        </p>
+      </Dialog>
       <ConfirmDialog
         open={confirm !== null}
         onClose={() => setConfirm(null)}

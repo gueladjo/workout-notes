@@ -3,6 +3,7 @@
  * out using the exercise's weight unit (or the Unit System setting) and the set's distance unit.
  */
 import {
+  CM_PER_INCH,
   DISTANCE_UNIT_LABELS,
   DISTANCE_UNIT_TO_METRES,
   DistanceUnit,
@@ -11,6 +12,7 @@ import {
   isDistanceUnitId,
   type DistanceUnitId,
 } from '@/db/constants';
+import { MEASUREMENT_UNIT } from '@/db/seed';
 
 export type WeightUnit = 'kg' | 'lbs';
 
@@ -85,4 +87,19 @@ export function paceSecondsPerUnit(metres: number, seconds: number, unitId: Dist
   const d = metresToDisplay(metres, unitId);
   if (d <= 0 || seconds <= 0) return 0;
   return seconds / d;
+}
+
+/**
+ * Body measurements are stored in their measurement's unit, not in a fixed one. This is the factor
+ * that turns a value in `fromUnitId` into `toUnitId`, or null when the two cannot be converted
+ * (different kinds of unit, percent, custom units).
+ */
+export function measurementUnitFactor(fromUnitId: number, toUnitId: number): number | null {
+  if (fromUnitId === toUnitId) return 1;
+  const U = MEASUREMENT_UNIT;
+  if (fromUnitId === U.KILOGRAMS && toUnitId === U.POUNDS) return 1 / KG_PER_LB;
+  if (fromUnitId === U.POUNDS && toUnitId === U.KILOGRAMS) return KG_PER_LB;
+  if (fromUnitId === U.CENTIMETRES && toUnitId === U.INCHES) return 1 / CM_PER_INCH;
+  if (fromUnitId === U.INCHES && toUnitId === U.CENTIMETRES) return CM_PER_INCH;
+  return null;
 }

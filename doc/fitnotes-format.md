@@ -96,7 +96,10 @@ groups with the same name for that date (`WHERE name = ? AND routine_section_id 
 4 Inches/in (1), 5 Percent/% (2), 6 ""/"" (no unit, type **assumed** 3). Default measurements ids
 1..15: Bodyweight, Body Fat (enabled), then Neck, Shoulders, Chest, Waist, Hips, Upper Arm (R/L),
 Forearm (R/L), Thigh (R/L), Calf (R/L) (disabled). `goal_type`: 0 none, 1 increase, 2 decrease,
-3 specific (`goal_value`).
+3 specific (`goal_value`). `MeasurementRecord.value` and `goal_value` are in the measurement's
+unit, so changing `unit_id` between kilograms and pounds or centimetres and inches converts them
+(`updateMeasurement`, unless the user chooses to keep the numbers); other unit changes only
+relabel the values (**assumed**: FitNotes' own behaviour here is unverified).
 
 ### Categories and colours (verified)
 
