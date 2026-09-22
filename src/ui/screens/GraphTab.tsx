@@ -74,6 +74,7 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
     [filtered, graph, repCount, settings.estimated1rmMaxReps],
   );
   const origin = series[0]?.date ?? todayIso();
+  const displayValue = (v: number) => graphDisplayValue(graph, v, wu, du);
   const points = series.map((p) => ({
     x: daysBetween(origin, p.date),
     y: displayValue(p.value),
@@ -86,7 +87,6 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
       )
     : null;
 
-  const displayValue = (v: number) => graphDisplayValue(graph, v, wu, du);
   function formatValue(v: number): string {
     const unit = distanceUnitShort(du);
     switch (graph) {
