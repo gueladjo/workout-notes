@@ -4,6 +4,7 @@
  * FitNotes (`SELECT MIN(_id) ... GROUP BY date, exercise_id`).
  */
 import type { AppDatabase } from '../store';
+import { columnNames, quoteIdent } from '../sqlite';
 import type { TrainingSetWithComment, Workout, WorkoutExercise, WorkoutTime } from '../types';
 import { CommentOwnerType } from '../constants';
 import { getExercise, toExercise, type ExerciseRow } from './exercises';
@@ -294,31 +295,18 @@ export function reorderWorkoutExercises(db: AppDatabase, date: string, orderedEx
 }
 
 function reinsertSets(db: AppDatabase, orderedSetIds: number[]): number[] {
+  // Every column but the id is copied, so fields this version does not know (a newer FitNotes
+  // backup) survive the move; only the comment link needs re-pointing.
+  const columns = columnNames(db.raw, 'training_log')
+    .filter((c) => c !== '_id')
+    .map(quoteIdent)
+    .join(', ');
   const newIds: number[] = [];
   for (const oldId of orderedSetIds) {
-    const r = db.get<
-      SetRow & { timer_auto_start: number; is_personal_record_first: number; is_pending_update: number }
-    >('SELECT * FROM training_log WHERE _id = ?', [oldId]);
-    if (!r) continue;
-    db.run(
-      `INSERT INTO training_log (exercise_id, date, metric_weight, reps, unit, routine_section_exercise_set_id, timer_auto_start, is_personal_record, is_personal_record_first, is_complete, is_pending_update, distance, duration_seconds)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        r.exercise_id,
-        r.date,
-        r.metric_weight,
-        r.reps,
-        r.unit,
-        r.routine_section_exercise_set_id,
-        r.timer_auto_start ?? 0,
-        r.is_personal_record,
-        r.is_personal_record_first ?? 0,
-        r.is_complete,
-        r.is_pending_update ?? 0,
-        r.distance,
-        r.duration_seconds,
-      ],
-    );
+    if (!db.get('SELECT _id FROM training_log WHERE _id = ?', [oldId])) continue;
+    db.run(`INSERT INTO training_log (${columns}) SELECT ${columns} FROM training_log WHERE _id = ?`, [
+      oldId,
+    ]);
     const newId = Number(db.scalar('SELECT last_insert_rowid()'));
     newIds.push(newId);
     db.run('UPDATE Comment SET owner_id = ? WHERE owner_type_id = ? AND owner_id = ?', [

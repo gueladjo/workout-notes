@@ -137,6 +137,31 @@ describe('sets and workouts', () => {
     );
   });
 
+  it('keeps columns it does not know when re-inserting sets', () => {
+    app.mutate(() => {
+      app.run('ALTER TABLE training_log ADD COLUMN future_col TEXT');
+      app.run("UPDATE training_log SET future_col = 'keep-' || _id");
+    });
+    const before = listSets(app, BENCH, '2026-09-01').map((s) => s.id);
+    reorderSets(app, [before[2]!, before[0]!, before[1]!]);
+    reorderWorkoutExercises(app, '2026-09-01', [SQUAT, BENCH]);
+    const rows = app.all<{ future_col: string | null; metric_weight: number }>(
+      "SELECT future_col, metric_weight FROM training_log WHERE date = '2026-09-01' ORDER BY _id ASC",
+    );
+    expect(rows.map((r) => [r.future_col, r.metric_weight])).toEqual([
+      ['keep-4', 100],
+      ['keep-3', 80],
+      ['keep-1', 60],
+      ['keep-2', 80],
+    ]);
+    expect(listSets(app, BENCH, '2026-09-01')[2]!.comment).toBe('Felt strong');
+    const reopened = new SQL.Database(app.export());
+    expect(
+      reopened.exec('SELECT COUNT(*) FROM training_log WHERE future_col IS NULL')[0]!.values[0]![0],
+    ).toBe(0);
+    reopened.close();
+  });
+
   it('copies, moves and deletes workouts', () => {
     copySets(
       app,
