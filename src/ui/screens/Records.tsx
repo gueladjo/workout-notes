@@ -26,6 +26,7 @@ import {
 import {
   displayToKg,
   displayToMetres,
+  distanceUnitShort,
   kgToDisplay,
   metresToDisplay,
   resolveDistanceUnit,
@@ -506,7 +507,7 @@ function goalTargetText(g: Goal, wu: 'kg' | 'lbs', metric: boolean): string {
     case GoalType.MAX_DISTANCE:
     case GoalType.TOTAL_DISTANCE:
     case GoalType.MAX_WORKOUT_DISTANCE:
-      return `${fmt(metresToDisplay(g.distanceMetres, du))} ${du === 2 ? 'm' : du === 3 ? 'km' : du === 4 ? 'ft' : 'mi'}`;
+      return `${fmt(metresToDisplay(g.distanceMetres, du))} ${distanceUnitShort(du)}`;
     case GoalType.MAX_DURATION:
     case GoalType.TOTAL_DURATION:
     case GoalType.MAX_WORKOUT_DURATION:
@@ -534,7 +535,9 @@ function GoalEditor({
   const settings = useSettings();
   const wu = weightUnitFor(exercise, settings);
   const types = goalTypesForExercise(exercise.typeId);
-  const du = resolveDistanceUnit(0, settings.metric);
+  // One unit for the field, its label and the saved row: the goal's own, so editing it after a
+  // change of unit system (or an imported goal in another unit) keeps the distance it had.
+  const du = resolveDistanceUnit(goal?.unit ?? 0, settings.metric);
   const [typeId, setTypeId] = useState<number>(types[0] ?? 0);
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
@@ -549,11 +552,7 @@ function GoalEditor({
     setTypeId(goal?.typeId ?? types[0] ?? 0);
     setWeight(goal?.metricWeight ? fmt(kgToDisplay(goal.metricWeight, wu)) : '');
     setReps(goal?.reps ? String(goal.reps) : '');
-    setDistance(
-      goal?.distanceMetres
-        ? fmt(metresToDisplay(goal.distanceMetres, resolveDistanceUnit(goal.unit, settings.metric)))
-        : '',
-    );
+    setDistance(goal?.distanceMetres ? fmt(metresToDisplay(goal.distanceMetres, du)) : '');
     setTime(goal?.durationSeconds ? formatDuration(goal.durationSeconds) : '');
     setTitle(goal?.title ?? '');
     setTargetDate(goal?.targetDate ?? '');
@@ -652,7 +651,7 @@ function GoalEditor({
         )}
         {needsDistance && (
           <label className="field">
-            <span className="field__label">Distance ({du === 3 ? 'km' : 'mi'})</span>
+            <span className="field__label">Distance ({distanceUnitShort(du)})</span>
             <input
               className="input"
               inputMode="decimal"

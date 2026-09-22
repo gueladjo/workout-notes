@@ -141,6 +141,38 @@ test('Copy Previous Workout picks the workout on the calendar first', async ({ p
   await expect(page.getByRole('button', { name: /Flat Barbell Bench Press 85 kg × 5 reps/ })).toBeVisible();
 });
 
+test('a distance goal keeps its distance when saved after a change of unit system', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/settings');
+  await page.getByLabel('Unit System').selectOption({ label: 'Imperial (lbs)' });
+  // Reach Cycling's goals through the Track screen, whose URL carries the exercise id.
+  await page.goto('/#/');
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Cardio' }).click();
+  await page.getByRole('button', { name: 'Cycling' }).first().click();
+  await expect(page.getByRole('tab', { name: 'Track' })).toBeVisible();
+  const exerciseId = /\/train\/[^/]+\/(\d+)/.exec(page.url())?.[1];
+  const goals = `/#/exercise/${exerciseId}/records?tab=goals`;
+  await page.goto(goals);
+  await page.getByRole('button', { name: 'Add goal' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Type').selectOption({ label: 'Max Distance' });
+  await dialog.getByLabel('Distance (mi)').fill('1');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Max Distance: 1 mi')).toBeVisible();
+  // Metric now; opening the goal shows it in its own unit and saving it changes nothing.
+  await page.goto('/#/settings');
+  await page.getByLabel('Unit System').selectOption({ label: 'Metric (kg)' });
+  await page.goto(goals);
+  await page.getByRole('button', { name: /Max Distance: 1 mi/ }).click();
+  await expect(dialog.getByLabel('Distance (mi)')).toHaveValue('1');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Max Distance: 1 mi')).toBeVisible();
+  await page.waitForTimeout(1200);
+  await page.reload();
+  await expect(page.getByText('Max Distance: 1 mi')).toBeVisible({ timeout: 30_000 });
+});
+
 test('a second tab takes the database over and the first one stops', async ({ page, context }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Start New Workout' }).click();

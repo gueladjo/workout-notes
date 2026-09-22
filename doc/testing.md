@@ -54,7 +54,9 @@ The journeys that matter for a local-first app:
 1. log a set, reload, the set is still there (IndexedDB persistence + PR trophy),
 2. restore the generated `.fitnotes` fixture through the file chooser, verify counts and a
    restored workout, then export a backup and check it is a SQLite file with FitNotes' file name,
-3. reload offline after the service worker is active.
+3. reload offline after the service worker is active,
+4. create a distance goal under Imperial, switch to Metric and save the goal untouched: it keeps its
+   unit and distance after a reload.
 
 ## Visual checks
 
