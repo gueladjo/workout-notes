@@ -9,6 +9,7 @@ import { SqlProvider } from './sql-context';
 import { ToastProvider } from '@/ui/components/Toast';
 import { getSettings } from '@/db/repo/settings';
 import { AppTheme } from '@/db/constants';
+import type { AppDatabase } from '@/db/store';
 import { HomeScreen } from '@/ui/screens/Home';
 import { ExerciseListScreen } from '@/ui/screens/ExerciseList';
 import { ExerciseEditorScreen } from '@/ui/screens/ExerciseEditor';
@@ -27,11 +28,11 @@ export function App() {
   const [failure, setFailure] = useState<unknown>(null);
   const [attempt, setAttempt] = useState(0);
   const [waiting, setWaiting] = useState(false);
-  const [takenOver, setTakenOver] = useState<{ unsaved: boolean } | null>(null);
+  const [takenOver, setTakenOver] = useState<{ unsaved: boolean; app: AppDatabase | null } | null>(null);
   useEffect(() => {
     bootstrap({
       onWaiting: () => setWaiting(true),
-      onTakenOver: (unsaved) => setTakenOver({ unsaved }),
+      onTakenOver: (unsaved, app) => setTakenOver({ unsaved, app }),
     })
       .then((result) => {
         setWaiting(false);
@@ -40,7 +41,7 @@ export function App() {
       .catch(setFailure);
   }, [attempt]);
 
-  if (takenOver) return <TakenOverScreen unsaved={takenOver.unsaved} />;
+  if (takenOver) return <TakenOverScreen unsaved={takenOver.unsaved} app={takenOver.app} />;
   if (failure instanceof UnreadableDatabaseError) {
     return (
       <RecoveryScreen

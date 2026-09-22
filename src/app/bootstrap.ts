@@ -21,8 +21,11 @@ export interface BootResult {
 export interface BootOptions {
   /** Another instance holds the database and is still handing it over. */
   onWaiting?: () => void;
-  /** Another instance took over; this one has flushed (or failed to) and must stop. */
-  onTakenOver?: (unsaved: boolean) => void;
+  /**
+   * Another instance took over; this one has saved (or failed to, `unsaved`) and must stop. `app`
+   * (once the database had opened) still holds the data in memory, so a copy can be saved.
+   */
+  onTakenOver?: (unsaved: boolean, app: AppDatabase | null) => void;
 }
 
 /**
@@ -41,10 +44,11 @@ export async function bootstrap(options: BootOptions = {}): Promise<BootResult> 
   const listeners = new AbortController();
   lock.onTakeover(async () => {
     // Once the lock is released the other instance owns the stored bytes: stop the hide handlers
-    // first so a failed handover flush is not retried over the other instance's writes.
+    // first so a failed handover flush is not retried over the other instance's writes, then
+    // close the database (no more writes are accepted, what is unsaved is written one last time).
     listeners.abort();
-    if (app) await app.flush().catch(() => {});
-    options.onTakenOver?.(app?.hasUnsavedChanges ?? false);
+    if (app) await app.close().catch(() => {});
+    options.onTakenOver?.(app?.hasUnsavedChanges ?? false, app);
   });
   const saved = await readBlob(MAIN_KEY);
   if (lock.released) throw new Error(TAKEN_OVER_MESSAGE);

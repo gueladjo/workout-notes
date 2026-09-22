@@ -74,6 +74,60 @@ describe('AppDatabase', () => {
     vi.useRealTimers();
   });
 
+  it('close() writes the changes accepted before it, refuses new ones and never writes again', async () => {
+    vi.useFakeTimers();
+    const pending: Array<() => void> = [];
+    const written: Uint8Array[] = [];
+    const persist = vi.fn((bytes: Uint8Array) => {
+      written.push(bytes);
+      return new Promise<void>((resolve) => pending.push(resolve));
+    });
+    const app = new AppDatabase(createEmptyDatabase(SQL), { persist, persistDelayMs: 1 });
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    await vi.advanceTimersByTimeAsync(5);
+    expect(persist).toHaveBeenCalledTimes(1);
+    // Accepted while the first write is in flight: it must reach storage before the handover ends.
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('b')"));
+    let done = false;
+    const closing = app.close().then(() => {
+      done = true;
+    });
+    expect(app.closed).toBe(true);
+    expect(() => app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('c')"))).toThrow(/handed over/);
+    pending.shift()!();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(persist).toHaveBeenCalledTimes(2);
+    expect(done).toBe(false);
+    pending.shift()!();
+    await closing;
+    expect(app.hasUnsavedChanges).toBe(false);
+    // The debounce timer of the second change is gone and nothing else is ever written.
+    await vi.advanceTimersByTimeAsync(50);
+    await app.flush();
+    expect(persist).toHaveBeenCalledTimes(2);
+    const saved = new SQL.Database(written[1]);
+    expect(saved.exec('SELECT COUNT(*) FROM Routine')[0]!.values[0]![0]).toBe(2);
+    saved.close();
+    await expect(app.replaceDatabase(createEmptyDatabase(SQL))).rejects.toThrow(/handed over/);
+    vi.useRealTimers();
+  });
+
+  it('close() reports a failed last persist, keeps the bytes for a copy and still never writes again', async () => {
+    const persist = vi.fn(async () => {
+      throw new Error('quota');
+    });
+    const app = new AppDatabase(createEmptyDatabase(SQL), { persist, persistDelayMs: 1 });
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    await expect(app.close()).rejects.toThrow('quota');
+    expect(app.hasUnsavedChanges).toBe(true);
+    expect(app.closed).toBe(true);
+    await expect(app.flush()).rejects.toThrow(/handed over/);
+    expect(persist).toHaveBeenCalledTimes(1);
+    const copy = new SQL.Database(app.export());
+    expect(copy.exec('SELECT COUNT(*) FROM Routine')[0]!.values[0]![0]).toBe(1);
+    copy.close();
+  });
+
   it('retries persistence after a failure', async () => {
     let fail = true;
     const persist = vi.fn(async () => {
