@@ -52,7 +52,9 @@ Sample data comes from `tests/helpers/sample.ts` (`seedSampleWorkouts`), which i
 
 The journeys that matter for a local-first app:
 
-1. log a set, reload, the set is still there (IndexedDB persistence + PR trophy),
+1. log a set, reload, the set is still there (IndexedDB persistence + PR trophy); a weight typed
+   with a decimal comma (`82,5`, what a comma-region decimal keypad types) saves as 82.5 and the
+   +/- buttons step from it (`parseDecimal` in `src/ui/format.ts`),
 2. restore the generated `.fitnotes` fixture through the file chooser, verify counts and a
    restored workout, then export a backup and check it is a SQLite file with FitNotes' file name,
 3. reload offline after the service worker is active,

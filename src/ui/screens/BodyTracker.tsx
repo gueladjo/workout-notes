@@ -42,6 +42,7 @@ import { MenuButton } from '@/ui/components/Menu';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { Checkbox } from '@/ui/components/Toggle';
 import { useToast } from '@/ui/components/Toast';
+import { parseDecimal } from '@/ui/format';
 
 type Tab = 'track' | 'history' | 'graph';
 
@@ -169,7 +170,7 @@ function RecordDialog({
   if (!open && seen) setSeen(false);
   if (!measurement) return null;
   const save = () => {
-    const v = Number(value);
+    const v = parseDecimal(value);
     if (!Number.isFinite(v)) return toast('Enter a value');
     const t = time.length === 5 ? `${time}:00` : time;
     if (record) updateRecord(db, record.id, { value: v, date, time: t, comment });
@@ -561,7 +562,7 @@ export function MeasurementEditorScreen() {
     existing && unitId !== existing.unitId ? measurementUnitFactor(existing.unitId, unitId) : null;
   const save = (convertValues?: boolean) => {
     if (!name.trim() && !isDefault) return toast('Enter a name');
-    const gv = goalType === MeasurementGoalType.SPECIFIC ? Number(goalValue) || 0 : 0;
+    const gv = goalType === MeasurementGoalType.SPECIFIC ? parseDecimal(goalValue) || 0 : 0;
     if (id && existing) {
       if (factor !== null && convertValues === undefined && (hasValues || gv > 0)) return setUnitChange(true);
       updateMeasurement(db, id, {

@@ -8,6 +8,7 @@ import { resolveWeightUnit } from '@/domain/units';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button, IconButton } from '@/ui/components/Button';
 import { useToast } from '@/ui/components/Toast';
+import { parseDecimal } from '@/ui/format';
 
 /** Exercise Notes: free-text notes plus per-exercise defaults (weight increment, default graph). */
 export function ExerciseNotesScreen() {
@@ -29,7 +30,7 @@ export function ExerciseNotesScreen() {
   if (!exercise) return <div className="empty">Exercise not found.</div>;
   const unit = resolveWeightUnit(exercise.weightUnitId, settings.metric);
   const save = () => {
-    const inc = increment.trim() === '' ? null : Number(increment);
+    const inc = increment.trim() === '' ? null : parseDecimal(increment);
     if (inc !== null && (!Number.isFinite(inc) || inc <= 0)) return toast('Enter a valid increment');
     updateExercise(db, id, {
       notes,

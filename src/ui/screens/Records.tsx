@@ -32,7 +32,7 @@ import {
   resolveDistanceUnit,
   fmt,
 } from '@/domain/units';
-import { formatSet, formatStatValue, formatWeightValue, weightUnitFor } from '@/ui/format';
+import { formatSet, formatStatValue, formatWeightValue, parseDecimal, weightUnitFor } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
 import { Tabs } from '@/ui/components/Tabs';
 import { Button, IconButton } from '@/ui/components/Button';
@@ -596,13 +596,13 @@ function GoalEditor({
         ? 0
         : goal && weight === shown.weight
           ? goal.metricWeight
-          : displayToKg(Number(weight) || 0, wu),
-      reps: needsReps ? Number(reps) || 0 : 0,
+          : displayToKg(parseDecimal(weight) || 0, wu),
+      reps: needsReps ? parseDecimal(reps) || 0 : 0,
       distanceMetres: !needsDistance
         ? 0
         : goal && distance === shown.distance
           ? goal.distanceMetres
-          : displayToMetres(Number(distance) || 0, du),
+          : displayToMetres(parseDecimal(distance) || 0, du),
       durationSeconds: needsTime && Number.isFinite(t) ? t : 0,
       unit: needsDistance ? du : 0,
       title: title.trim() || null,

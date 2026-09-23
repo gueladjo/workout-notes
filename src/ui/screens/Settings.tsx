@@ -20,6 +20,7 @@ import { Icon } from '@/ui/components/Icon';
 import { useToast } from '@/ui/components/Toast';
 import { formatShortDate } from '@/domain/dates';
 import { lastBackupAt, markBackupSaved } from '@/backup/reminder';
+import { parseDecimal } from '@/ui/format';
 
 export function SettingsScreen() {
   const db = useDb();
@@ -471,7 +472,7 @@ function NumberRow({
         value={text}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => {
-          const n = Number(text);
+          const n = parseDecimal(text);
           if (Number.isFinite(n) && n > 0) onChange(n);
           else setText(String(value));
         }}

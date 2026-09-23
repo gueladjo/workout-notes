@@ -14,7 +14,7 @@ import { updateSettings } from '@/db/repo/settings';
 import { androidColourToHex } from '@/domain/colour';
 import { addDays, formatLongDate, formatMediumDate, todayIso } from '@/domain/dates';
 import { displayToKg, kgToDisplay, fmt } from '@/domain/units';
-import { formatSet, weightUnitFor } from '@/ui/format';
+import { formatSet, parseDecimal, weightUnitFor } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
 import { IconButton, Button } from '@/ui/components/Button';
 import { MenuButton } from '@/ui/components/Menu';
@@ -546,8 +546,8 @@ function ExerciseFilterDialog({
               if (exerciseId)
                 onApply({
                   exerciseId,
-                  minWeightKg: displayToKg(Number(minWeight) || 0, unit),
-                  minReps: Number(minReps) || 0,
+                  minWeightKg: displayToKg(parseDecimal(minWeight) || 0, unit),
+                  minReps: parseDecimal(minReps) || 0,
                 });
               onClose();
             }}

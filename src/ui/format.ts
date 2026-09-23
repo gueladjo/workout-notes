@@ -16,6 +16,15 @@ import {
   type WeightUnit,
 } from '@/domain/units';
 
+/**
+ * Parse a number typed by the user. Like `Number()` (so '' is 0 and junk is NaN), but a decimal
+ * comma counts as a decimal point: phones set to a region that writes 82,5 show "," on the decimal
+ * keypad (`inputMode="decimal"`).
+ */
+export function parseDecimal(text: string): number {
+  return Number(text.replace(',', '.'));
+}
+
 export interface SetValueParts {
   weight?: string;
   reps?: string;

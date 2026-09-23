@@ -3,6 +3,7 @@ import { Dialog } from '@/ui/components/Dialog';
 import { Button } from '@/ui/components/Button';
 import { estimatedOneRepMax, weightForReps } from '@/domain/records';
 import { fmt } from '@/domain/units';
+import { parseDecimal } from '@/ui/format';
 
 /** 1RM Calculator: Brzycki estimate for a weight/reps pair and the projected 2RM..15RM table. */
 export function OneRepMaxDialog({
@@ -27,8 +28,8 @@ export function OneRepMaxDialog({
     setReps(initialReps);
   }
   if (!open && seen) setSeen(false);
-  const w = Number(weight) || 0;
-  const r = Number(reps) || 0;
+  const w = parseDecimal(weight) || 0;
+  const r = parseDecimal(reps) || 0;
   const orm = estimatedOneRepMax(w, r);
   return (
     <Dialog

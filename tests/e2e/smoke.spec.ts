@@ -46,6 +46,24 @@ test('logs a set and keeps it after a reload', async ({ page }) => {
   await expect(page.getByText('1 exercise · 1 set')).toBeVisible();
 });
 
+test('accepts a decimal comma, as typed on a comma-region decimal keypad', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  const weight = page.getByRole('textbox', { name: /^Weight/ });
+  await weight.fill('82,5');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  await expect(
+    page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 82.5 kg × 5 reps' }),
+  ).toBeVisible();
+  // The +/- buttons step from the typed value instead of from 0.
+  await weight.fill('82,5');
+  await page.getByRole('button', { name: /^Increase Weight/ }).click();
+  await expect(weight).toHaveValue('85');
+});
+
 test('reorders sets on the Track tab with press-and-hold drag', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Start New Workout' }).click();

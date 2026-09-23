@@ -1,9 +1,10 @@
 import type { ReactNode } from 'react';
 import { Icon } from './Icon';
+import { parseDecimal } from '@/ui/format';
 
 /**
  * Numeric entry with +/- buttons (FitNotes set fields): label above, then the -/value/+ row.
- * `value` is the raw text so the user can type freely; parse with `Number()` when saving. `step`
+ * `value` is the raw text so the user can type freely; parse with `parseDecimal()` when saving. `step`
  * drives the buttons. `trailing` sits at the right of the label (e.g. a unit selector).
  */
 export function NumberField({
@@ -30,7 +31,7 @@ export function NumberField({
   trailing?: ReactNode;
 }) {
   const adjust = (delta: number) => {
-    const current = value.trim() === '' ? 0 : Number(value);
+    const current = value.trim() === '' ? 0 : parseDecimal(value);
     const base = Number.isFinite(current) ? current : 0;
     const next = Math.max(min, roundTo(base + delta, decimals));
     onChange(formatNumber(next, decimals));

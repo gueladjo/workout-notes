@@ -18,7 +18,7 @@ import { setSetComment } from '@/db/repo/comments';
 import { groupForExercise, type GroupWithExercises } from '@/db/repo/groups';
 import type { Settings } from '@/db/repo/settings';
 import { exerciseTypeFields } from '@/db/constants';
-import { formatSet, weightUnitFor } from '@/ui/format';
+import { formatSet, parseDecimal, weightUnitFor } from '@/ui/format';
 import {
   displayToKg,
   displayToMetres,
@@ -221,9 +221,9 @@ function TrackTab({
   const set = (patch: Partial<FieldValues>) => setValues((v) => ({ ...v, ...patch }));
 
   const readValues = () => {
-    const w = values.weight.trim() === '' ? 0 : Number(values.weight);
-    const r = values.reps.trim() === '' ? 0 : Number(values.reps);
-    const d = values.distance.trim() === '' ? 0 : Number(values.distance);
+    const w = values.weight.trim() === '' ? 0 : parseDecimal(values.weight);
+    const r = values.reps.trim() === '' ? 0 : parseDecimal(values.reps);
+    const d = values.distance.trim() === '' ? 0 : parseDecimal(values.distance);
     const t = values.time.trim() === '' ? 0 : parseDuration(values.time);
     if ([w, r, d].some((n) => !Number.isFinite(n) || n < 0) || !Number.isFinite(t) || t < 0) {
       toast('Please enter valid values');

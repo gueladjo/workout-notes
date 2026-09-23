@@ -5,7 +5,7 @@ import { Checkbox } from './Toggle';
 import { useSettings } from '@/app/hooks';
 import { exerciseTypeFields, type ExerciseTypeId } from '@/db/constants';
 import type { ExerciseWithCategory } from '@/db/types';
-import { formatSet, weightUnitFor } from '@/ui/format';
+import { formatSet, parseDecimal, weightUnitFor } from '@/ui/format';
 import {
   displayToKg,
   displayToMetres,
@@ -192,7 +192,7 @@ export function SetEditor({
           aria-label="Weight"
           defaultValue={fmt(kgToDisplay(value.metricWeight, weightUnit))}
           onChange={(e) =>
-            onChange({ ...value, metricWeight: displayToKg(Number(e.target.value) || 0, weightUnit) })
+            onChange({ ...value, metricWeight: displayToKg(parseDecimal(e.target.value) || 0, weightUnit) })
           }
         />
       )}
@@ -202,7 +202,7 @@ export function SetEditor({
           inputMode="numeric"
           aria-label="Reps"
           defaultValue={value.reps}
-          onChange={(e) => onChange({ ...value, reps: Number(e.target.value) || 0 })}
+          onChange={(e) => onChange({ ...value, reps: parseDecimal(e.target.value) || 0 })}
         />
       )}
       {fields.includes('distance') && (
@@ -212,7 +212,11 @@ export function SetEditor({
           aria-label="Distance"
           defaultValue={fmt(metresToDisplay(value.distanceMetres, du))}
           onChange={(e) =>
-            onChange({ ...value, distanceMetres: displayToMetres(Number(e.target.value) || 0, du), unit: du })
+            onChange({
+              ...value,
+              distanceMetres: displayToMetres(parseDecimal(e.target.value) || 0, du),
+              unit: du,
+            })
           }
         />
       )}
