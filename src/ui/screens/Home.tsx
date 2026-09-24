@@ -43,7 +43,12 @@ export function HomeScreen() {
   const workout = useQuery((d) => getWorkout(d, date), [date]);
   const dates = useQuery((d) => allWorkoutDates(d));
   const [selected, setSelected] = useState<Set<number> | null>(null);
-  const [dialog, setDialog] = useState<'none' | 'movePick' | 'comment' | 'share' | 'deleteConfirm'>('none');
+  // A dialog belongs to the date it was opened for: should the route move on under it (browser
+  // Back lands on another day with this screen still mounted), it closes instead of moving,
+  // commenting or deleting the workout of the new date.
+  const [dialogState, setDialogState] = useState<{ kind: DialogKind; date: string } | null>(null);
+  const dialog = dialogState && dialogState.date === date ? dialogState.kind : 'none';
+  const setDialog = (kind: DialogKind | 'none') => setDialogState(kind === 'none' ? null : { kind, date });
   // Read once per visit: a backup made in Settings clears it on the way back, "Not now" hides it.
   const [backupReminder, setBackupReminder] = useState(() => readBackupReminder());
 
@@ -60,11 +65,14 @@ export function HomeScreen() {
     goTo(addDays(date, dir));
   };
 
-  // Horizontal swipe between days.
+  // Horizontal swipe between days. A touch that starts in a dialog (box or backdrop) or in the
+  // overflow menu (which bubbles here through its portal) is not a day swipe: Move / Comment
+  // Workout would otherwise write to the swiped-to date.
   const touch = useRef<{ x: number; y: number } | null>(null);
   const onTouchStart = (e: React.TouchEvent) => {
     const t = e.touches[0];
-    if (t) touch.current = { x: t.clientX, y: t.clientY };
+    const overlay = e.target instanceof Element && e.target.closest('dialog, .menu, .menu-backdrop');
+    touch.current = t && !overlay ? { x: t.clientX, y: t.clientY } : null;
   };
   const onTouchEnd = (e: React.TouchEvent) => {
     const t = e.changedTouches[0];
@@ -318,6 +326,8 @@ export function HomeScreen() {
     </div>
   );
 }
+
+type DialogKind = 'movePick' | 'comment' | 'share' | 'deleteConfirm';
 
 function plural(n: number, noun: string): string {
   return `${n} ${noun}${n === 1 ? '' : 's'}`;

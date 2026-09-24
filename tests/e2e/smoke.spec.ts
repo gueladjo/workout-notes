@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
@@ -17,6 +17,28 @@ test.beforeAll(() => {
 async function openApp(page: Page) {
   await page.goto('/');
   await expect(page.getByText('Start New Workout').first()).toBeVisible({ timeout: 30_000 });
+}
+
+async function restoreFixture(page: Page) {
+  await page.goto('/#/settings');
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Restore Backup…' }).click();
+  await (await chooser).setFiles(FIXTURE);
+  await page.getByRole('button', { name: 'Restore', exact: true }).click();
+  await expect(page.getByText('Backup restored')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('button', { name: 'OK' }).click();
+}
+
+/** Horizontal touch swipe starting at the middle of `target` (Home reads touches[0] / changedTouches[0]). */
+async function swipe(target: Locator, dx: number) {
+  const box = await target.boundingBox();
+  if (!box) throw new Error('swipe target not laid out');
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  const start = { identifier: 1, clientX: x, clientY: y };
+  const end = { identifier: 1, clientX: x + dx, clientY: y };
+  await target.dispatchEvent('touchstart', { touches: [start], changedTouches: [start] });
+  await target.dispatchEvent('touchend', { touches: [], changedTouches: [end] });
 }
 
 test('logs a set and keeps it after a reload', async ({ page }) => {
@@ -188,6 +210,37 @@ test('creates a superset group in the routine editor', async ({ page }) => {
   await expect(dialog.getByText('Group 1')).toBeVisible();
   await dialog.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
+test('a swipe inside a Home dialog does not change the day it writes to', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await page.goto('/#/workout/2026-09-08');
+  await expect(page.getByText('Deload next week')).toBeVisible();
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Comment Workout' }).click();
+  const comment = page.getByRole('dialog').getByRole('textbox');
+  await expect(comment).toHaveValue('Deload next week');
+  // A thumb dragging sideways over the text must not move the page to the next day.
+  await swipe(comment, -120);
+  await expect(page).toHaveURL(/#\/workout\/2026-09-08$/);
+  await comment.fill('Deload next week, felt strong');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Deload next week, felt strong')).toBeVisible();
+  // The 9th (no workout) did not receive the comment.
+  await page.goto('/#/workout/2026-09-09');
+  await expect(page.getByText('No workout')).toBeVisible();
+  await expect(page.getByText('Deload next week, felt strong')).toHaveCount(0);
+  // Move Workout: a swipe inside the date picker does not change the workout being moved.
+  await page.goto('/#/workout/2026-09-08');
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Move Workout' }).click();
+  await swipe(page.getByRole('dialog'), -120);
+  await expect(page).toHaveURL(/#\/workout\/2026-09-08$/);
+  await page.getByRole('button', { name: 'Cancel' }).click();
+  // A swipe on the page itself still changes the day.
+  await swipe(page.getByText('Deload next week, felt strong'), -120);
+  await expect(page).toHaveURL(/#\/workout\/2026-09-09$/);
 });
 
 test('restores a FitNotes backup and exports one', async ({ page }) => {
