@@ -36,20 +36,37 @@ export function downloadBlob(blob: Blob, fileName: string): void {
   setTimeout(() => URL.revokeObjectURL(url), 30_000);
 }
 
-/** Open a file picker and resolve with the chosen file's bytes. */
+/** The chosen file could not be read (a cloud file not downloaded yet, a provider gone away…). */
+export class FileReadError extends Error {
+  constructor(
+    public readonly fileName: string,
+    cause: unknown,
+  ) {
+    super(`Could not read "${fileName}": ${cause instanceof Error ? cause.message : String(cause)}`);
+    this.name = 'FileReadError';
+  }
+}
+
+/**
+ * Open a file picker and resolve with the chosen file's bytes, `null` when the user picks nothing.
+ * Rejects with `FileReadError` when the browser cannot read the chosen file.
+ */
 export function pickFile(accept: string): Promise<{ name: string; bytes: Uint8Array } | null> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = accept;
     input.style.display = 'none';
     document.body.appendChild(input);
     const cleanup = () => input.remove();
-    input.onchange = async () => {
+    input.onchange = () => {
       const file = input.files?.[0];
       cleanup();
       if (!file) return resolve(null);
-      resolve({ name: file.name, bytes: new Uint8Array(await file.arrayBuffer()) });
+      file.arrayBuffer().then(
+        (buffer) => resolve({ name: file.name, bytes: new Uint8Array(buffer) }),
+        (err: unknown) => reject(new FileReadError(file.name, err)),
+      );
     };
     input.oncancel = () => {
       cleanup();

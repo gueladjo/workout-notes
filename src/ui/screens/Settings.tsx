@@ -66,8 +66,13 @@ export function SettingsScreen() {
   };
 
   const chooseRestore = async () => {
-    const file = await pickFile('.fitnotes,application/octet-stream,application/x-sqlite3,*/*');
-    if (file) setPendingRestore(file);
+    try {
+      const file = await pickFile('.fitnotes,application/octet-stream,application/x-sqlite3,*/*');
+      if (file) setPendingRestore(file);
+    } catch (err) {
+      // Nothing was touched: say so and leave the button ready for another try.
+      toast(`${err instanceof Error ? err.message : String(err)}. Nothing was changed; please try again.`);
+    }
   };
 
   const doRestore = async () => {

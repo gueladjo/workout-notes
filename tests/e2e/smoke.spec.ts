@@ -85,6 +85,22 @@ test('logs a cardio set in metres with the hh / mm / ss time boxes', async ({ pa
   await expect(page.getByRole('textbox', { name: 'Seconds' })).toHaveValue('30');
 });
 
+test('reports a backup file the browser cannot read and stays usable', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/settings');
+  // iOS Safari fails to read a cloud file that is not on the device yet: make every read fail.
+  await page.evaluate(() => {
+    File.prototype.arrayBuffer = () =>
+      Promise.reject(new DOMException('The requested file could not be read', 'NotReadableError'));
+  });
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Restore Backup…' }).click();
+  await (await chooser).setFiles(FIXTURE);
+  await expect(page.getByRole('status')).toContainText('Could not read "sample.fitnotes"');
+  await expect(page.getByRole('button', { name: 'Restore', exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Restore Backup…' })).toBeEnabled();
+});
+
 test('reorders sets on the Track tab with press-and-hold drag', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Start New Workout' }).click();
