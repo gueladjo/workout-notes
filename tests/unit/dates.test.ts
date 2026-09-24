@@ -9,6 +9,7 @@ import {
   joinDuration,
   startOfWeek,
   toIsoDate,
+  todayIso,
   parseIsoDate,
 } from '../../src/domain/dates';
 
@@ -21,6 +22,23 @@ describe('dates', () => {
     expect(isValidIsoDate('2026-02-30')).toBe(false);
     expect(isValidIsoDate('2026-02-28')).toBe(true);
   });
+  it('converts a Date to the local calendar date, not the UTC one', () => {
+    // 23:30 local: in any zone east of UTC the UTC date is still the same day, but west of UTC
+    // toISOString() would already say tomorrow; toIsoDate() must always answer the local day.
+    const lateEvening = new Date(2026, 8, 12, 23, 30);
+    expect(toIsoDate(lateEvening)).toBe('2026-09-12');
+    const justAfterMidnight = new Date(2026, 8, 13, 0, 30);
+    expect(toIsoDate(justAfterMidnight)).toBe('2026-09-13');
+    if (lateEvening.getTimezoneOffset() !== 0) {
+      // The UTC slice disagrees with the local day for at least one of the two instants.
+      const utcSlices = [lateEvening, justAfterMidnight].map((d) => d.toISOString().slice(0, 10));
+      expect(utcSlices).not.toEqual(['2026-09-12', '2026-09-13']);
+    }
+    // A stored ISO timestamp (Settings "Last backup") round-trips through Date to the local day.
+    expect(toIsoDate(new Date(lateEvening.toISOString()))).toBe('2026-09-12');
+    expect(todayIso()).toBe(toIsoDate(new Date()));
+  });
+
   it('computes week starts for Sunday/Monday/Saturday conventions', () => {
     // 2026-09-12 is a Saturday
     expect(startOfWeek('2026-09-12', 1)).toBe('2026-09-07'); // Monday start

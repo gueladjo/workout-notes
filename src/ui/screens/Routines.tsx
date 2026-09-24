@@ -23,7 +23,7 @@ import {
 } from '@/db/repo/routines';
 import { exerciseTypeFields } from '@/db/constants';
 import { androidColourToHex } from '@/domain/colour';
-import { formatLongDate } from '@/domain/dates';
+import { formatLongDate, todayIso } from '@/domain/dates';
 import { formatSet, weightUnitFor } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button, IconButton } from '@/ui/components/Button';
@@ -248,7 +248,7 @@ export function RoutineScreen() {
           }));
           logRoutineSection(db, logSection.id, date, sets);
           toast(`Added ${sets.length} set${sets.length === 1 ? '' : 's'} to your workout`);
-          navigate(date === new Date().toISOString().slice(0, 10) ? '/' : `/workout/${date}`);
+          navigate(date === todayIso() ? '/' : `/workout/${date}`);
         }}
       />
       <ConfirmDialog

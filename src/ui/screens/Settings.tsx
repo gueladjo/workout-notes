@@ -18,7 +18,7 @@ import { ToggleRow } from '@/ui/components/Toggle';
 import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
 import { Icon } from '@/ui/components/Icon';
 import { useToast } from '@/ui/components/Toast';
-import { formatShortDate } from '@/domain/dates';
+import { formatShortDate, toIsoDate } from '@/domain/dates';
 import { lastBackupAt, markBackupSaved } from '@/backup/reminder';
 import { parseDecimal } from '@/ui/format';
 
@@ -240,7 +240,7 @@ export function SettingsScreen() {
                 Save all your data as a FitNotes backup file (.fitnotes). It can be restored here or in
                 FitNotes for Android.
                 {lastBackup
-                  ? ` Last backup: ${formatShortDate(lastBackup.slice(0, 10))}.`
+                  ? ` Last backup: ${formatShortDate(toIsoDate(new Date(lastBackup)))}.`
                   : ' No backup saved yet.'}
               </div>
               <div className="row">

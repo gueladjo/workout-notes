@@ -2,13 +2,13 @@
 
 ## Where data lives
 
-| What               | Where                                                                                | Notes                                                                             |
-| ------------------ | ------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------- |
-| Live database      | IndexedDB `workoutnotes` / store `blobs`, key `main`                                 | Full SQLite file as `Uint8Array`                                                  |
-| Rollback snapshots | same store, keys `snapshot:<ISO time>`                                               | Kept: newest `MAX_SNAPSHOTS` (5)                                                  |
-| Metadata           | store `meta`                                                                         | `{ key, savedAt, label, size }`, lets the UI list snapshots without loading bytes |
-| Last backup time   | `localStorage` `workoutnotes.lastBackupAt`                                           | Drives the "last backup" note and the Home reminder                               |
-| Backup reminder    | `localStorage` `workoutnotes.firstUsedAt`, `workoutnotes.backupReminderSnoozedUntil` | `src/backup/reminder.ts`: the "never backed up" clock and the "Not now" snooze    |
+| What               | Where                                                                                | Notes                                                                                 |
+| ------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
+| Live database      | IndexedDB `workoutnotes` / store `blobs`, key `main`                                 | Full SQLite file as `Uint8Array`                                                      |
+| Rollback snapshots | same store, keys `snapshot:<ISO time>`                                               | Kept: newest `MAX_SNAPSHOTS` (5)                                                      |
+| Metadata           | store `meta`                                                                         | `{ key, savedAt, label, size }`, lets the UI list snapshots without loading bytes     |
+| Last backup time   | `localStorage` `workoutnotes.lastBackupAt`                                           | Drives the "last backup" note (shown on its local calendar day) and the Home reminder |
+| Backup reminder    | `localStorage` `workoutnotes.firstUsedAt`, `workoutnotes.backupReminderSnoozedUntil` | `src/backup/reminder.ts`: the "never backed up" clock and the "Not now" snooze        |
 
 Everything else (settings included) is inside the SQLite database.
 

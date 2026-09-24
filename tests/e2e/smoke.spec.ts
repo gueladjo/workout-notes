@@ -462,6 +462,20 @@ test('Update keeps the exact weight of a set whose lbs field was not touched', a
   await expect(dialog.getByText('100 kg', { exact: true })).toBeVisible();
 });
 
+test.describe('local dates', () => {
+  // UTC+14 without DST: 20:00Z on the 12th is already the 13th locally.
+  test.use({ timezoneId: 'Pacific/Kiritimati' });
+
+  test('shows the last backup on its local calendar day', async ({ page }) => {
+    await page.addInitScript(() =>
+      localStorage.setItem('workoutnotes.lastBackupAt', '2026-09-12T20:00:00.000Z'),
+    );
+    await openApp(page);
+    await page.goto('/#/settings');
+    await expect(page.getByText('Last backup: 13 Sep 2026.')).toBeVisible();
+  });
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();
