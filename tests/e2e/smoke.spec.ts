@@ -432,6 +432,36 @@ test('a goal refuses an invalid target instead of saving 0', async ({ page }) =>
   await expect(page.getByText('Edit Measurement')).toBeVisible();
 });
 
+test('Update keeps the exact weight of a set whose lbs field was not touched', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('20');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  const list = page.getByTestId('set-list');
+  await expect(list.getByRole('button', { name: 'Set 1: 20 kg × 5 reps' })).toBeVisible();
+  const track = `/${new URL(page.url()).hash}`; // /#/train/<date>/<exerciseId>
+  // In lbs the set reads 44.09; selecting it and tapping Update must not save 44.09 lbs = 19.9989 kg.
+  await page.goto('/#/settings');
+  await page.getByLabel('Unit System').selectOption({ label: 'Imperial (lbs)' });
+  await page.goto(track);
+  await list.getByRole('button', { name: 'Set 1: 44.09 lbs × 5 reps' }).click();
+  await expect(page.getByRole('textbox', { name: /^Weight/ })).toHaveValue('44.09');
+  await page.getByRole('button', { name: 'Update' }).click();
+  await expect(page.getByTestId('save-set')).toBeVisible();
+  // Back in metric the set's volume is still exactly 100 kg (19.9989 kg × 5 would read 99.99 kg).
+  await page.goto('/#/settings');
+  await page.getByLabel('Unit System').selectOption({ label: 'Metric (kg)' });
+  await page.goto(track);
+  await page.getByRole('tab', { name: 'History' }).click();
+  await page.getByRole('button', { name: 'Set 1: 20 kg × 5 reps' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Volume', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('100 kg', { exact: true })).toBeVisible();
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

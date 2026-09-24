@@ -161,9 +161,16 @@ function RecordDialog({
   const [time, setTime] = useState(nowTime());
   const [comment, setComment] = useState('');
   const [seen, setSeen] = useState(false);
+  // The value field shows the stored value rounded to three decimals (a converted 80 kg reads
+  // 176.37 lbs); remember it so a field the user did not touch saves the stored value back exactly
+  // instead of its rounding.
+  const [shown, setShown] = useState<{ text: string; value: number } | null>(null);
   if (open && !seen) {
     setSeen(true);
-    setValue(record ? fmt(record.value, 3) : last ? fmt(last.value, 3) : '');
+    const from = record ?? last;
+    const text = from ? fmt(from.value, 3) : '';
+    setShown(from ? { text, value: from.value } : null);
+    setValue(text);
     setDate(record?.date ?? todayIso());
     setTime(record?.time ?? nowTime());
     setComment(record?.comment ?? '');
@@ -171,7 +178,7 @@ function RecordDialog({
   if (!open && seen) setSeen(false);
   if (!measurement) return null;
   const save = () => {
-    const v = parseDecimal(value);
+    const v = shown && value === shown.text ? shown.value : parseDecimal(value);
     if (!Number.isFinite(v)) return toast('Enter a value');
     const t = time.length === 5 ? `${time}:00` : time;
     if (record) updateRecord(db, record.id, { value: v, date, time: t, comment });

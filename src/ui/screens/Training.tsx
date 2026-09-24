@@ -160,6 +160,18 @@ interface FieldValues {
   distance: string;
   distanceUnit: number;
   time: DurationParts;
+  /**
+   * The weight and distance fields show rounded text (20 kg reads 44.09 lbs); remember what they
+   * were filled with, and from which stored values, so a field the user did not touch saves the
+   * stored value back exactly instead of its rounding. Reps and time round-trip exactly.
+   */
+  filled?: {
+    weight: string;
+    metricWeight: number;
+    distance: string;
+    distanceUnit: number;
+    distanceMetres: number;
+  };
 }
 
 function valuesFrom(
@@ -178,12 +190,21 @@ function valuesFrom(
       time: EMPTY_DURATION,
     };
   const du = resolveDistanceUnit(s.unit, settings.metric);
+  const weight = formatNumber(kgToDisplay(s.metricWeight, wu));
+  const distance = formatNumber(metresToDisplay(s.distanceMetres, du), 3);
   return {
-    weight: formatNumber(kgToDisplay(s.metricWeight, wu)),
+    weight,
     reps: String(s.reps),
-    distance: formatNumber(metresToDisplay(s.distanceMetres, du), 3),
+    distance,
     distanceUnit: du,
     time: splitDuration(s.durationSeconds),
+    filled: {
+      weight,
+      metricWeight: s.metricWeight,
+      distance,
+      distanceUnit: du,
+      distanceMetres: s.distanceMetres,
+    },
   };
 }
 
@@ -237,10 +258,19 @@ function TrackTab({
       return null;
     }
     const du = resolveDistanceUnit(values.distanceUnit, settings.metric);
+    const { filled } = values;
     return {
-      metricWeight: fields.includes('weight') ? displayToKg(w, wu) : 0,
+      metricWeight: !fields.includes('weight')
+        ? 0
+        : filled && values.weight === filled.weight
+          ? filled.metricWeight
+          : displayToKg(w, wu),
       reps: fields.includes('reps') ? Math.round(r) : 0,
-      distanceMetres: fields.includes('distance') ? displayToMetres(d, du) : 0,
+      distanceMetres: !fields.includes('distance')
+        ? 0
+        : filled && values.distance === filled.distance && values.distanceUnit === filled.distanceUnit
+          ? filled.distanceMetres
+          : displayToMetres(d, du),
       durationSeconds: fields.includes('time') ? Math.round(t) : 0,
       unit: fields.includes('distance') ? du : 0,
     };
