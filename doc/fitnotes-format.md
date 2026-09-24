@@ -83,9 +83,10 @@ routine_section_id, workout_group_id)`. Membership is by `(date, exercise_id)`. 
 the same tables with `routine_section_id` set and `date = ''` (**inferred** from the queries that
 join on `wge.routine_section_id = rs._id`); when a routine day is logged, FitNotes creates workout
 groups with the same name for that date (`WHERE name = ? AND routine_section_id = ? AND date = ?`).
-WorkoutNotes never keeps a `WorkoutGroup` without members: every path that removes membership
-(deleting sets or exercises, moving workouts, editing a group so an exercise changes group) drops
-the emptied group, so no empty group reaches a backup.
+Every WorkoutNotes path that removes membership (deleting sets or exercises, moving workouts,
+editing a group so an exercise changes group) drops the group it empties, so WorkoutNotes itself
+never writes an empty `WorkoutGroup`; a group that was already empty in a restored backup is left as
+it is (invariant 4) until a later change on its date sweeps it.
 
 ### Goal types (verified)
 

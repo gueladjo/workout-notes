@@ -376,7 +376,9 @@ export function ExerciseListScreen() {
                       {
                         label: 'History',
                         icon: 'history',
-                        onSelect: () => navigate(`/exercise/${ex.id}/overview?date=${date}`),
+                        // The list's date is the workout being tracked, so this is the Training
+                        // screen's History tab (Edit/Copy into that day), not the read-only overview.
+                        onSelect: () => navigate(`/train/${date}/${ex.id}?tab=history`),
                       },
                       {
                         label: 'Delete',

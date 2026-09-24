@@ -55,6 +55,8 @@ export function CalendarScreen() {
   // up), and a day tapped in one mode means nothing in the other, so the selection remembers the
   // mode it was made in and reads as null elsewhere.
   const [selection, setSelection] = useState<{ date: string; copy: boolean } | null>(null);
+  // Forgotten, not merely hidden: Back into the mode it was made in must not reopen its dialog.
+  if (selection && selection.copy !== copyMode) setSelection(null);
   const selected = selection && selection.copy === copyMode ? selection.date : null;
   const setSelected = (date: string | null) => setSelection(date === null ? null : { date, copy: copyMode });
   const [drawer, setDrawer] = useState(false);

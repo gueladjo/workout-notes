@@ -47,6 +47,10 @@ export function HomeScreen() {
   // Back lands on another day with this screen still mounted), it closes instead of moving,
   // commenting or deleting the workout of the new date.
   const [dialogState, setDialogState] = useState<{ kind: DialogKind; date: string } | null>(null);
+  // Once the route has moved on the dialog is gone for good: forget it here rather than let it pop
+  // open again when the user comes back to its date (the dialog closes itself silently, so its
+  // onClose never runs).
+  if (dialogState && dialogState.date !== date) setDialogState(null);
   const dialog = dialogState && dialogState.date === date ? dialogState.kind : 'none';
   const setDialog = (kind: DialogKind | 'none') => setDialogState(kind === 'none' ? null : { kind, date });
   // Read once per visit: a backup made in Settings clears it on the way back, "Not now" hides it.

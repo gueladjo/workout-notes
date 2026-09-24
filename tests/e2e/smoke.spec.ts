@@ -474,6 +474,30 @@ test.describe('local dates', () => {
     await page.goto('/#/settings');
     await expect(page.getByText('Last backup: 13 Sep 2026.')).toBeVisible();
   });
+
+  test('Log All on today returns to the Home route', async ({ page }) => {
+    await openApp(page);
+    await page.goto('/#/routine/new');
+    await page.getByLabel('Name').fill('PPL');
+    await page.getByRole('button', { name: 'Save' }).last().click();
+    await expect(page.getByText('Edit mode')).toBeVisible();
+    await page.getByPlaceholder(/Day name/).fill('Push');
+    await page.getByRole('button', { name: 'Create day' }).click();
+    await page.getByRole('button', { name: 'Add exercise to day' }).click();
+    await page.getByRole('button', { name: 'Chest' }).click();
+    await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+    const dialog = page.getByRole('dialog');
+    await dialog.getByRole('button', { name: 'Add Set' }).click();
+    await dialog.getByRole('textbox', { name: 'Weight' }).fill('60');
+    await dialog.getByRole('textbox', { name: 'Reps' }).fill('8');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByText('60 kg × 8 reps')).toBeVisible();
+    await page.goto('/#/routine/1');
+    await page.getByRole('button', { name: 'Log All' }).first().click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(page.getByText('60 kg × 8 reps')).toBeVisible();
+  });
 });
 
 test('the custom unit dialog starts empty each time it opens', async ({ page }) => {
@@ -613,8 +637,51 @@ test('entering copy mode by URL forgets the day tapped in the workout popup', as
   await page.goto('/#/calendar?date=2026-09-08&copy=1');
   await expect(page.getByText('Select the workout you would like to copy')).toBeVisible();
   await expect(page.locator('dialog[open]')).toHaveCount(0);
+  // Back into the mode the day was tapped in: the popup does not come back by itself either.
+  await page.goBack();
+  await expect(page.getByText('Select the workout you would like to copy')).toHaveCount(0);
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await page.goForward();
   await page.getByRole('button', { name: '2026-09-01' }).click();
   await expect(dialog.getByText(/^Copy from/)).toBeVisible();
+});
+
+test('a Home dialog closed by the date moving on does not reopen on the way back', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  // Two adjacent Home entries (the same screen stays mounted across them).
+  await page.goto('/#/workout/2026-09-04');
+  await page.goto('/#/workout/2026-09-08');
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Comment Workout' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Comment Workout')).toBeVisible();
+  await page.goBack();
+  await expect(page).toHaveURL(/2026-09-04/);
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await page.goForward();
+  await expect(page).toHaveURL(/2026-09-08/);
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+});
+
+test("the Exercise List's History entry opens the tracked day's History tab", async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await page.goto('/#/exercises?date=2026-09-08');
+  await page.getByRole('button', { name: 'Chest' }).click();
+  const row = page.locator('.list__item', {
+    has: page.getByText('Flat Barbell Bench Press', { exact: true }),
+  });
+  await row.first().getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'History' }).click();
+  await expect(page).toHaveURL(/\/train\/2026-09-08\/\d+\?tab=history/);
+  await expect(page.getByRole('tab', { name: 'History', selected: true })).toBeVisible();
+  // Not the read-only overview: a set can still be copied into the tracked day.
+  await page
+    .getByRole('button', { name: /^Set 1:/ })
+    .first()
+    .click();
+  await expect(page.getByRole('dialog').getByRole('button', { name: 'Copy Set' })).toBeVisible();
 });
 
 test('restores a FitNotes backup and exports one', async ({ page }) => {
