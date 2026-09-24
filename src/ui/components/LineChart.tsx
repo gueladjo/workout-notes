@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react';
+import { tickDecimals } from '@/domain/graphs';
 
 export interface ChartPoint {
   x: number; // e.g. days since epoch
@@ -30,7 +31,8 @@ export function LineChart({
   trend?: { a: number; b: number } | null;
   yFromZero?: boolean;
   goal?: number | null;
-  formatY: (v: number) => string;
+  /** Axis label for a tick value; `decimals` is what the tick spacing needs (see tickDecimals). */
+  formatY: (v: number, decimals: number) => string;
   height?: number;
   fill?: boolean;
 }) {
@@ -103,10 +105,9 @@ export function LineChart({
 
   // More horizontal grid lines on a tall chart, more date labels on a wide one.
   const ticks = Math.max(4, Math.min(10, Math.round(ih / 55)));
-  const yTicks = Array.from(
-    { length: ticks + 1 },
-    (_, i) => scale.minY + ((scale.maxY - scale.minY) * i) / ticks,
-  );
+  const step = (scale.maxY - scale.minY) / ticks;
+  const yTicks = Array.from({ length: ticks + 1 }, (_, i) => scale.minY + step * i);
+  const decimals = tickDecimals(step);
   const labelCount = Math.max(2, Math.min(5, Math.floor(iw / 110)));
   const xLabels = Array.from({ length: labelCount }, (_, k) => {
     const target = scale.minX + ((scale.maxX - scale.minX) * k) / (labelCount - 1);
@@ -150,7 +151,7 @@ export function LineChart({
           <g key={i}>
             <line x1={pad.l} x2={width - pad.r} y1={scale.y(t)} y2={scale.y(t)} className="chart__grid" />
             <text x={pad.l - 6} y={scale.y(t) + 4} textAnchor="end" className="chart__tick">
-              {formatY(t)}
+              {formatY(t, decimals)}
             </text>
           </g>
         ))}

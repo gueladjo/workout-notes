@@ -5,25 +5,19 @@ import { useSettings } from '@/app/hooks';
 import { allSetsForExercise, getWorkout } from '@/db/repo/workouts';
 import { updateSettings } from '@/db/repo/settings';
 import type { ExerciseWithCategory } from '@/db/types';
-import { GraphType, type GraphTypeId } from '@/db/constants';
+import type { GraphTypeId } from '@/db/constants';
 import {
   computeSeries,
   defaultGraphForType,
+  formatGraphAxisValue,
+  formatGraphValue,
   graphDisplayValue,
   graphOptionsForType,
   trendLine,
 } from '@/domain/graphs';
-import {
-  addDays,
-  addMonths,
-  daysBetween,
-  formatLongDate,
-  formatShortDate,
-  formatDuration,
-  todayIso,
-} from '@/domain/dates';
+import { addDays, addMonths, daysBetween, formatLongDate, formatShortDate, todayIso } from '@/domain/dates';
 import { formatSet, formatWeightValue, weightUnitFor } from '@/ui/format';
-import { fmt, resolveDistanceUnit, distanceUnitShort } from '@/domain/units';
+import { resolveDistanceUnit } from '@/domain/units';
 import { LineChart } from '@/ui/components/LineChart';
 import { IconButton, Button } from '@/ui/components/Button';
 import { MenuButton } from '@/ui/components/Menu';
@@ -86,30 +80,6 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
         (d) => daysBetween(origin, d),
       )
     : null;
-
-  function formatValue(v: number): string {
-    const unit = distanceUnitShort(du);
-    switch (graph) {
-      case GraphType.ESTIMATED_1RM:
-      case GraphType.MAX_WEIGHT:
-      case GraphType.WORKOUT_VOLUME:
-      case GraphType.WEIGHT_AND_REPS:
-      case GraphType.REP_MAXES:
-        return `${fmt(v, 1)} ${wu}`;
-      case GraphType.MAX_DISTANCE:
-      case GraphType.TOTAL_DISTANCE:
-        return `${fmt(v, 2)} ${unit}`;
-      case GraphType.MAX_SPEED:
-        return `${fmt(v, 1)} ${unit}/h`;
-      case GraphType.MAX_PACE:
-        return `${formatDuration(v * 60)} /${unit}`;
-      case GraphType.MAX_TIME:
-      case GraphType.TOTAL_TIME:
-        return formatDuration(v * 60);
-      default:
-        return fmt(v, 0);
-    }
-  }
 
   const sel = selected !== null ? series[selected] : undefined;
   const needsReps = options.find((o) => o.id === graph)?.needsReps;
@@ -197,7 +167,7 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
         showPoints={settings.graphShowPoints}
         trend={trend}
         yFromZero={settings.graphStartAtZero}
-        formatY={(v) => fmt(v, 0)}
+        formatY={(v, decimals) => formatGraphAxisValue(graph, v, decimals)}
         fill
       />
       {series.length > 0 && (
@@ -214,7 +184,9 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
           >
             {sel ? (
               <>
-                <div className="point-details__value">{formatValue(displayValue(sel.value))}</div>
+                <div className="point-details__value">
+                  {formatGraphValue(graph, displayValue(sel.value), wu, du)}
+                </div>
                 {sel.set && (
                   <div className="muted" style={{ fontSize: 13 }}>
                     {formatSet(sel.set, exercise.typeId, wu, settings)}

@@ -400,7 +400,7 @@ function GraphTab() {
           trend={trend}
           yFromZero={settings.graphStartAtZero}
           goal={measurement.goalType === MeasurementGoalType.SPECIFIC ? measurement.goalValue : null}
-          formatY={(v) => fmt(v, 1)}
+          formatY={(v, decimals) => fmt(v, decimals)}
         />
         {records.length > 0 && (
           <div className="point-details">

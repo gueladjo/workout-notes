@@ -11,8 +11,9 @@ import {
   exerciseTypeHas,
 } from '@/db/constants';
 import type { TrainingSet } from '@/db/types';
+import { formatDuration } from './dates';
 import { estimatedOneRepMax } from './records';
-import { kgToDisplay, metresToDisplay, type WeightUnit } from './units';
+import { distanceUnitShort, fmt, kgToDisplay, metresToDisplay, type WeightUnit } from './units';
 
 export interface GraphPoint {
   date: string;
@@ -195,6 +196,64 @@ export function graphDisplayValue(
       return value / 60;
     default:
       return value;
+  }
+}
+
+/** A graph display value (see graphDisplayValue) with its unit, as the point details show it. */
+export function formatGraphValue(
+  graph: GraphTypeId,
+  value: number,
+  weightUnit: WeightUnit,
+  distanceUnit: DistanceUnitId,
+): string {
+  const unit = distanceUnitShort(distanceUnit);
+  switch (graph) {
+    case GraphType.ESTIMATED_1RM:
+    case GraphType.MAX_WEIGHT:
+    case GraphType.WORKOUT_VOLUME:
+    case GraphType.WEIGHT_AND_REPS:
+    case GraphType.REP_MAXES:
+      return `${fmt(value, 1)} ${weightUnit}`;
+    case GraphType.MAX_DISTANCE:
+    case GraphType.TOTAL_DISTANCE:
+      return `${fmt(value, 2)} ${unit}`;
+    case GraphType.MAX_SPEED:
+      return `${fmt(value, 1)} ${unit}/h`;
+    case GraphType.MAX_PACE:
+      return `${formatDuration(value * 60)} /${unit}`;
+    case GraphType.MAX_TIME:
+    case GraphType.TOTAL_TIME:
+      return formatDuration(value * 60);
+    default:
+      return fmt(value, 0);
+  }
+}
+
+/**
+ * Decimals an axis label needs so that it sits within a tenth of the tick spacing of its grid line
+ * (ticks are evenly spaced fractions of the plotted range, not round numbers). At most 3.
+ */
+export function tickDecimals(step: number): number {
+  if (!(step > 0)) return 0;
+  return Math.min(3, Math.max(0, Math.ceil(-Math.log10(step / 5))));
+}
+
+/**
+ * Y-axis label for a graph display value: M:SS (H:MM:SS) for time and pace, whole numbers for reps,
+ * otherwise the decimals the tick spacing calls for (see tickDecimals); the unit is left to the
+ * point details.
+ */
+export function formatGraphAxisValue(graph: GraphTypeId, value: number, decimals: number): string {
+  switch (graph) {
+    case GraphType.MAX_PACE:
+    case GraphType.MAX_TIME:
+    case GraphType.TOTAL_TIME:
+      return formatDuration(value * 60);
+    case GraphType.TOTAL_REPS:
+    case GraphType.MAX_REPS:
+      return fmt(value, 0);
+    default:
+      return fmt(value, decimals);
   }
 }
 

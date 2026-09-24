@@ -330,6 +330,30 @@ test('skipping predefined sets keeps the exercise and editing offers Cancel only
   await expect(page.getByText('60 kg × 8 reps')).toBeVisible();
 });
 
+test('graph y-axis shows time ticks as minutes:seconds', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Cardio' }).click();
+  await page.getByRole('button', { name: 'Cycling' }).first().click();
+  await page.getByRole('textbox', { name: 'Distance', exact: true }).fill('5000');
+  await page.getByRole('textbox', { name: 'Minutes' }).fill('25');
+  await page.getByRole('textbox', { name: 'Seconds' }).fill('30');
+  await page.getByTestId('save-set').click();
+  await expect(
+    page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 5000 m × 25:30' }),
+  ).toBeVisible();
+  await page.getByRole('tab', { name: 'Graph' }).click();
+  await page.getByLabel('Graph type').selectOption({ label: 'Max Time' });
+  // Several distinct m:ss labels, not a column of "1" (the x labels share the class, hence the regex).
+  const timeTicks = page.locator('text.chart__tick').filter({ hasText: /^\d+:\d\d$/ });
+  await expect.poll(() => timeTicks.count()).toBeGreaterThanOrEqual(5);
+  const labels = await timeTicks.allTextContents();
+  expect(new Set(labels).size).toBe(labels.length);
+  // The point details keep their unit-bearing format.
+  await page.getByRole('button', { name: 'Next point' }).click();
+  await expect(page.locator('.point-details__value')).toHaveText('25:30');
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();
