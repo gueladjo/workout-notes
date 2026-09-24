@@ -568,7 +568,10 @@ export function MeasurementEditorScreen() {
     goalType === MeasurementGoalType.SPECIFIC && goalValue === storedGoal && (existing?.goalValue ?? 0) > 0;
   const save = (convertValues?: boolean) => {
     if (!name.trim() && !isDefault) return toast('Enter a name');
-    const gv = goalType === MeasurementGoalType.SPECIFIC ? parseDecimal(goalValue) || 0 : 0;
+    const gv = goalType === MeasurementGoalType.SPECIFIC ? parseDecimal(goalValue) : 0;
+    // A specific goal without a positive target is refused rather than saved as 0.
+    if (goalType === MeasurementGoalType.SPECIFIC && !(Number.isFinite(gv) && gv > 0))
+      return toast('Enter a goal value');
     if (id && existing) {
       if (factor !== null && convertValues === undefined && (hasValues || keepGoal))
         return setUnitChange(true);

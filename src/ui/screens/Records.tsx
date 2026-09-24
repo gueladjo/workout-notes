@@ -44,6 +44,7 @@ import { DurationInputs } from '@/ui/components/DurationInputs';
 import { WorkoutView } from '@/ui/components/WorkoutView';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { Icon } from '@/ui/components/Icon';
+import { useToast } from '@/ui/components/Toast';
 
 type Tab = 'records' | 'stats' | 'goals';
 
@@ -537,6 +538,7 @@ function GoalEditor({
   onDelete: () => void;
 }) {
   const settings = useSettings();
+  const toast = useToast();
   const wu = weightUnitFor(exercise, settings);
   const types = goalTypesForExercise(exercise.typeId);
   // One unit for the field, its label and the saved row: the goal's own, so editing it after a
@@ -592,7 +594,23 @@ function GoalEditor({
     typeId as never,
   );
   const save = () => {
+    // A goal is its target: each field the type needs must hold a positive number. Anything else is
+    // refused like a malformed set on the Track tab, instead of a typo or an emptied field saving
+    // a target of 0 (unreachable, see goalProgress) over the one the goal had.
+    const w = parseDecimal(weight);
+    const r = parseDecimal(reps);
+    const d = parseDecimal(distance);
     const t = joinDuration(time);
+    const invalid = (needed: boolean, n: number) => needed && !(Number.isFinite(n) && n > 0);
+    if (
+      invalid(needsWeight, w) ||
+      invalid(needsReps, r) ||
+      invalid(needsDistance, d) ||
+      invalid(needsTime, t)
+    ) {
+      toast('Please enter valid values');
+      return;
+    }
     onSave({
       typeId,
       exerciseId: exercise.id,
@@ -600,14 +618,14 @@ function GoalEditor({
         ? 0
         : goal && weight === shown.weight
           ? goal.metricWeight
-          : displayToKg(parseDecimal(weight) || 0, wu),
-      reps: needsReps ? parseDecimal(reps) || 0 : 0,
+          : displayToKg(w, wu),
+      reps: needsReps ? Math.round(r) : 0,
       distanceMetres: !needsDistance
         ? 0
         : goal && distance === shown.distance
           ? goal.distanceMetres
-          : displayToMetres(parseDecimal(distance) || 0, du),
-      durationSeconds: needsTime && Number.isFinite(t) ? t : 0,
+          : displayToMetres(d, du),
+      durationSeconds: needsTime ? t : 0,
       unit: needsDistance ? du : 0,
       title: title.trim() || null,
       targetDate: targetDate || null,

@@ -397,6 +397,41 @@ test('a measurement goal typed with a unit change is saved as typed', async ({ p
   await expect(page.getByLabel('Target value (lbs)')).toHaveValue(/^169\.7/);
 });
 
+test('a goal refuses an invalid target instead of saving 0', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await expect(page.getByRole('tab', { name: 'Track' })).toBeVisible();
+  const exerciseId = /\/train\/[^/]+\/(\d+)/.exec(page.url())?.[1];
+  const goals = `/#/exercise/${exerciseId}/records?tab=goals`;
+  await page.goto(goals);
+  const dialog = page.getByRole('dialog');
+  // An empty required field is refused on a new goal.
+  await page.getByRole('button', { name: 'Add goal' }).click();
+  await dialog.getByLabel('Type').selectOption({ label: 'Max Weight' });
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status')).toHaveText('Please enter valid values');
+  await expect(dialog).toBeVisible();
+  await dialog.getByLabel('Weight (kg)').fill('100');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('Max Weight: 100 kg')).toBeVisible();
+  // A typo on an existing goal keeps its target instead of overwriting it with 0.
+  await page.getByRole('button', { name: /Max Weight: 100 kg/ }).click();
+  await dialog.getByLabel('Weight (kg)').fill('1o0');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status')).toHaveText('Please enter valid values');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('Max Weight: 100 kg')).toBeVisible();
+  // The measurement editor refuses a specific goal without a target the same way.
+  await page.goto('/#/body/measurement/1');
+  await page.getByLabel('Goal').selectOption({ label: 'Specific value' });
+  await page.getByRole('button', { name: 'Save' }).first().click();
+  await expect(page.getByRole('status')).toHaveText('Enter a goal value');
+  await expect(page.getByText('Edit Measurement')).toBeVisible();
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();
