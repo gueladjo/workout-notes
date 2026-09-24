@@ -167,7 +167,7 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
         showPoints={settings.graphShowPoints}
         trend={trend}
         yFromZero={settings.graphStartAtZero}
-        formatY={(v, decimals) => formatGraphAxisValue(graph, v, decimals)}
+        formatY={(v, _decimals, step) => formatGraphAxisValue(graph, v, step)}
         fill
       />
       {series.length > 0 && (

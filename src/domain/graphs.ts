@@ -239,22 +239,33 @@ export function tickDecimals(step: number): number {
 }
 
 /**
- * Y-axis label for a graph display value: M:SS (H:MM:SS) for time and pace, whole numbers for reps,
- * otherwise the decimals the tick spacing calls for (see tickDecimals); the unit is left to the
- * point details.
+ * Y-axis label for a graph display value, given the spacing between ticks (in the same display
+ * unit): M:SS (H:MM:SS) for time and pace, with tenths of a second once ticks are closer than a
+ * second and a sign on a tick the axis padding pushed below zero; whole numbers for reps; otherwise
+ * the decimals the spacing calls for (see tickDecimals). The unit is left to the point details.
  */
-export function formatGraphAxisValue(graph: GraphTypeId, value: number, decimals: number): string {
+export function formatGraphAxisValue(graph: GraphTypeId, value: number, step: number): string {
   switch (graph) {
     case GraphType.MAX_PACE:
     case GraphType.MAX_TIME:
     case GraphType.TOTAL_TIME:
-      return formatDuration(value * 60);
+      return formatAxisDuration(value * 60, step * 60 < 1);
     case GraphType.TOTAL_REPS:
     case GraphType.MAX_REPS:
       return fmt(value, 0);
     default:
-      return fmt(value, decimals);
+      return fmt(value, tickDecimals(step));
   }
+}
+
+/** formatDuration for an axis: keeps the sign (formatDuration clamps at 0) and can show tenths. */
+function formatAxisDuration(seconds: number, tenths: boolean): string {
+  const sign = seconds < 0 ? '-' : '';
+  const abs = Math.abs(seconds);
+  if (!tenths) return sign + formatDuration(abs);
+  const rounded = Math.round(abs * 10) / 10;
+  const whole = Math.floor(rounded);
+  return `${sign}${formatDuration(whole)}.${Math.round((rounded - whole) * 10)}`;
 }
 
 /** Least-squares trend line over point indexes (x = days since first point). */

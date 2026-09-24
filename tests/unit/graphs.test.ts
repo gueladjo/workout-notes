@@ -101,18 +101,38 @@ describe('graphDisplayValue', () => {
 describe('formatGraphAxisValue', () => {
   it('labels time and pace ticks as minutes:seconds instead of a rounded minute count', () => {
     // A 25:30 cardio set plotted alone: ticks between 0.85x and 1.15x of 25.5 minutes.
-    expect(formatGraphAxisValue(GraphType.MAX_TIME, 21.675, 0)).toBe('21:41');
-    expect(formatGraphAxisValue(GraphType.TOTAL_TIME, 90, 0)).toBe('1:30:00');
-    expect(formatGraphAxisValue(GraphType.MAX_PACE, 5.5, 0)).toBe('5:30');
+    expect(formatGraphAxisValue(GraphType.MAX_TIME, 21.675, 1.275)).toBe('21:41');
+    expect(formatGraphAxisValue(GraphType.TOTAL_TIME, 90, 20)).toBe('1:30:00');
+    expect(formatGraphAxisValue(GraphType.MAX_PACE, 5.5, 0.5)).toBe('5:30');
+  });
+
+  it('shows tenths of a second once ticks are closer than a second, so labels stay distinct', () => {
+    // Plank holds of 60, 61 and 62 s: the padded range is 2.6 s wide, six ticks 0.43 s apart.
+    const minY = 1 - (2 / 60) * 0.15;
+    const step = ((2 / 60) * 1.3) / 6;
+    const labels = Array.from({ length: 7 }, (_, i) =>
+      formatGraphAxisValue(GraphType.MAX_TIME, minY + step * i, step),
+    );
+    expect(labels[0]).toBe('0:59.7');
+    expect(labels[6]).toBe('1:02.3');
+    expect(new Set(labels).size).toBe(labels.length);
+    // Whole seconds are enough once ticks are a second or more apart.
+    expect(formatGraphAxisValue(GraphType.MAX_TIME, 1.01, 1 / 60)).toBe('1:01');
+  });
+
+  it('keeps the sign of a tick below zero instead of calling it 0:00', () => {
+    expect(formatGraphAxisValue(GraphType.MAX_TIME, -1, 5)).toBe('-1:00');
+    expect(formatGraphAxisValue(GraphType.MAX_PACE, -0.25, 0.01)).toBe('-0:15.0');
+    expect(formatGraphAxisValue(GraphType.MAX_TIME, 0, 5)).toBe('0:00');
   });
 
   it('keeps reps whole and gives weight and distance the decimals the tick spacing needs', () => {
-    expect(formatGraphAxisValue(GraphType.MAX_REPS, 5.4, 1)).toBe('5');
-    expect(formatGraphAxisValue(GraphType.TOTAL_REPS, 30.2, 1)).toBe('30');
-    expect(formatGraphAxisValue(GraphType.MAX_WEIGHT, 80.3333, 1)).toBe('80.3');
-    expect(formatGraphAxisValue(GraphType.WORKOUT_VOLUME, 5012.3, 0)).toBe('5012');
-    expect(formatGraphAxisValue(GraphType.MAX_DISTANCE, 5.125, 2)).toBe('5.13');
-    expect(formatGraphAxisValue(GraphType.MAX_SPEED, 10.05, 1)).toBe('10.1');
+    expect(formatGraphAxisValue(GraphType.MAX_REPS, 5.4, 1.3)).toBe('5');
+    expect(formatGraphAxisValue(GraphType.TOTAL_REPS, 30.2, 1.3)).toBe('30');
+    expect(formatGraphAxisValue(GraphType.MAX_WEIGHT, 80.3333, 1.3)).toBe('80.3');
+    expect(formatGraphAxisValue(GraphType.WORKOUT_VOLUME, 5012.3, 250)).toBe('5012');
+    expect(formatGraphAxisValue(GraphType.MAX_DISTANCE, 5.125, 0.05)).toBe('5.13');
+    expect(formatGraphAxisValue(GraphType.MAX_SPEED, 10.05, 0.65)).toBe('10.1');
   });
 });
 
@@ -133,7 +153,7 @@ describe('tickDecimals', () => {
     const minY = 80 - 4 * 0.15;
     const step = (4 * 1.3) / 6;
     const labels = Array.from({ length: 7 }, (_, i) =>
-      formatGraphAxisValue(GraphType.MAX_WEIGHT, minY + step * i, tickDecimals(step)),
+      formatGraphAxisValue(GraphType.MAX_WEIGHT, minY + step * i, step),
     );
     expect(new Set(labels).size).toBe(labels.length);
   });

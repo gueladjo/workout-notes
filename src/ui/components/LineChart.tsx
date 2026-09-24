@@ -31,8 +31,11 @@ export function LineChart({
   trend?: { a: number; b: number } | null;
   yFromZero?: boolean;
   goal?: number | null;
-  /** Axis label for a tick value; `decimals` is what the tick spacing needs (see tickDecimals). */
-  formatY: (v: number, decimals: number) => string;
+  /**
+   * Axis label for a tick value; `decimals` is what the tick spacing needs (see tickDecimals) and
+   * `step` is that spacing itself, for labels with their own notion of resolution (m:ss).
+   */
+  formatY: (v: number, decimals: number, step: number) => string;
   height?: number;
   fill?: boolean;
 }) {
@@ -69,7 +72,8 @@ export function LineChart({
     let maxY = Math.max(...ys, goal ?? -Infinity);
     if (!yFromZero) {
       const span = maxY - minY || Math.abs(maxY) || 1;
-      minY -= span * 0.15;
+      // Pad both ends, but never below zero for a series that has nothing negative to show.
+      minY = minY >= 0 ? Math.max(0, minY - span * 0.15) : minY - span * 0.15;
       maxY += span * 0.15;
     } else {
       maxY += (maxY - minY || 1) * 0.1;
@@ -151,7 +155,7 @@ export function LineChart({
           <g key={i}>
             <line x1={pad.l} x2={width - pad.r} y1={scale.y(t)} y2={scale.y(t)} className="chart__grid" />
             <text x={pad.l - 6} y={scale.y(t) + 4} textAnchor="end" className="chart__tick">
-              {formatY(t, decimals)}
+              {formatY(t, decimals, step)}
             </text>
           </g>
         ))}
