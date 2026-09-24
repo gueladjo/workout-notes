@@ -572,6 +572,36 @@ test('Stats Workout period shows and computes the same date', async ({ page }) =
   await expect(page.getByRole('button', { name: /^Max Weight 80 kg/ })).toBeVisible();
 });
 
+test('body graph day popup hides disabled measurements', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/body');
+  // Record today's Bodyweight and Body Fat (both enabled by default).
+  for (const [name, value] of [
+    ['Bodyweight', '80'],
+    ['Body Fat', '15'],
+  ] as const) {
+    await page.getByRole('button', { name }).click();
+    await page
+      .getByRole('dialog')
+      .getByRole('textbox', { name: /^Value/ })
+      .fill(value);
+    await page.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('button', { name })).toContainText(value);
+  }
+  // Disable Body Fat.
+  await page.getByRole('button', { name: 'Configure measurements' }).click();
+  await page.getByRole('checkbox', { name: 'Enable Body Fat' }).click();
+  await page.goto('/#/body');
+  // Graph -> select the only point -> open the day popup.
+  await page.getByRole('tab', { name: 'Graph' }).click();
+  await page.getByRole('button', { name: 'Next point' }).click();
+  await page.locator('.point-details__body').click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('Bodyweight')).toBeVisible();
+  await expect(dialog.getByText('Body Fat')).toHaveCount(0);
+  await expect(dialog.getByText('?', { exact: true })).toHaveCount(0);
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

@@ -341,9 +341,15 @@ function GraphTab() {
   const records = useQuery((d) => (measurement ? listRecords(d, measurement.id) : []), [measurement?.id]);
   const [selected, setSelected] = useState<number | null>(null);
   const [showDay, setShowDay] = useState<string | null>(null);
+  // The day popup lists enabled measurements only, like History's "All measurements".
   const dayRecords = useQuery(
-    (d) => (showDay ? listRecords(d).filter((r) => r.date === showDay) : []),
-    [showDay],
+    (d) =>
+      showDay
+        ? listRecords(d).filter(
+            (r) => r.date === showDay && measurements.some((m) => m.id === r.measurementId),
+          )
+        : [],
+    [showDay, measurements],
   );
   const origin = records[0]?.date ?? todayIso();
   const points = records.map((r) => ({
@@ -462,7 +468,7 @@ function GraphTab() {
           const m = measurements.find((x) => x.id === r.measurementId);
           return (
             <div key={r.id} className="stat-row">
-              <span>{m?.name ?? '?'}</span>
+              <span>{m?.name}</span>
               <span className="stat-row__value">
                 {fmt(r.value)} {m?.unitShort}
               </span>
