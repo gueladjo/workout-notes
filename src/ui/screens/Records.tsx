@@ -302,11 +302,14 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
   const viewWorkout = useQuery((d) => (viewDate ? getWorkout(d, viewDate) : null), [viewDate]);
   const wu = weightUnitFor(exercise, settings);
   const workoutDates = useMemo(() => [...new Set(sets.map((s) => s.date))].sort().reverse(), [sets]);
+  // The Workout period shows and computes the same date: the anchor (the viewed date, or one
+  // picked under another period) when this exercise was trained that day, else the latest workout.
+  const workoutDate = workoutDates.includes(anchor) ? anchor : (workoutDates[0] ?? anchor);
 
   const range = useMemo((): [string, string] => {
     switch (period) {
       case 'workout':
-        return [anchor, anchor];
+        return [workoutDate, workoutDate];
       case 'week': {
         const from = startOfWeek(anchor, (((settings.firstDayOfWeek - 1) % 7) + 7) % 7);
         return [from, addDays(from, 6)];
@@ -320,7 +323,7 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
       default:
         return ['0000-00-00', '9999-99-99'];
     }
-  }, [period, anchor, customFrom, customTo, settings.firstDayOfWeek]);
+  }, [period, anchor, workoutDate, customFrom, customTo, settings.firstDayOfWeek]);
   const filtered = useMemo(() => sets.filter((s) => s.date >= range[0] && s.date <= range[1]), [sets, range]);
   const stats = useMemo(() => exerciseStats(filtered, exercise.typeId), [filtered, exercise.typeId]);
 
@@ -346,11 +349,7 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
           {period === 'workout' ? (
             <label className="field" style={{ marginBottom: 0 }}>
               <span className="field__label">Date</span>
-              <select
-                className="select"
-                value={workoutDates.includes(anchor) ? anchor : (workoutDates[0] ?? '')}
-                onChange={(e) => setAnchor(e.target.value)}
-              >
+              <select className="select" value={workoutDate} onChange={(e) => setAnchor(e.target.value)}>
                 {workoutDates.map((d) => (
                   <option key={d} value={d}>
                     {formatShortDate(d)}

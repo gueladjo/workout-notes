@@ -540,6 +540,38 @@ test("the set-row trophy opens that rep count's record history", async ({ page }
   await expect(dialog.getByText('5RM history')).toBeVisible();
 });
 
+test('Stats Workout period shows and computes the same date', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  // Reach the bench press through the Track screen, whose URL carries the exercise id.
+  await page.goto('/#/');
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await expect(page.getByRole('tab', { name: 'Track' })).toBeVisible();
+  const exerciseId = /\/train\/[^/]+\/(\d+)/.exec(page.url())?.[1];
+  const stats = `/#/exercise/${exerciseId}/records?tab=stats`;
+  // The viewed date has sets for this exercise: it is the Workout date.
+  await page.goto(`${stats}&date=2026-09-04`);
+  await page.getByLabel('Period').selectOption({ label: 'Workout' });
+  await expect(page.getByLabel(/^Date/)).toHaveValue('2026-09-04');
+  await expect(page.getByText('4 Sep 2026 – 4 Sep 2026')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sets 2' })).toBeVisible();
+  // No viewed date (today, no bench sets): the latest workout is shown AND computed. Leaving the
+  // screen first remounts the tab, which seeds its date from the route once.
+  await page.goto('/#/');
+  await page.goto(stats);
+  await page.getByLabel('Period').selectOption({ label: 'Workout' });
+  await expect(page.getByLabel(/^Date/)).toHaveValue('2026-09-08');
+  await expect(page.getByText('8 Sep 2026 – 8 Sep 2026')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Sets 1' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Max Weight 85 kg/ })).toBeVisible();
+  // Picking another workout recomputes for it.
+  await page.getByLabel(/^Date/).selectOption('2026-09-01');
+  await expect(page.getByRole('button', { name: 'Sets 3' })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Max Weight 80 kg/ })).toBeVisible();
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();
