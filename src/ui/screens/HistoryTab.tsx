@@ -15,6 +15,7 @@ import {
   distanceUnitShort,
   speed,
   paceSecondsPerUnit,
+  paceDistanceUnit,
 } from '@/domain/units';
 import { Icon } from '@/ui/components/Icon';
 import { Dialog } from '@/ui/components/Dialog';
@@ -60,6 +61,8 @@ export function HistoryTab({
   const daySets = history.find((h) => h.date === dayDialog)?.sets ?? [];
   const isStrength = exerciseTypeHas(exercise.typeId, 'weight') && exerciseTypeHas(exercise.typeId, 'reps');
   const isCardio = exerciseTypeHas(exercise.typeId, 'distance') && exerciseTypeHas(exercise.typeId, 'time');
+  // Speed and pace of the tapped set: per km / per mile even when the set was logged in m / ft.
+  const paceUnit = paceDistanceUnit(resolveDistanceUnit(setDialog?.unit ?? 0, settings.metric));
 
   const copySelectable: SelectableExercise[] = useMemo(() => {
     const src = history.find((h) => h.date === copyDate);
@@ -270,28 +273,17 @@ export function HistoryTab({
                 <div className="row row--between">
                   <span className="muted">Speed</span>
                   <b>
-                    {fmt(
-                      speed(
-                        setDialog.distanceMetres,
-                        setDialog.durationSeconds,
-                        resolveDistanceUnit(setDialog.unit, settings.metric),
-                      ),
-                      2,
-                    )}{' '}
-                    {distanceUnitShort(resolveDistanceUnit(setDialog.unit, settings.metric))}/h
+                    {fmt(speed(setDialog.distanceMetres, setDialog.durationSeconds, paceUnit), 2)}{' '}
+                    {distanceUnitShort(paceUnit)}/h
                   </b>
                 </div>
                 <div className="row row--between">
                   <span className="muted">Pace</span>
                   <b>
                     {formatDuration(
-                      paceSecondsPerUnit(
-                        setDialog.distanceMetres,
-                        setDialog.durationSeconds,
-                        resolveDistanceUnit(setDialog.unit, settings.metric),
-                      ),
+                      paceSecondsPerUnit(setDialog.distanceMetres, setDialog.durationSeconds, paceUnit),
                     )}{' '}
-                    /{distanceUnitShort(resolveDistanceUnit(setDialog.unit, settings.metric))}
+                    /{distanceUnitShort(paceUnit)}
                   </b>
                 </div>
               </>

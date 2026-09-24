@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { DEFAULT_SETTINGS } from '../../src/db/repo/settings';
+import { DistanceUnit } from '../../src/db/constants';
+import { formatDuration } from '../../src/domain/dates';
+import { fmt, paceDistanceUnit, paceSecondsPerUnit, speed } from '../../src/domain/units';
 import { formatStatValue, parseDecimal } from '../../src/ui/format';
 
 const metric = { ...DEFAULT_SETTINGS, metric: true };
@@ -20,6 +23,25 @@ describe('formatStatValue', () => {
     expect(formatStatValue(secondsPerMetre, 'pace', 'kg', imperial)).toBe('8:03 /mi');
     expect(formatStatValue(1800 / 5000, 'pace', 'kg', metric)).toBe('6:00 /km');
     expect(formatStatValue(0, 'pace', 'kg', metric)).toBe('0:00 /km');
+  });
+});
+
+describe('paceDistanceUnit', () => {
+  it('shows speed and pace per km or mile even for sets logged in metres or feet', () => {
+    expect(paceDistanceUnit(DistanceUnit.METRES)).toBe(DistanceUnit.KILOMETRES);
+    expect(paceDistanceUnit(DistanceUnit.FEET)).toBe(DistanceUnit.MILES);
+    expect(paceDistanceUnit(DistanceUnit.KILOMETRES)).toBe(DistanceUnit.KILOMETRES);
+    expect(paceDistanceUnit(DistanceUnit.MILES)).toBe(DistanceUnit.MILES);
+  });
+
+  it('gives the History set dialog a readable pace for a 5000 m set', () => {
+    // 5000 m in 25:30, logged in metres: 11.76 km/h and 5:06 /km, not 11764.71 m/h and 0:00 /m.
+    const unit = paceDistanceUnit(DistanceUnit.METRES);
+    expect(fmt(speed(5000, 1530, unit), 2)).toBe('11.76');
+    expect(formatDuration(paceSecondsPerUnit(5000, 1530, unit))).toBe('5:06');
+    const ft = paceDistanceUnit(DistanceUnit.FEET);
+    expect(fmt(speed(1609.344, 600, ft), 2)).toBe('6');
+    expect(formatDuration(paceSecondsPerUnit(1609.344, 600, ft))).toBe('10:00');
   });
 });
 

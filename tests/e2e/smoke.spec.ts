@@ -105,6 +105,12 @@ test('logs a cardio set in metres with the hh / mm / ss time boxes', async ({ pa
   await expect(page.getByRole('textbox', { name: 'Hours' })).toHaveValue('');
   await expect(page.getByRole('textbox', { name: 'Minutes' })).toHaveValue('25');
   await expect(page.getByRole('textbox', { name: 'Seconds' })).toHaveValue('30');
+  // The History set dialog shows speed and pace per km, not per metre.
+  await page.getByRole('tab', { name: 'History' }).click();
+  await page.getByRole('button', { name: 'Set 1: 5000 m × 25:30' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('11.76 km/h')).toBeVisible();
+  await expect(dialog.getByText('5:06 /km')).toBeVisible();
 });
 
 test('reports a backup file the browser cannot read and stays usable', async ({ page }) => {

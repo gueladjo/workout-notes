@@ -90,6 +90,16 @@ export function paceSecondsPerUnit(metres: number, seconds: number, unitId: Dist
 }
 
 /**
+ * The unit speed and pace are shown in for a set logged in `unitId`: km/h and /km for metres,
+ * mph and /mi for feet, as FitNotes does. A pace per metre or per foot would round to 0:00.
+ */
+export function paceDistanceUnit(unitId: DistanceUnitId): DistanceUnitId {
+  if (unitId === DistanceUnit.METRES) return DistanceUnit.KILOMETRES;
+  if (unitId === DistanceUnit.FEET) return DistanceUnit.MILES;
+  return unitId;
+}
+
+/**
  * Body measurements are stored in their measurement's unit, not in a fixed one. This is the factor
  * that turns a value in `fromUnitId` into `toUnitId`, or null when the two cannot be converted
  * (different kinds of unit, percent, custom units).
