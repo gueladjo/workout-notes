@@ -28,7 +28,13 @@ import {
   updateExercise,
 } from '../../src/db/repo/exercises';
 import { createCategory, deleteCategory, listCategories } from '../../src/db/repo/categories';
-import { createGroup, listGroups, listRoutineSectionGroups, nextGroupName } from '../../src/db/repo/groups';
+import {
+  createGroup,
+  listGroups,
+  listRoutineSectionGroups,
+  nextGroupName,
+  updateGroup,
+} from '../../src/db/repo/groups';
 import { getSettings, updateSettings, DEFAULT_SETTINGS } from '../../src/db/repo/settings';
 import { recalculatePersonalRecords } from '../../src/db/repo/records';
 import {
@@ -248,6 +254,40 @@ describe('sets and workouts', () => {
     expect(getWorkout(app, '2026-09-01').exercises[0]!.group?.id).toBe(gid);
     deleteWorkoutExercises(app, '2026-09-01', [SQUAT]);
     expect(listGroups(app, '2026-09-01')[0]!.exerciseIds).toEqual([BENCH]);
+  });
+
+  it('drops a group whose last exercise moves to another group', () => {
+    const group = (date: string, ids: number[]) =>
+      createGroup(app, { date, name: nextGroupName(app, date), colour: -1, exerciseIds: ids });
+    const membership = (groups: { id: number; exerciseIds: number[] }[]) =>
+      groups.map((g) => [g.id, g.exerciseIds]);
+    // Editing a workout group to take the only exercise of another one removes that group.
+    group('2026-09-01', [BENCH]);
+    const g2 = group('2026-09-01', [SQUAT]);
+    updateGroup(app, g2, { exerciseIds: [SQUAT, BENCH] });
+    expect(membership(listGroups(app, '2026-09-01'))).toEqual([[g2, [SQUAT, BENCH]]]);
+    expect(nextGroupName(app, '2026-09-01')).toBe('Group 2');
+    // The same for the groups of a routine day.
+    const sectionId = addSection(app, createRoutine(app, 'PPL'), 'Push');
+    for (const id of [BENCH, SQUAT]) addSectionExercise(app, sectionId, id);
+    const routineGroup = (name: string, ids: number[]) =>
+      createGroup(app, { date: '', routineSectionId: sectionId, name, colour: -1, exerciseIds: ids });
+    routineGroup('A', [BENCH]);
+    const r2 = routineGroup('B', [SQUAT]);
+    updateGroup(app, r2, { exerciseIds: [SQUAT, BENCH] });
+    expect(membership(listRoutineSectionGroups(app, sectionId))).toEqual([[r2, [SQUAT, BENCH]]]);
+    // Logging a routine day recreates its groups on that date, taking the exercises out of a group
+    // made by hand; that group goes when it has nothing left.
+    group('2026-09-12', [BENCH, SQUAT]);
+    logRoutineSection(app, sectionId, '2026-09-12', plannedSetsForSection(app, sectionId, '2026-09-12'));
+    expect(listGroups(app, '2026-09-12').map((g) => [g.name, g.exerciseIds])).toEqual([
+      ['B', [SQUAT, BENCH]],
+    ]);
+    expect(
+      app.scalar(
+        'SELECT COUNT(*) FROM WorkoutGroup WHERE _id NOT IN (SELECT workout_group_id FROM WorkoutGroupExercise)',
+      ),
+    ).toBe(0);
   });
 
   it('leaves no orphan group, membership or time rows behind', () => {

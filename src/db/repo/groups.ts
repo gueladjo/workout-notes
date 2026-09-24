@@ -146,6 +146,8 @@ function setGroupExercises(db: AppDatabase, groupId: number, exerciseIds: number
       [exerciseId, g.date, g.routine_section_id ?? 0, groupId],
     );
   }
+  // Taking an exercise out of another group (or setting no exercises) can leave a group empty.
+  deleteEmptyGroups(db, g.date);
 }
 
 export function removeExerciseFromGroup(db: AppDatabase, groupId: number, exerciseId: number): void {
