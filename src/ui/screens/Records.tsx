@@ -609,7 +609,7 @@ function GoalEditor({
     // refused like a malformed set on the Track tab, instead of a typo or an emptied field saving
     // a target of 0 (unreachable, see goalProgress) over the one the goal had.
     const w = parseDecimal(weight);
-    const r = parseDecimal(reps);
+    const r = Math.round(parseDecimal(reps)); // what is stored; 0.4 must not pass as "positive"
     const d = parseDecimal(distance);
     const t = joinDuration(time);
     const invalid = (needed: boolean, n: number) => needed && !(Number.isFinite(n) && n > 0);
@@ -630,7 +630,7 @@ function GoalEditor({
         : goal && weight === shown.weight
           ? goal.metricWeight
           : displayToKg(w, wu),
-      reps: needsReps ? Math.round(r) : 0,
+      reps: needsReps ? r : 0,
       distanceMetres: !needsDistance
         ? 0
         : goal && distance === shown.distance
