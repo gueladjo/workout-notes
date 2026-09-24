@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useSettings } from '@/app/hooks';
@@ -563,11 +563,21 @@ export function MeasurementEditorScreen() {
   const [name, setName] = useState(existing?.name ?? '');
   const [unitId, setUnitId] = useState<number>(existing?.unitId ?? 0);
   const [goalType, setGoalType] = useState<number>(existing?.goalType ?? MeasurementGoalType.NONE);
-  const storedGoal = existing?.goalValue ? String(existing.goalValue) : '';
-  const [goalValue, setGoalValue] = useState(storedGoal);
+  const [goalValue, setGoalValue] = useState(existing?.goalValue ? String(existing.goalValue) : '');
+  const [goalTouched, setGoalTouched] = useState(false);
   const [unitDialog, setUnitDialog] = useState(false);
   const [confirm, setConfirm] = useState<'reset' | 'delete' | null>(null);
   const [unitChange, setUnitChange] = useState(false);
+  // A reset or delete first writes a snapshot (asynchronous): no second run meanwhile, and the
+  // delete's navigate(-1) is skipped if the user left the editor while it was being written.
+  const [busy, setBusy] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const hasValues = useQuery((d) => (id ? latestRecord(d, id) !== undefined : false), [id]);
   const isDefault = existing ? !existing.custom : false;
   const unitShort = (unitId: number) => units.find((u) => u.id === unitId)?.shortName ?? '';
@@ -575,10 +585,11 @@ export function MeasurementEditorScreen() {
   // whether to convert them or keep the numbers, as the exercise editor does for weights.
   const factor =
     existing && unitId !== existing.unitId ? measurementUnitFactor(existing.unitId, unitId) : null;
-  // The target is typed in the selected unit and saved as typed. Left untouched, it is still the
-  // stored goal in the stored unit, which is kept and converts (or not) with the records.
+  // The target is typed in the selected unit and saved as typed (even re-typed as the same digits).
+  // Left untouched, it is still the stored goal in the stored unit, which is kept and converts (or
+  // not) with the records.
   const keepGoal =
-    goalType === MeasurementGoalType.SPECIFIC && goalValue === storedGoal && (existing?.goalValue ?? 0) > 0;
+    goalType === MeasurementGoalType.SPECIFIC && !goalTouched && (existing?.goalValue ?? 0) > 0;
   const save = (convertValues?: boolean) => {
     if (!name.trim() && !isDefault) return toast('Enter a name');
     const gv = goalType === MeasurementGoalType.SPECIFIC ? parseDecimal(goalValue) : 0;
@@ -654,7 +665,10 @@ export function MeasurementEditorScreen() {
                   className="input"
                   inputMode="decimal"
                   value={goalValue}
-                  onChange={(e) => setGoalValue(e.target.value)}
+                  onChange={(e) => {
+                    setGoalValue(e.target.value);
+                    setGoalTouched(true);
+                  }}
                 />
               </label>
             )}
@@ -664,11 +678,11 @@ export function MeasurementEditorScreen() {
           </Button>
           {id && (
             <div className="stack" style={{ marginTop: 16 }}>
-              <Button block variant="outline" onClick={() => setConfirm('reset')}>
+              <Button block variant="outline" disabled={busy} onClick={() => setConfirm('reset')}>
                 Reset (delete all values)
               </Button>
               {!isDefault && (
-                <Button block variant="danger" onClick={() => setConfirm('delete')}>
+                <Button block variant="danger" disabled={busy} onClick={() => setConfirm('delete')}>
                   Delete measurement
                 </Button>
               )}
@@ -715,10 +729,11 @@ export function MeasurementEditorScreen() {
         confirmLabel={confirm === 'delete' ? 'Delete' : 'Reset'}
         danger
         onConfirm={() => {
-          if (!id || !confirm) return;
+          if (!id || !confirm || busy) return;
           // ConfirmDialog closes (confirm -> null) right after onConfirm, so keep the action.
           const action = confirm;
           const label = existing?.name ?? `#${id}`;
+          setBusy(true);
           void (async () => {
             try {
               await saveSnapshot(
@@ -727,15 +742,18 @@ export function MeasurementEditorScreen() {
               );
             } catch (err) {
               toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
+              setBusy(false);
               return;
             }
             if (action === 'delete') {
               deleteMeasurement(db, id);
               toast(`Deleted ${label}`);
-              navigate(-1);
+              // The snapshot took a moment: only leave if the user has not already left the editor.
+              if (mounted.current) navigate(-1);
             } else {
               resetMeasurement(db, id);
               toast(`Reset ${label}`);
+              setBusy(false);
             }
           })();
         }}
