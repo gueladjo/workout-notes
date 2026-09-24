@@ -30,6 +30,12 @@ accents over dark surfaces.
 | (no route; while another instance hands over, or after it took over)   | `Instance.tsx`                 | Waiting: spinner while the other tab/window/app saves and stops. Taken over: "WorkoutNotes is open in another window" with a "Use WorkoutNotes here" button (reloads, which takes the database back) and, when the last save failed, a button to save a copy of this window's data as a backup file. See `src/app/instance.ts`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | (no route; replaces the app when the stored database cannot be opened) | `Recovery.tsx`                 | Recovery: shows the open error and the size of the stored bytes, offers to save the unreadable file, restore any rollback snapshot, or start with an empty database. Every action keeps the unreadable bytes as a snapshot first (`src/app/recovery.ts`), then the app boots again. Another window opened meanwhile takes over as from the running app; this one then shows the taken-over screen.                                                                                                                                                                                                                                                                                                                                                                                              |
 
+## Conventions
+
+- `Dialog` (`src/ui/components/Dialog.tsx`) reports `onClose` only for closes the user made
+  (Escape, backdrop, the buttons a screen wires to it). Setting `open` to false closes it silently,
+  so a screen can swap two dialogs on one piece of state (`GroupDialog`, `DeleteHistoryDialog`).
+
 ## Deviations from FitNotes
 
 - Re-ordering exercises, categories, routine days/exercises and measurements uses up/down

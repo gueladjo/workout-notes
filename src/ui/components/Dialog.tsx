@@ -26,19 +26,31 @@ export function Dialog({
   holo?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // Closes made here because `open` turned false. The browser still fires a `close` event for each
+  // of them, asynchronously (even after the dialog was shown again), and those must not reach
+  // `onClose` as if the user had dismissed the dialog: a parent that swaps two dialogs on one piece
+  // of state (GroupDialog's list and editor) would otherwise be told to tear the whole thing down.
+  const selfCloses = useRef(0);
   // Layout effect so the dialog is open (and laid out) before its children's effects run.
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
     if (open && !el.open) el.showModal();
-    else if (!open && el.open) el.close();
+    else if (!open && el.open) {
+      selfCloses.current++;
+      el.close();
+    }
   }, [open]);
 
   return (
     <dialog
       ref={ref}
       className={`dialog${wide ? ' dialog--wide' : ''}${holo ? ' dialog--holo' : ''}`}
-      onClose={onClose}
+      onClose={() => {
+        // Only a close the user caused (an Escape the browser refused to cancel) is reported.
+        if (selfCloses.current > 0) selfCloses.current--;
+        else onClose();
+      }}
       onCancel={(e) => {
         e.preventDefault();
         onClose();

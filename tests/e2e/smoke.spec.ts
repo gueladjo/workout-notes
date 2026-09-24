@@ -139,6 +139,57 @@ test('reorders sets on the Track tab with press-and-hold drag', async ({ page })
   await expect(page.getByRole('button', { name: 'Move set up' })).toBeEnabled();
 });
 
+test('creates a superset group from the Training screen', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await expect(page.getByRole('tab', { name: 'Track' })).toBeVisible();
+  // A logged set makes the exercise part of today's workout, and so of the group's exercise list.
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  await page.getByRole('button', { name: 'Navigation panel' }).click();
+  await page.getByRole('button', { name: 'Add To Group' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('No groups in this workout yet')).toBeVisible();
+  await dialog.getByRole('button', { name: 'New Group' }).click();
+  // The editor replaces the list, and the list comes back with the new group after Save.
+  await expect(dialog.getByLabel('Name')).toHaveValue('Group 1');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog.getByText('Group 1')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Edit group' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await page.getByRole('button', { name: 'Navigation panel' }).click();
+  await expect(page.getByRole('button', { name: 'Edit Group' })).toBeVisible();
+});
+
+test('creates a superset group in the routine editor', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/routine/new');
+  await page.getByLabel('Name').fill('Push Pull');
+  await page.getByRole('button', { name: 'Save' }).last().click();
+  await expect(page.getByText('Edit mode')).toBeVisible();
+  await page.getByPlaceholder('Day name (e.g. Push, Monday…)').fill('Push');
+  await page.getByRole('button', { name: 'Create day' }).click();
+  await page.getByRole('button', { name: 'Add exercise to day' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  // Back in the editor: dismiss the predefined-sets dialog the picker opened.
+  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  await page.getByRole('button', { name: /^Flat Barbell Bench Press/ }).click();
+  await page.getByRole('menuitem', { name: 'Add To Group' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'New Group' }).click();
+  // Closing the list by code must not close the whole group dialog with it.
+  await expect(dialog.getByLabel('Name')).toHaveValue('Group 1');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog.getByText('Group 1')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

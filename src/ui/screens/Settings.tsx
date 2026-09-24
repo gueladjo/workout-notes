@@ -549,6 +549,9 @@ function DeleteHistoryDialog({ open, onClose }: { open: boolean; onClose: () => 
         confirmLabel="Delete"
         danger
         onConfirm={() => {
+          // Close the form first: once the confirmation is gone it would show again while the
+          // snapshot is being written.
+          onClose();
           void (async () => {
             try {
               await saveSnapshot(db.export(), 'Before deleting history');
@@ -562,7 +565,6 @@ function DeleteHistoryDialog({ open, onClose }: { open: boolean; onClose: () => 
               exerciseIds: exerciseId === 'all' ? undefined : [exerciseId],
             });
             toast(`Deleted ${n} sets`);
-            onClose();
           })();
         }}
       />
