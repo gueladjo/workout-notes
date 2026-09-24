@@ -52,7 +52,8 @@ Sample data comes from `tests/helpers/sample.ts` (`seedSampleWorkouts`), which i
 
 The journeys that matter for a local-first app:
 
-1. log a set, reload, the set is still there (IndexedDB persistence + PR trophy); a weight typed
+1. log a set, reload, the set is still there (IndexedDB persistence + PR trophy, whose tap opens the
+   5RM record history on Records); a weight typed
    with a decimal comma (`82,5`, what a comma-region decimal keypad types) saves as 82.5 and the
    +/- buttons step from it (`parseDecimal` in `src/ui/format.ts`),
 2. restore the generated `.fitnotes` fixture through the file chooser, verify counts and a

@@ -518,6 +518,28 @@ test('the Calendar exercise filter dialog shows the current filter when reopened
   await expect(dialog.getByLabel('Min reps')).toHaveValue('');
 });
 
+test("the set-row trophy opens that rep count's record history", async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  await page.getByRole('button', { name: 'Personal record' }).click();
+  // Lands on Records with the 5RM history dialog already open for the tapped set.
+  await expect(page).toHaveURL(/\/records\?.*reps=5/);
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText('5RM history')).toBeVisible();
+  await expect(dialog.getByText('100 kg')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page).not.toHaveURL(/reps=/);
+  // The rep-max row opens the same dialog again.
+  await page.getByRole('button', { name: /^5RM/ }).click();
+  await expect(dialog.getByText('5RM history')).toBeVisible();
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

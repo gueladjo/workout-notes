@@ -109,11 +109,23 @@ export function RecordsTabs({
 export function RecordsTab({ exercise }: { exercise: ExerciseWithCategory }) {
   const db = useDb();
   const navigate = useNavigate();
+  const [search, setSearch] = useSearchParams();
   const settings = useSettings();
   const sets = useQuery((d) => allSetsForExercise(d, exercise.id), [exercise.id]);
   const [mode, setMode] = useState<'estimated' | 'actual'>('actual');
   const [limitOpen, setLimitOpen] = useState(false);
-  const [historyReps, setHistoryReps] = useState<number | null>(null);
+  // The rep count whose record history dialog is open lives in the URL (`?reps=N`) so the trophy on
+  // a set row (Training) opens it directly; closing the dialog removes the param again.
+  const historyReps = Number(search.get('reps')) || null;
+  const setHistoryReps = (reps: number | null) =>
+    setSearch(
+      (p) => {
+        if (reps === null) p.delete('reps');
+        else p.set('reps', String(reps));
+        return p;
+      },
+      { replace: true },
+    );
   const wu = weightUnitFor(exercise, settings);
   const strength = exerciseTypeHas(exercise.typeId, 'weight') && exerciseTypeHas(exercise.typeId, 'reps');
   const setLike = useMemo(
