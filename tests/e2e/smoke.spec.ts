@@ -243,6 +243,34 @@ test('a swipe inside a Home dialog does not change the day it writes to', async 
   await expect(page).toHaveURL(/#\/workout\/2026-09-09$/);
 });
 
+test('Exercise Overview history is read-only and never copies into the viewed day', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  // The overview is reached from a workout popup; its date is the day looked at, not a workout being tracked.
+  await page.goto('/#/calendar?date=2026-09-08');
+  await page.getByRole('button', { name: '2026-09-08' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Flat Barbell Bench Press' }).click();
+  await expect(page).toHaveURL(/#\/exercise\/\d+\/overview\?date=2026-09-08$/);
+  const dialog = page.getByRole('dialog');
+  // A set of an older workout: quick stats open, but nothing can be edited or copied.
+  await page.getByRole('button', { name: 'Set 1: 60 kg × 10 reps' }).click();
+  await expect(dialog.getByText('Estimated 1RM')).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Copy Set' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Edit Set' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(dialog).toHaveCount(0);
+  // The day popup keeps View Workout only.
+  await page.getByRole('button', { name: /1 September 2026/ }).click();
+  await expect(dialog.getByRole('button', { name: 'View Workout' })).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'Copy Sets' })).toHaveCount(0);
+  await expect(dialog.getByRole('button', { name: 'Edit Sets' })).toHaveCount(0);
+  await page.keyboard.press('Escape');
+  await expect(dialog).toHaveCount(0);
+  // The viewed workout is untouched.
+  await page.goto('/#/workout/2026-09-08');
+  await expect(page.getByText('2 exercises · 3 sets')).toBeVisible();
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

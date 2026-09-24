@@ -40,7 +40,7 @@ export function ExerciseOverviewScreen() {
           )
         }
       />
-      {tab === 'history' && <HistoryTab exercise={exercise} date={date} />}
+      {tab === 'history' && <HistoryTab exercise={exercise} date={date} readOnly />}
       {tab === 'graph' && <GraphTab exercise={exercise} />}
       {tab === 'records' && <RecordsTab exercise={exercise} />}
       {tab === 'stats' && <StatsTab exercise={exercise} date={date} />}

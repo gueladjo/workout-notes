@@ -30,7 +30,11 @@ import { useToast } from '@/ui/components/Toast';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { SetValues } from '@/ui/components/SetValues';
 
-/** Training History tab: every past workout of the exercise, with quick stats and edit/copy actions. */
+/**
+ * Training History tab: every past workout of the exercise, with quick stats and edit/copy actions.
+ * `readOnly` (Exercise Overview) keeps the stats and View Workout but hides Edit/Copy, because there
+ * `date` is only the day the screen was opened from, not a workout being tracked.
+ */
 export function HistoryTab({
   exercise,
   date,
@@ -201,7 +205,11 @@ export function HistoryTab({
         onClose={() => setSetDialog(null)}
         title={setDialog ? formatSet(setDialog, exercise.typeId, wu, settings) : ''}
         actions={
-          !readOnly && (
+          readOnly ? (
+            <Button variant="text" onClick={() => setSetDialog(null)}>
+              Close
+            </Button>
+          ) : (
             <>
               <Button
                 variant="text"
