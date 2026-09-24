@@ -189,6 +189,16 @@ export function seedMeasurements(db: Database, metric: boolean): void {
   });
 }
 
+/**
+ * The single settings row of a fresh FitNotes database; the one parameter is `metric` (1 = kg,
+ * 0 = lbs). Only these columns are set, the others stay NULL and read back as the
+ * `DEFAULT_SETTINGS` of repo/settings.ts. Every path that creates the row uses this statement: a
+ * bare `INSERT INTO settings (metric)` would leave `first_day_of_week` and `weight_increment` at
+ * the schema's `DEFAULT 0` (Saturday week start, no +/- increment).
+ */
+export const INSERT_DEFAULT_SETTINGS =
+  'INSERT INTO settings (metric, first_day_of_week, weight_increment, track_personal_records) VALUES (?, 2, 2.5, 1)';
+
 export function seedDefaults(db: Database, metric: boolean): void {
   DEFAULT_CATEGORIES.forEach(([name, colour], i) => {
     run(db, 'INSERT INTO Category (_id, name, colour, sort_order) VALUES (?, ?, ?, ?)', [
@@ -207,9 +217,5 @@ export function seedDefaults(db: Database, metric: boolean): void {
   }
   seedMeasurementUnits(db);
   seedMeasurements(db, metric);
-  run(
-    db,
-    'INSERT INTO settings (metric, first_day_of_week, weight_increment, track_personal_records) VALUES (?, 2, 2.5, 1)',
-    [metric ? 1 : 0],
-  );
+  run(db, INSERT_DEFAULT_SETTINGS, [metric ? 1 : 0]);
 }

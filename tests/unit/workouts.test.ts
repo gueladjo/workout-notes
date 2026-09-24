@@ -429,6 +429,37 @@ describe('settings', () => {
     expect(s.appTheme).toBe(1);
     expect(s.trackPersonalRecords).toBe(DEFAULT_SETTINGS.trackPersonalRecords);
   });
+
+  it('creates the FitNotes default row when a restored backup has none', () => {
+    app.mutate(() => app.run('DELETE FROM settings'));
+    expect(getSettings(app).firstDayOfWeek).toBe(DEFAULT_SETTINGS.firstDayOfWeek);
+    updateSettings(app, { appTheme: 1 });
+    const s = getSettings(app);
+    expect(s.appTheme).toBe(1);
+    expect(s.metric).toBe(true);
+    expect(s.firstDayOfWeek).toBe(DEFAULT_SETTINGS.firstDayOfWeek);
+    expect(s.weightIncrement).toBe(DEFAULT_SETTINGS.weightIncrement);
+    expect(s.trackPersonalRecords).toBe(true);
+    // Stored, not merely decoded: the row must be what seed.ts writes, so a FitNotes export sees it too.
+    expect(
+      app.get('SELECT metric, first_day_of_week, weight_increment, track_personal_records FROM settings'),
+    ).toEqual({ metric: 1, first_day_of_week: 2, weight_increment: 2.5, track_personal_records: 1 });
+    expect(app.scalar('SELECT COUNT(*) FROM settings')).toBe(1);
+  });
+
+  it('lets the first change set metric even though the default row is metric', () => {
+    app.mutate(() => app.run('DELETE FROM settings'));
+    updateSettings(app, { metric: false });
+    expect(getSettings(app).metric).toBe(false);
+    expect(app.scalar('SELECT metric FROM settings')).toBe(0);
+  });
+
+  it('reads a stored 0 week start or increment as the default', () => {
+    app.mutate(() => app.run('UPDATE settings SET first_day_of_week = 0, weight_increment = 0'));
+    const s = getSettings(app);
+    expect(s.firstDayOfWeek).toBe(DEFAULT_SETTINGS.firstDayOfWeek);
+    expect(s.weightIncrement).toBe(DEFAULT_SETTINGS.weightIncrement);
+  });
 });
 
 describe('routines', () => {

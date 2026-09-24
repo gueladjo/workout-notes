@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll } from 'vitest';
-import { loadSqlJs, tableNames, columnNames, scalar, run, type SqlJsStatic } from '../../src/db/sqlite';
+import { loadSqlJs, tableNames, columnNames, scalar, get, run, type SqlJsStatic } from '../../src/db/sqlite';
 import {
   TABLES,
   createEmptyDatabase,
@@ -9,6 +9,7 @@ import {
 } from '../../src/db/schema';
 import { FITNOTES_DB_VERSION, KG_PER_LB } from '../../src/db/constants';
 import { DEFAULT_CATEGORIES, DEFAULT_EXERCISES, DEFAULT_MEASUREMENTS } from '../../src/db/seed';
+import { DEFAULT_SETTINGS } from '../../src/db/repo/settings';
 
 let SQL: SqlJsStatic;
 beforeAll(async () => {
@@ -37,6 +38,15 @@ describe('createEmptyDatabase', () => {
     expect(scalar(db, 'SELECT COUNT(*) FROM Measurement')).toBe(DEFAULT_MEASUREMENTS.length);
     expect(scalar(db, 'SELECT COUNT(*) FROM Measurement WHERE enabled = 1')).toBe(2);
     expect(scalar(db, 'SELECT metric FROM settings')).toBe(1);
+    // The seeded row and the app's defaults must agree (the seed statement is what a settings-less
+    // backup gets on its first change).
+    expect(
+      get(db, 'SELECT first_day_of_week, weight_increment, track_personal_records FROM settings'),
+    ).toEqual({
+      first_day_of_week: DEFAULT_SETTINGS.firstDayOfWeek,
+      weight_increment: DEFAULT_SETTINGS.weightIncrement,
+      track_personal_records: DEFAULT_SETTINGS.trackPersonalRecords ? 1 : 0,
+    });
     db.close();
   });
 

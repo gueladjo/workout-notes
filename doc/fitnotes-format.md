@@ -130,7 +130,11 @@ by WorkoutNotes (`repo/settings.ts`):
   `home_screen_category_visibility_id` (0 none, 1 name, 2 name and colour), `app_theme_id` (0 light, 1 dark).
 - Rest-timer, workout-timer, analysis and navigation columns are preserved untouched.
 
-A backup without a `settings` row (older versions) gets defaults.
+A backup without a `settings` row (older versions) reads as the defaults; the first settings change
+then creates the same row a fresh database gets (`INSERT_DEFAULT_SETTINGS` in `src/db/seed.ts`:
+metric, `first_day_of_week` 2, `weight_increment` 2.5, `track_personal_records` 1, everything else
+NULL), never a bare row whose schema `DEFAULT 0` would mean Saturday and no increment. When reading,
+a `first_day_of_week` outside 1-7 or a `weight_increment` of 0 or less is treated as the default.
 
 ### Database version (verified)
 

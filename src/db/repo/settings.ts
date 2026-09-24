@@ -9,6 +9,7 @@ import {
   HomeScreenSetLimitType,
   ExerciseListDetailType,
 } from '../constants';
+import { INSERT_DEFAULT_SETTINGS } from '../seed';
 
 export interface Settings {
   /** true = kilograms, false = pounds (settings.metric). */
@@ -121,13 +122,21 @@ export function getSettings(db: AppDatabase): Settings {
     if (col in row) (result as Record<string, unknown>)[key] = decode(key, row[col]);
   }
   if (result.homeScreenLimitValue < 1 || result.homeScreenLimitValue > 10) result.homeScreenLimitValue = 5;
+  // A row created without these columns (older backups, databases written before the missing-row
+  // insert used INSERT_DEFAULT_SETTINGS) carries the schema's 0, which is not a Calendar day and
+  // would make the +/- buttons no-ops; Settings never lets the user store either value.
+  if (result.firstDayOfWeek < 1 || result.firstDayOfWeek > 7)
+    result.firstDayOfWeek = DEFAULT_SETTINGS.firstDayOfWeek;
+  if (result.weightIncrement <= 0) result.weightIncrement = DEFAULT_SETTINGS.weightIncrement;
   return result;
 }
 
 export function updateSettings(db: AppDatabase, patch: Partial<Settings>): void {
   db.mutate(() => {
     const exists = db.get('SELECT _id FROM settings ORDER BY _id ASC LIMIT 1');
-    if (!exists) db.run('INSERT INTO settings (metric) VALUES (1)');
+    // A backup may carry no row at all (older FitNotes versions had no settings table): create the
+    // row FitNotes itself creates, not a bare one that would take the schema's DEFAULT 0 values.
+    if (!exists) db.run(INSERT_DEFAULT_SETTINGS, [DEFAULT_SETTINGS.metric ? 1 : 0]);
     const id = Number(db.scalar('SELECT MIN(_id) FROM settings'));
     for (const [key, value] of Object.entries(patch) as [keyof Settings, Settings[keyof Settings]][]) {
       const col = COLUMNS[key];
