@@ -243,14 +243,28 @@ export type PredefinedSetInput = Pick<
   'metricWeight' | 'reps' | 'distanceMetres' | 'durationSeconds' | 'unit'
 >;
 
-/** Replace the predefined sets of a routine exercise. */
+/**
+ * Replace the predefined sets of a routine exercise. Without an explicit `populateType`, rows mean
+ * predefined sets (1); no rows keeps FitNotes' "copy previous workout" (2), which nothing in the app
+ * can set back, and otherwise means none (0).
+ */
 export function setPredefinedSets(
   db: AppDatabase,
   routineExerciseId: number,
   sets: PredefinedSetInput[],
-  populateType: number = sets.length ? PopulateSetsType.PREDEFINED_SETS : PopulateSetsType.NONE,
+  populateType?: number,
 ): void {
   db.mutate(() => {
+    const current = Number(
+      db.scalar('SELECT populate_sets_type FROM RoutineSectionExercise WHERE _id = ?', [routineExerciseId]),
+    );
+    const type =
+      populateType ??
+      (sets.length
+        ? PopulateSetsType.PREDEFINED_SETS
+        : current === PopulateSetsType.COPY_PREVIOUS_WORKOUT
+          ? PopulateSetsType.COPY_PREVIOUS_WORKOUT
+          : PopulateSetsType.NONE);
     db.run('DELETE FROM RoutineSectionExerciseSet WHERE routine_section_exercise_id = ?', [
       routineExerciseId,
     ]);
@@ -269,7 +283,7 @@ export function setPredefinedSets(
       );
     });
     db.run('UPDATE RoutineSectionExercise SET populate_sets_type = ? WHERE _id = ?', [
-      populateType,
+      type,
       routineExerciseId,
     ]);
   });

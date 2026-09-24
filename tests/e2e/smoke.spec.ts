@@ -204,8 +204,8 @@ test('creates a superset group in the routine editor', async ({ page }) => {
   await page.getByRole('button', { name: 'Add exercise to day' }).click();
   await page.getByRole('button', { name: 'Chest' }).click();
   await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
-  // Back in the editor: dismiss the predefined-sets dialog the picker opened.
-  await page.getByRole('dialog').getByRole('button', { name: 'Cancel' }).click();
+  // Back in the editor: skip the predefined-sets dialog the picker opened.
+  await page.getByRole('dialog').getByRole('button', { name: 'Skip' }).click();
   await page.getByRole('button', { name: /^Flat Barbell Bench Press/ }).click();
   await page.getByRole('menuitem', { name: 'Add To Group' }).click();
   const dialog = page.getByRole('dialog');
@@ -297,6 +297,37 @@ test('resetting a measurement takes a rollback snapshot first', async ({ page })
   await expect(page.getByRole('button', { name: /Bodyweight/ })).toContainText('Not recorded yet');
   await page.goto('/#/settings');
   await expect(page.getByText(/Before resetting measurement "Bodyweight"/)).toBeVisible();
+});
+
+test('skipping predefined sets keeps the exercise and editing offers Cancel only', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/routine/new');
+  await page.getByLabel('Name').fill('PPL');
+  await page.getByRole('button', { name: 'Save' }).last().click();
+  await expect(page.getByText('Edit mode')).toBeVisible();
+  await page.getByPlaceholder(/Day name/).fill('Push');
+  await page.getByRole('button', { name: 'Create day' }).click();
+  await page.getByRole('button', { name: 'Add exercise to day' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByText(/Predefined sets · Flat Barbell Bench Press/)).toBeVisible();
+  await dialog.getByRole('button', { name: 'Skip' }).click();
+  await expect(page.getByText('No predefined sets')).toBeVisible();
+  // Give the exercise a set, then open the editor again: Skip is gone and Cancel keeps the set.
+  await page.getByRole('button', { name: /^Flat Barbell Bench Press/ }).click();
+  await page.getByRole('menuitem', { name: 'Edit Predefined Sets' }).click();
+  await expect(dialog.getByRole('button', { name: 'Skip' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Add Set' }).click();
+  await dialog.getByRole('textbox', { name: 'Weight' }).fill('60');
+  await dialog.getByRole('textbox', { name: 'Reps' }).fill('8');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('60 kg × 8 reps')).toBeVisible();
+  await page.getByRole('button', { name: /^Flat Barbell Bench Press/ }).click();
+  await page.getByRole('menuitem', { name: 'Edit Predefined Sets' }).click();
+  await expect(dialog.getByRole('button', { name: 'Skip' })).toHaveCount(0);
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByText('60 kg × 8 reps')).toBeVisible();
 });
 
 test('restores a FitNotes backup and exports one', async ({ page }) => {

@@ -487,11 +487,37 @@ describe('routines', () => {
       [0, 0, 0, 0],
       [0, 0, 0, 0],
     ]);
+    // Saving no rows keeps type 2; switching it off has to be explicit.
     setPredefinedSets(app, bench, []);
+    expect(listSectionExercises(app, sectionId)[0]!.populateSetsType).toBe(
+      PopulateSetsType.COPY_PREVIOUS_WORKOUT,
+    );
+    setPredefinedSets(app, bench, [], PopulateSetsType.NONE);
     expect(plannedSetsForSection(app, sectionId, '2026-09-05').map(summary)).toEqual([
       [0, 0, 0, 0],
       [0, 0, 12000, 3],
     ]);
+  });
+});
+
+describe('routines', () => {
+  it('keeps the copy-previous-workout type when saved without rows and follows the rows otherwise', () => {
+    const sectionId = addSection(app, createRoutine(app, 'Types'), 'Day 1');
+    const re = addSectionExercise(app, sectionId, BENCH);
+    const typeOf = () => listSectionExercises(app, sectionId)[0]!.populateSetsType;
+    const oneSet = [{ metricWeight: 60, reps: 8, distanceMetres: 0, durationSeconds: 0, unit: 0 }];
+    expect(typeOf()).toBe(PopulateSetsType.NONE);
+    setPredefinedSets(app, re, [], PopulateSetsType.COPY_PREVIOUS_WORKOUT);
+    setPredefinedSets(app, re, []);
+    expect(typeOf()).toBe(PopulateSetsType.COPY_PREVIOUS_WORKOUT); // type 2 + save [] keeps 2
+    setPredefinedSets(app, re, oneSet);
+    expect(typeOf()).toBe(PopulateSetsType.PREDEFINED_SETS); // rows give 1
+    setPredefinedSets(app, re, []);
+    expect(typeOf()).toBe(PopulateSetsType.NONE); // type 1 + save [] gives 0
+    expect(listSectionExercises(app, sectionId)[0]!.sets).toHaveLength(0);
+    setPredefinedSets(app, re, [], PopulateSetsType.COPY_PREVIOUS_WORKOUT);
+    setPredefinedSets(app, re, [], PopulateSetsType.NONE);
+    expect(typeOf()).toBe(PopulateSetsType.NONE); // an explicit type still wins
   });
 });
 

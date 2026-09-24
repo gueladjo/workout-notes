@@ -575,6 +575,7 @@ export function RoutineEditorScreen() {
         open={setsFor !== null || setsForFromUrl !== null}
         onClose={closeSets}
         ex={setsFor ?? setsForFromUrl}
+        justAdded={setsFor === null && setsForFromUrl !== null}
       />
       {groupFor && (
         <GroupDialog
@@ -617,15 +618,21 @@ export function RoutineEditorScreen() {
   }
 }
 
-/** Predefined sets editor: rows of set fields, blank = copy from previous workout. */
+/**
+ * Predefined sets editor: rows of set fields, blank = copy from previous workout. Right after an
+ * exercise was added (`justAdded`) the dismiss button is FitNotes' Skip, otherwise Cancel; neither
+ * writes anything.
+ */
 function PredefinedSetsDialog({
   open,
   onClose,
   ex,
+  justAdded,
 }: {
   open: boolean;
   onClose: () => void;
   ex: RoutineExerciseDetail | null;
+  justAdded: boolean;
 }) {
   const db = useDb();
   const settings = useSettings();
@@ -656,17 +663,8 @@ function PredefinedSetsDialog({
       wide
       actions={
         <>
-          <Button
-            variant="text"
-            onClick={() => {
-              setPredefinedSets(db, ex.id, [], PopulateSetsType.NONE);
-              onClose();
-            }}
-          >
-            Skip
-          </Button>
           <Button variant="text" onClick={onClose}>
-            Cancel
+            {justAdded ? 'Skip' : 'Cancel'}
           </Button>
           <Button
             onClick={() => {
