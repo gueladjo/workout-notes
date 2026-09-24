@@ -1,11 +1,10 @@
-import type { ReactNode } from 'react';
 import { Icon } from './Icon';
 import { parseDecimal } from '@/ui/format';
 
 /**
  * Numeric entry with +/- buttons (FitNotes set fields): label above, then the -/value/+ row.
  * `value` is the raw text so the user can type freely; parse with `parseDecimal()` when saving. `step`
- * drives the buttons. `trailing` sits at the right of the label (e.g. a unit selector).
+ * drives the buttons.
  */
 export function NumberField({
   label,
@@ -17,7 +16,6 @@ export function NumberField({
   inputMode = 'decimal',
   placeholder,
   name,
-  trailing,
 }: {
   label: string;
   value: string;
@@ -28,7 +26,6 @@ export function NumberField({
   inputMode?: 'decimal' | 'numeric';
   placeholder?: string;
   name?: string;
-  trailing?: ReactNode;
 }) {
   const adjust = (delta: number) => {
     const current = value.trim() === '' ? 0 : parseDecimal(value);
@@ -40,7 +37,6 @@ export function NumberField({
     <div className="numfield">
       <div className="numfield__label">
         <span>{label}</span>
-        {trailing}
       </div>
       <div className="numfield__row">
         <button className="numfield__btn" onClick={() => adjust(-step)} aria-label={`Decrease ${label}`}>

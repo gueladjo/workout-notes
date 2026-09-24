@@ -64,6 +64,27 @@ test('accepts a decimal comma, as typed on a comma-region decimal keypad', async
   await expect(weight).toHaveValue('85');
 });
 
+test('logs a cardio set in metres with the hh / mm / ss time boxes', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Cardio' }).click();
+  await page.getByRole('button', { name: 'Cycling' }).first().click();
+  await expect(page.getByRole('tab', { name: 'Track' })).toBeVisible();
+  // Metres by default, as in FitNotes; the time boxes take digits only (phone keypads have no colon).
+  await expect(page.getByLabel('Distance unit')).toHaveValue('2');
+  await page.getByRole('textbox', { name: 'Distance', exact: true }).fill('5000');
+  await page.getByRole('textbox', { name: 'Minutes' }).fill('25');
+  await page.getByRole('textbox', { name: 'Seconds' }).fill('30');
+  await page.getByTestId('save-set').click();
+  const row = page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 5000 m × 25:30' });
+  await expect(row).toBeVisible();
+  // Selecting the set fills the boxes back in.
+  await row.click();
+  await expect(page.getByRole('textbox', { name: 'Hours' })).toHaveValue('');
+  await expect(page.getByRole('textbox', { name: 'Minutes' })).toHaveValue('25');
+  await expect(page.getByRole('textbox', { name: 'Seconds' })).toHaveValue('30');
+});
+
 test('reorders sets on the Track tab with press-and-hold drag', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Start New Workout' }).click();

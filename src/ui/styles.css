@@ -713,14 +713,71 @@ h4 {
   color: var(--color-text-muted);
 }
 
-.select--inline {
+.numfield__input--part {
+  flex: 0 1 96px;
+}
+
+/* The unit beside the distance value, underlined like it (FitNotes). */
+.numfield__unit {
+  flex: none;
   width: auto;
-  min-height: 28px;
-  padding: 2px 8px;
-  font-size: 13px;
+  min-width: 72px;
+  min-height: 48px;
+  padding: 6px 8px;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 18px;
   font-weight: 600;
-  letter-spacing: normal;
-  text-transform: none;
+  text-align: center;
+}
+
+.numfield__unit:focus {
+  outline: none;
+  border-bottom: 2px solid var(--color-accent);
+}
+
+/* Three hh / mm / ss boxes in a dialog form. */
+.duration {
+  display: flex;
+  gap: 8px;
+}
+
+.duration .input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.duration--compact {
+  gap: 4px;
+}
+
+.duration--compact .input {
+  padding-left: 4px;
+  padding-right: 4px;
+}
+
+/* Inline set editor: every value box shares the row, the three time boxes together get two shares. */
+.set-editor {
+  flex: 1;
+  min-width: 0;
+  gap: 6px;
+}
+
+.set-editor > .input {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.set-editor > .duration {
+  flex: 2 1 0;
+}
+
+.field--wide {
+  grid-column: 1 / -1;
 }
 
 .toggle {

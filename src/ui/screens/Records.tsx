@@ -20,8 +20,11 @@ import {
   startOfWeek,
   startOfYear,
   todayIso,
-  parseDuration,
   formatDuration,
+  joinDuration,
+  splitDuration,
+  EMPTY_DURATION,
+  type DurationParts,
 } from '@/domain/dates';
 import {
   displayToKg,
@@ -37,6 +40,7 @@ import { TopBar } from '@/ui/components/TopBar';
 import { Tabs } from '@/ui/components/Tabs';
 import { Button, IconButton } from '@/ui/components/Button';
 import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
+import { DurationInputs } from '@/ui/components/DurationInputs';
 import { WorkoutView } from '@/ui/components/WorkoutView';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { Icon } from '@/ui/components/Icon';
@@ -542,7 +546,7 @@ function GoalEditor({
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [distance, setDistance] = useState('');
-  const [time, setTime] = useState('');
+  const [time, setTime] = useState<DurationParts>(EMPTY_DURATION);
   const [title, setTitle] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -559,7 +563,7 @@ function GoalEditor({
     setWeight(weightText);
     setReps(goal?.reps ? String(goal.reps) : '');
     setDistance(distanceText);
-    setTime(goal?.durationSeconds ? formatDuration(goal.durationSeconds) : '');
+    setTime(splitDuration(goal?.durationSeconds ?? 0));
     setTitle(goal?.title ?? '');
     setTargetDate(goal?.targetDate ?? '');
     setStartDate(goal?.startDate ?? '');
@@ -588,7 +592,7 @@ function GoalEditor({
     typeId as never,
   );
   const save = () => {
-    const t = time.trim() ? parseDuration(time) : 0;
+    const t = joinDuration(time);
     onSave({
       typeId,
       exerciseId: exercise.id,
@@ -675,16 +679,10 @@ function GoalEditor({
           </label>
         )}
         {needsTime && (
-          <label className="field">
-            <span className="field__label">Time (h:mm:ss)</span>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-              placeholder="0:00"
-            />
-          </label>
+          <div className="field field--wide">
+            <span className="field__label">Time</span>
+            <DurationInputs value={time} onChange={setTime} className="duration" inputClassName="input" />
+          </div>
         )}
       </div>
       <label className="field">

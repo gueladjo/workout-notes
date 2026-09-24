@@ -5,7 +5,8 @@ import {
   daysBetween,
   formatDuration,
   isValidIsoDate,
-  parseDuration,
+  splitDuration,
+  joinDuration,
   startOfWeek,
   toIsoDate,
   parseIsoDate,
@@ -26,12 +27,24 @@ describe('dates', () => {
     expect(startOfWeek('2026-09-12', 0)).toBe('2026-09-06'); // Sunday start
     expect(startOfWeek('2026-09-12', 6)).toBe('2026-09-12'); // Saturday start
   });
-  it('formats and parses durations', () => {
+  it('formats durations', () => {
     expect(formatDuration(65)).toBe('1:05');
     expect(formatDuration(3661)).toBe('1:01:01');
-    expect(parseDuration('1:05')).toBe(65);
-    expect(parseDuration('1:01:01')).toBe(3661);
-    expect(parseDuration('90')).toBe(90);
-    expect(parseDuration('abc')).toBeNaN();
+  });
+  it('splits seconds into the hh / mm / ss fields', () => {
+    expect(splitDuration(0)).toEqual({ hours: '', minutes: '', seconds: '' });
+    expect(splitDuration(5)).toEqual({ hours: '', minutes: '', seconds: '5' });
+    expect(splitDuration(65)).toEqual({ hours: '', minutes: '1', seconds: '05' });
+    expect(splitDuration(3661)).toEqual({ hours: '1', minutes: '01', seconds: '01' });
+    expect(splitDuration(3600)).toEqual({ hours: '1', minutes: '00', seconds: '00' });
+  });
+  it('joins the hh / mm / ss fields into seconds', () => {
+    expect(joinDuration({ hours: '', minutes: '', seconds: '' })).toBe(0);
+    expect(joinDuration({ hours: '1', minutes: '01', seconds: '01' })).toBe(3661);
+    expect(joinDuration({ hours: '', minutes: ' 90 ', seconds: '' })).toBe(5400);
+    expect(joinDuration({ hours: '', minutes: '1', seconds: '5' })).toBe(65);
+    expect(joinDuration({ hours: '', minutes: '1:30', seconds: '' })).toBeNaN();
+    expect(joinDuration({ hours: '', minutes: '', seconds: '1.5' })).toBeNaN();
+    expect(joinDuration({ hours: '-1', minutes: '', seconds: '' })).toBeNaN();
   });
 });

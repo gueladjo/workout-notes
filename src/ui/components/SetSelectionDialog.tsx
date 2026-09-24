@@ -14,7 +14,8 @@ import {
   resolveDistanceUnit,
   fmt,
 } from '@/domain/units';
-import { formatDuration, parseDuration } from '@/domain/dates';
+import { joinDuration, splitDuration } from '@/domain/dates';
+import { DurationInputs } from './DurationInputs';
 
 export interface SelectableSet {
   key: string;
@@ -184,7 +185,7 @@ export function SetEditor({
   const fields = exerciseTypeFields(typeId);
   const du = resolveDistanceUnit(value.unit, metric);
   return (
-    <div className="row" style={{ flex: 1, gap: 6 }}>
+    <div className="row set-editor">
       {fields.includes('weight') && (
         <input
           className="input"
@@ -221,17 +222,28 @@ export function SetEditor({
         />
       )}
       {fields.includes('time') && (
-        <input
-          className="input"
-          inputMode="numeric"
-          aria-label="Time"
-          defaultValue={formatDuration(value.durationSeconds)}
-          onChange={(e) => {
-            const secs = parseDuration(e.target.value);
-            if (Number.isFinite(secs)) onChange({ ...value, durationSeconds: secs });
-          }}
+        <DurationEditor
+          seconds={value.durationSeconds}
+          onChange={(durationSeconds) => onChange({ ...value, durationSeconds })}
         />
       )}
     </div>
+  );
+}
+
+/** hh / mm / ss boxes for the inline editor; keeps the typed text, reports whole-number times. */
+function DurationEditor({ seconds, onChange }: { seconds: number; onChange: (seconds: number) => void }) {
+  const [parts, setParts] = useState(() => splitDuration(seconds));
+  return (
+    <DurationInputs
+      value={parts}
+      onChange={(next) => {
+        setParts(next);
+        const secs = joinDuration(next);
+        if (Number.isFinite(secs)) onChange(secs);
+      }}
+      className="duration duration--compact"
+      inputClassName="input"
+    />
   );
 }

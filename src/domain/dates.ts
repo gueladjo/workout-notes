@@ -154,15 +154,37 @@ export function formatDuration(totalSeconds: number): string {
   return h > 0 ? `${h}:${pad2(m)}:${pad2(sec)}` : `${m}:${pad2(sec)}`;
 }
 
-/** Parse 'H:MM:SS', 'M:SS' or plain seconds into seconds. Returns NaN for invalid input. */
-export function parseDuration(text: string): number {
-  const t = text.trim();
-  if (t === '') return NaN;
-  if (/^\d+(\.\d+)?$/.test(t)) return Number(t);
-  const parts = t.split(':').map((p) => p.trim());
-  if (parts.some((p) => p === '' || !/^\d+(\.\d+)?$/.test(p))) return NaN;
-  const nums = parts.map(Number);
-  if (nums.length === 2) return (nums[0] ?? 0) * 60 + (nums[1] ?? 0);
-  if (nums.length === 3) return (nums[0] ?? 0) * 3600 + (nums[1] ?? 0) * 60 + (nums[2] ?? 0);
-  return NaN;
+/** Hours, minutes and seconds as typed in the three time fields (FitNotes' hh mm ss). */
+export interface DurationParts {
+  hours: string;
+  minutes: string;
+  seconds: string;
+}
+
+export const EMPTY_DURATION: DurationParts = { hours: '', minutes: '', seconds: '' };
+
+/** Seconds -> the three fields; 0 leaves them all empty, and parts under a non-zero one are padded. */
+export function splitDuration(totalSeconds: number): DurationParts {
+  const s = Math.max(0, Math.round(totalSeconds));
+  if (s === 0) return EMPTY_DURATION;
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  return {
+    hours: h > 0 ? String(h) : '',
+    minutes: h > 0 ? pad2(m) : m > 0 ? String(m) : '',
+    seconds: h > 0 || m > 0 ? pad2(sec) : String(sec),
+  };
+}
+
+/**
+ * The three fields -> seconds. Empty fields count as 0 and a field may overflow (90 minutes is
+ * 1:30:00). Returns NaN when a field is not a whole number.
+ */
+export function joinDuration(parts: DurationParts): number {
+  const nums = [parts.hours, parts.minutes, parts.seconds].map((p) => {
+    const t = p.trim();
+    return t === '' ? 0 : /^\d+$/.test(t) ? Number(t) : NaN;
+  });
+  return (nums[0] ?? 0) * 3600 + (nums[1] ?? 0) * 60 + (nums[2] ?? 0);
 }

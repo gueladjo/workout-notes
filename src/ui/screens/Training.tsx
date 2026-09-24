@@ -17,7 +17,7 @@ import {
 import { setSetComment } from '@/db/repo/comments';
 import { groupForExercise, type GroupWithExercises } from '@/db/repo/groups';
 import type { Settings } from '@/db/repo/settings';
-import { exerciseTypeFields } from '@/db/constants';
+import { DistanceUnit, exerciseTypeFields } from '@/db/constants';
 import { formatSet, parseDecimal, weightUnitFor } from '@/ui/format';
 import {
   displayToKg,
@@ -29,7 +29,13 @@ import {
   distanceUnitShort,
   type WeightUnit,
 } from '@/domain/units';
-import { formatDuration, parseDuration, formatShortDate } from '@/domain/dates';
+import {
+  EMPTY_DURATION,
+  formatShortDate,
+  joinDuration,
+  splitDuration,
+  type DurationParts,
+} from '@/domain/dates';
 import { androidColourToHex } from '@/domain/colour';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button, IconButton } from '@/ui/components/Button';
@@ -37,6 +43,7 @@ import { Icon } from '@/ui/components/Icon';
 import { MenuButton } from '@/ui/components/Menu';
 import { Tabs } from '@/ui/components/Tabs';
 import { NumberField, formatNumber } from '@/ui/components/NumberField';
+import { DurationInputs } from '@/ui/components/DurationInputs';
 import { Checkbox } from '@/ui/components/Toggle';
 import { SetValues } from '@/ui/components/SetValues';
 import { useDragReorder } from '@/ui/components/useDragReorder';
@@ -152,7 +159,7 @@ interface FieldValues {
   reps: string;
   distance: string;
   distanceUnit: number;
-  time: string;
+  time: DurationParts;
 }
 
 function valuesFrom(
@@ -167,8 +174,8 @@ function valuesFrom(
       weight: '',
       reps: '',
       distance: '',
-      distanceUnit: resolveDistanceUnit(0, settings.metric),
-      time: '',
+      distanceUnit: DistanceUnit.METRES,
+      time: EMPTY_DURATION,
     };
   const du = resolveDistanceUnit(s.unit, settings.metric);
   return {
@@ -176,7 +183,7 @@ function valuesFrom(
     reps: String(s.reps),
     distance: formatNumber(metresToDisplay(s.distanceMetres, du), 3),
     distanceUnit: du,
-    time: s.durationSeconds ? formatDuration(s.durationSeconds) : '',
+    time: splitDuration(s.durationSeconds),
   };
 }
 
@@ -224,7 +231,7 @@ function TrackTab({
     const w = values.weight.trim() === '' ? 0 : parseDecimal(values.weight);
     const r = values.reps.trim() === '' ? 0 : parseDecimal(values.reps);
     const d = values.distance.trim() === '' ? 0 : parseDecimal(values.distance);
-    const t = values.time.trim() === '' ? 0 : parseDuration(values.time);
+    const t = joinDuration(values.time);
     if ([w, r, d].some((n) => !Number.isFinite(n) || n < 0) || !Number.isFinite(t) || t < 0) {
       toast('Please enter valid values');
       return null;
@@ -331,27 +338,10 @@ function TrackTab({
           />
         )}
         {fields.includes('distance') && (
-          <NumberField
-            label="Distance"
+          <DistanceField
             value={values.distance}
-            onChange={(v) => set({ distance: v })}
-            step={settings.metric ? 0.5 : 0.25}
-            decimals={3}
-            name="distance"
-            trailing={
-              <select
-                className="select select--inline"
-                value={values.distanceUnit}
-                onChange={(e) => set({ distanceUnit: Number(e.target.value) })}
-                aria-label="Distance unit"
-              >
-                {ALL_DISTANCE_UNITS.map((u) => (
-                  <option key={u} value={u}>
-                    {distanceUnitShort(u)}
-                  </option>
-                ))}
-              </select>
-            }
+            unit={values.distanceUnit}
+            onChange={(distance, distanceUnit) => set({ distance, distanceUnit })}
           />
         )}
         {fields.includes('reps') && (
@@ -510,35 +500,67 @@ function TrackTab({
   );
 }
 
-/** Time entry as h:mm:ss with +/- one minute buttons. */
-export function DurationField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const adjust = (delta: number) => {
-    const cur = value.trim() === '' ? 0 : parseDuration(value);
-    const next = Math.max(0, (Number.isFinite(cur) ? cur : 0) + delta);
-    onChange(formatDuration(next));
-  };
+/** Distance entry as in FitNotes: the value with its unit selector beside it. Metres by default. */
+function DistanceField({
+  value,
+  unit,
+  onChange,
+}: {
+  value: string;
+  unit: number;
+  onChange: (value: string, unit: number) => void;
+}) {
   return (
     <div className="numfield">
       <div className="numfield__label">
-        <span>Time (h:mm:ss)</span>
+        <span>Distance</span>
       </div>
       <div className="numfield__row">
-        <button className="numfield__btn" onClick={() => adjust(-60)} aria-label="Decrease time">
-          <Icon name="remove" />
-        </button>
         <input
           className="numfield__input"
-          inputMode="numeric"
+          inputMode="decimal"
           value={value}
-          placeholder="0:00"
-          aria-label="Time"
-          onChange={(e) => onChange(e.target.value)}
+          name="distance"
+          aria-label="Distance"
+          onChange={(e) => onChange(e.target.value, unit)}
           onFocus={(e) => e.target.select()}
         />
-        <button className="numfield__btn" onClick={() => adjust(60)} aria-label="Increase time">
-          <Icon name="add" />
-        </button>
+        <select
+          className="numfield__unit"
+          value={unit}
+          onChange={(e) => onChange(value, Number(e.target.value))}
+          aria-label="Distance unit"
+        >
+          {ALL_DISTANCE_UNITS.map((u) => (
+            <option key={u} value={u}>
+              {distanceUnitShort(u)}
+            </option>
+          ))}
+        </select>
       </div>
+    </div>
+  );
+}
+
+/** Time entry as in FitNotes: hh / mm / ss fields. */
+export function DurationField({
+  value,
+  onChange,
+}: {
+  value: DurationParts;
+  onChange: (v: DurationParts) => void;
+}) {
+  return (
+    <div className="numfield">
+      <div className="numfield__label">
+        <span>Time</span>
+      </div>
+      <DurationInputs
+        value={value}
+        onChange={onChange}
+        className="numfield__row"
+        inputClassName="numfield__input numfield__input--part"
+      />
     </div>
   );
 }
