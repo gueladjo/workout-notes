@@ -101,8 +101,10 @@ the emptied group, so no empty group reaches a backup.
 Forearm (R/L), Thigh (R/L), Calf (R/L) (disabled). `goal_type`: 0 none, 1 increase, 2 decrease,
 3 specific (`goal_value`). `MeasurementRecord.value` and `goal_value` are in the measurement's
 unit, so changing `unit_id` between kilograms and pounds or centimetres and inches converts them
-(`updateMeasurement`, unless the user chooses to keep the numbers); other unit changes only
-relabel the values (**assumed**: FitNotes' own behaviour here is unverified).
+(`updateMeasurement`, unless the user chooses to keep the numbers); a `goal_value` passed in the
+same update is taken to be in the new unit and is not rescaled, only the stored goal converts with
+the records. Other unit changes only relabel the values (**assumed**: FitNotes' own behaviour here
+is unverified).
 
 ### Categories and colours (verified)
 

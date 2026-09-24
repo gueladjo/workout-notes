@@ -550,7 +550,8 @@ export function MeasurementEditorScreen() {
   const [name, setName] = useState(existing?.name ?? '');
   const [unitId, setUnitId] = useState<number>(existing?.unitId ?? 0);
   const [goalType, setGoalType] = useState<number>(existing?.goalType ?? MeasurementGoalType.NONE);
-  const [goalValue, setGoalValue] = useState(existing?.goalValue ? String(existing.goalValue) : '');
+  const storedGoal = existing?.goalValue ? String(existing.goalValue) : '';
+  const [goalValue, setGoalValue] = useState(storedGoal);
   const [unitDialog, setUnitDialog] = useState(false);
   const [confirm, setConfirm] = useState<'reset' | 'delete' | null>(null);
   const [unitChange, setUnitChange] = useState(false);
@@ -561,16 +562,21 @@ export function MeasurementEditorScreen() {
   // whether to convert them or keep the numbers, as the exercise editor does for weights.
   const factor =
     existing && unitId !== existing.unitId ? measurementUnitFactor(existing.unitId, unitId) : null;
+  // The target is typed in the selected unit and saved as typed. Left untouched, it is still the
+  // stored goal in the stored unit, which is kept and converts (or not) with the records.
+  const keepGoal =
+    goalType === MeasurementGoalType.SPECIFIC && goalValue === storedGoal && (existing?.goalValue ?? 0) > 0;
   const save = (convertValues?: boolean) => {
     if (!name.trim() && !isDefault) return toast('Enter a name');
     const gv = goalType === MeasurementGoalType.SPECIFIC ? parseDecimal(goalValue) || 0 : 0;
     if (id && existing) {
-      if (factor !== null && convertValues === undefined && (hasValues || gv > 0)) return setUnitChange(true);
+      if (factor !== null && convertValues === undefined && (hasValues || keepGoal))
+        return setUnitChange(true);
       updateMeasurement(db, id, {
         name: isDefault ? undefined : name,
         unitId,
         goalType,
-        goalValue: gv,
+        goalValue: keepGoal ? undefined : gv,
         convertValuesOnUnitChange: convertValues,
       });
     } else createMeasurement(db, { name, unitId, goalType, goalValue: gv });
@@ -627,7 +633,7 @@ export function MeasurementEditorScreen() {
             </label>
             {goalType === MeasurementGoalType.SPECIFIC && (
               <label className="field">
-                <span className="field__label">Target value</span>
+                <span className="field__label">Target value ({unitShort(unitId) || 'no unit'})</span>
                 <input
                   className="input"
                   inputMode="decimal"
@@ -673,7 +679,8 @@ export function MeasurementEditorScreen() {
       >
         <p>
           <b>Convert existing values</b>: 80 {existing && unitShort(existing.unitId)} becomes{' '}
-          {fmt(80 * (factor ?? 1))} {unitShort(unitId)}.
+          {fmt(80 * (factor ?? 1))} {unitShort(unitId)}
+          {keepGoal ? ', the goal too' : ''}.
         </p>
         <p>
           <b>Just change unit</b>: 80 {existing && unitShort(existing.unitId)} becomes 80 {unitShort(unitId)}.

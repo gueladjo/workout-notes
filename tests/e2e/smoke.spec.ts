@@ -354,6 +354,49 @@ test('graph y-axis shows time ticks as minutes:seconds', async ({ page }) => {
   await expect(page.locator('.point-details__value')).toHaveText('25:30');
 });
 
+test('a measurement goal typed with a unit change is saved as typed', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/body');
+  const editor = async () => {
+    await page.goto('/#/body/measurement/1');
+    await expect(page.getByText('Edit Measurement')).toBeVisible();
+  };
+  await editor();
+  await page.getByRole('combobox').first().selectOption({ label: 'Pounds (lbs)' });
+  await page.getByLabel('Goal').selectOption({ label: 'Specific value' });
+  await page.getByLabel('Target value (lbs)').fill('170');
+  // No recorded values and a typed goal: nothing to convert, so no Change unit dialog.
+  await page.getByRole('button', { name: 'Save' }).first().click();
+  await expect(page.getByRole('button', { name: /Bodyweight/ })).toBeVisible();
+  await editor();
+  await expect(page.getByLabel('Target value (lbs)')).toHaveValue('170');
+  // A recorded value makes the dialog appear; Convert values must still keep the typed goal.
+  await page.goto('/#/body');
+  await page.getByRole('button', { name: /Bodyweight/ }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('textbox', { name: /^Value/ })
+    .fill('176');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('176 lbs')).toBeVisible();
+  await editor();
+  await page.getByRole('combobox').first().selectOption({ label: 'Kilograms (kgs)' });
+  await page.getByLabel('Target value (kgs)').fill('77');
+  await page.getByRole('button', { name: 'Save' }).first().click();
+  await page.getByRole('button', { name: 'Convert values' }).click();
+  await expect(page.getByRole('button', { name: /Bodyweight/ })).toContainText('79.83 kgs');
+  await editor();
+  await expect(page.getByLabel('Target value (kgs)')).toHaveValue('77');
+  // Left untouched, the goal converts with the values.
+  await page.getByRole('combobox').first().selectOption({ label: 'Pounds (lbs)' });
+  await page.getByRole('button', { name: 'Save' }).first().click();
+  await expect(page.getByText(/the goal too/)).toBeVisible();
+  await page.getByRole('button', { name: 'Convert values' }).click();
+  await expect(page.getByRole('button', { name: /Bodyweight/ })).toContainText('176 lbs');
+  await editor();
+  await expect(page.getByLabel('Target value (lbs)')).toHaveValue(/^169\.7/);
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

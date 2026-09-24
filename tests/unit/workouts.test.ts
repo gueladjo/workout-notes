@@ -573,28 +573,28 @@ describe('measurements', () => {
     const values = () => listRecords(app, BODYWEIGHT).map((r) => r.value);
     addRecord(app, { measurementId: BODYWEIGHT, date: '2026-09-01', time: '08:00:00', value: 80 });
     addRecord(app, { measurementId: BODYWEIGHT, date: '2026-09-08', time: '08:00:00', value: 79 });
-    // The goal is given in the unit before the change, like the records, and converted with them.
+    // A goal given with the change is typed in the new unit: only the records are converted.
     updateMeasurement(app, BODYWEIGHT, {
       unitId: MEASUREMENT_UNIT.POUNDS,
       goalType: MeasurementGoalType.SPECIFIC,
-      goalValue: 75,
+      goalValue: 165,
     });
     let m = getMeasurement(app, BODYWEIGHT)!;
     expect(m.unitId).toBe(MEASUREMENT_UNIT.POUNDS);
-    expect(m.goalValue).toBeCloseTo(165.35, 2);
+    expect(m.goalValue).toBe(165);
     expect(values().map((v) => Number(v.toFixed(2)))).toEqual([176.37, 174.17]);
-    // Back again, explicitly converting: the original numbers return.
+    // Back again, explicitly converting and leaving the goal alone: it converts with the records.
     updateMeasurement(app, BODYWEIGHT, {
       unitId: MEASUREMENT_UNIT.KILOGRAMS,
       convertValuesOnUnitChange: true,
     });
     m = getMeasurement(app, BODYWEIGHT)!;
-    expect(m.goalValue).toBeCloseTo(75, 6);
+    expect(m.goalValue).toBeCloseTo(74.84, 2);
     expect(values().map((v) => Number(v.toFixed(6)))).toEqual([80, 79]);
     // "Just change unit" keeps the numbers.
     updateMeasurement(app, BODYWEIGHT, { unitId: MEASUREMENT_UNIT.POUNDS, convertValuesOnUnitChange: false });
     expect(values()).toEqual([80, 79]);
-    expect(getMeasurement(app, BODYWEIGHT)!.goalValue).toBe(75);
+    expect(getMeasurement(app, BODYWEIGHT)!.goalValue).toBeCloseTo(74.84, 2);
     // Units of different kinds cannot be converted: the numbers are kept.
     updateMeasurement(app, BODYWEIGHT, { unitId: MEASUREMENT_UNIT.CENTIMETRES });
     expect(values()).toEqual([80, 79]);
@@ -607,5 +607,23 @@ describe('measurements', () => {
     addRecord(app, { measurementId: NECK, date: '2026-09-01', time: '08:00:00', value: 38.1 });
     updateMeasurement(app, NECK, { unitId: MEASUREMENT_UNIT.INCHES });
     expect(listRecords(app, NECK)[0]!.value).toBeCloseTo(15, 6);
+  });
+
+  it('keeps a goal typed with a unit change even when the values are converted', () => {
+    const id = createMeasurement(app, {
+      name: 'Lean mass',
+      unitId: MEASUREMENT_UNIT.KILOGRAMS,
+      goalType: MeasurementGoalType.SPECIFIC,
+      goalValue: 77,
+    });
+    addRecord(app, { measurementId: id, date: '2026-09-01', time: '08:00:00', value: 80 });
+    updateMeasurement(app, id, {
+      unitId: MEASUREMENT_UNIT.POUNDS,
+      goalType: MeasurementGoalType.SPECIFIC,
+      goalValue: 170,
+      convertValuesOnUnitChange: true,
+    });
+    expect(getMeasurement(app, id)!.goalValue).toBe(170); // not 374.79
+    expect(listRecords(app, id)[0]!.value).toBeCloseTo(176.37, 2);
   });
 });

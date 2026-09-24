@@ -80,13 +80,14 @@ export interface MeasurementUpdate {
   name?: string;
   unitId?: number;
   goalType?: number;
-  /** In the measurement's unit before this update (it is converted with the records). */
+  /** In the measurement's unit after this update (`unitId` when given): it is never rescaled. */
   goalValue?: number;
   enabled?: boolean;
   /**
-   * When the unit changes: convert the recorded values and the goal so they keep their meaning
-   * (80 kgs -> 176.37 lbs, the default), or keep the numbers and only relabel them (false). Units
-   * that cannot be converted into each other (see `measurementUnitFactor`) are always relabelled.
+   * When the unit changes: convert the recorded values, and the stored goal unless `goalValue`
+   * replaces it, so they keep their meaning (80 kgs -> 176.37 lbs, the default), or keep the
+   * numbers and only relabel them (false). Units that cannot be converted into each other (see
+   * `measurementUnitFactor`) are always relabelled.
    */
   convertValuesOnUnitChange?: boolean;
 }
@@ -112,7 +113,9 @@ export function updateMeasurement(db: AppDatabase, id: number, patch: Measuremen
       const factor = measurementUnitFactor(current.unitId, patch.unitId);
       if (factor !== null && factor !== 1) {
         db.run('UPDATE MeasurementRecord SET value = value * ? WHERE measurement_id = ?', [factor, id]);
-        db.run('UPDATE Measurement SET goal_value = goal_value * ? WHERE _id = ?', [factor, id]);
+        // A goal given with the change is already in the new unit: only the stored one converts.
+        if (patch.goalValue === undefined)
+          db.run('UPDATE Measurement SET goal_value = goal_value * ? WHERE _id = ?', [factor, id]);
       }
     }
   });
