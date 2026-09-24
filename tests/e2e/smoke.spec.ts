@@ -602,6 +602,21 @@ test('body graph day popup hides disabled measurements', async ({ page }) => {
   await expect(dialog.getByText('?', { exact: true })).toHaveCount(0);
 });
 
+test('entering copy mode by URL forgets the day tapped in the workout popup', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await page.goto('/#/calendar?date=2026-09-08');
+  await page.getByRole('button', { name: '2026-09-08' }).click();
+  const dialog = page.getByRole('dialog');
+  await expect(dialog.getByRole('button', { name: 'Go To' })).toBeVisible();
+  // Same screen, copy mode: no dialog stays or opens for the day tapped in the other mode.
+  await page.goto('/#/calendar?date=2026-09-08&copy=1');
+  await expect(page.getByText('Select the workout you would like to copy')).toBeVisible();
+  await expect(page.locator('dialog[open]')).toHaveCount(0);
+  await page.getByRole('button', { name: '2026-09-01' }).click();
+  await expect(dialog.getByText(/^Copy from/)).toBeVisible();
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

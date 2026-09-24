@@ -50,7 +50,13 @@ export function CalendarScreen() {
   // Month currently brought to the top of the scrolling list (Today, previous/next workout).
   const [focus, setFocus] = useState<ScrollRequest>({ month: routeDate, nonce: 0 });
   const focusMonth = (iso: string) => setFocus((f) => ({ month: iso, nonce: f.nonce + 1 }));
-  const [selected, setSelected] = useState<string | null>(null);
+  // The tapped day opens the workout popup or, in copy mode, the set-selection dialog. The URL can
+  // switch modes under an open dialog (Back out of copy mode, a `?copy=1` link while the popup is
+  // up), and a day tapped in one mode means nothing in the other, so the selection remembers the
+  // mode it was made in and reads as null elsewhere.
+  const [selection, setSelection] = useState<{ date: string; copy: boolean } | null>(null);
+  const selected = selection && selection.copy === copyMode ? selection.date : null;
+  const setSelected = (date: string | null) => setSelection(date === null ? null : { date, copy: copyMode });
   const [drawer, setDrawer] = useState(false);
   const [categoryFilter, setCategoryFilter] = useState<Set<number>>(new Set());
   const [matchAll, setMatchAll] = useState(false);
