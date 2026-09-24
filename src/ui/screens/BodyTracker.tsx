@@ -670,7 +670,8 @@ export function MeasurementEditorScreen() {
           )}
         </div>
       </div>
-      <UnitDialog open={unitDialog} onClose={() => setUnitDialog(false)} onCreated={setUnitId} />
+      {/* Mounted only while open so a new unit starts from blank fields every time. */}
+      {unitDialog && <UnitDialog open onClose={() => setUnitDialog(false)} onCreated={setUnitId} />}
       <Dialog
         open={unitChange}
         onClose={() => setUnitChange(false)}

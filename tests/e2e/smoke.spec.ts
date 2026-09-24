@@ -476,6 +476,48 @@ test.describe('local dates', () => {
   });
 });
 
+test('the custom unit dialog starts empty each time it opens', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/body/measurement/new');
+  const dialog = page.getByRole('dialog');
+  await page.getByRole('button', { name: 'Custom unit' }).click();
+  await dialog.getByLabel('Name', { exact: true }).fill('Kilocalories');
+  await dialog.getByLabel('Short name').fill('kcal');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  const unit = page.getByRole('combobox').first();
+  await expect(unit.getByRole('option', { name: 'Kilocalories (kcal)' })).toHaveCount(1);
+  await expect(unit).toHaveValue(/\d+/);
+  // Reopened, the dialog is blank again: a second Save cannot create a duplicate unit.
+  await page.getByRole('button', { name: 'Custom unit' }).click();
+  await expect(dialog.getByLabel('Name', { exact: true })).toHaveValue('');
+  await expect(dialog.getByRole('button', { name: 'Save' })).toBeDisabled();
+});
+
+test('the Calendar exercise filter dialog shows the current filter when reopened', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await page.goto('/#/calendar');
+  const dialog = page.getByRole('dialog');
+  const openFilter = async () => {
+    await page.getByRole('button', { name: 'Calendar menu' }).click();
+    await page.getByRole('button', { name: /^(Exercise Filter|Edit exercise filter)$/ }).click();
+  };
+  await openFilter();
+  await dialog.getByLabel('Min weight (kg)').fill('80');
+  await dialog.getByLabel('Min reps').fill('5');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText(/workouts \(filtered\)/)).toBeVisible();
+  // Reopened: the saved values are shown; Reset clears the filter...
+  await openFilter();
+  await expect(dialog.getByLabel('Min weight (kg)')).toHaveValue('80');
+  await dialog.getByRole('button', { name: 'Reset' }).click();
+  await expect(page.getByText(/workouts \(filtered\)/)).toHaveCount(0);
+  // ...and the next opening starts from the cleared filter instead of the old values.
+  await openFilter();
+  await expect(dialog.getByLabel('Min weight (kg)')).toHaveValue('');
+  await expect(dialog.getByLabel('Min reps')).toHaveValue('');
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

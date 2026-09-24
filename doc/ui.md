@@ -35,6 +35,10 @@ accents over dark surfaces.
 - `Dialog` (`src/ui/components/Dialog.tsx`) reports `onClose` only for closes the user made
   (Escape, backdrop, the buttons a screen wires to it). Setting `open` to false closes it silently,
   so a screen can swap two dialogs on one piece of state (`GroupDialog`, `DeleteHistoryDialog`).
+- A dialog whose fields are `useState` initialised from props is mounted only while open
+  (`{open && <XDialog open … />}`, as `GroupDialog`, `ExerciseFilterDialog`, `UnitDialog` and
+  `DeleteHistoryDialog` are), or resets its fields on open with the `seen` pattern (`RecordDialog`,
+  `GoalEditor`); a permanently mounted dialog would keep stale text from its previous opening.
 
 ## Deviations from FitNotes
 

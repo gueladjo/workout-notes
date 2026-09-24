@@ -375,12 +375,15 @@ export function CalendarScreen() {
           </nav>
         </>
       )}
-      <ExerciseFilterDialog
-        open={filterDialog}
-        onClose={() => setFilterDialog(false)}
-        current={exerciseFilter}
-        onApply={setExerciseFilter}
-      />
+      {/* Mounted only while open so its fields start from the current filter every time. */}
+      {filterDialog && (
+        <ExerciseFilterDialog
+          open
+          onClose={() => setFilterDialog(false)}
+          current={exerciseFilter}
+          onApply={setExerciseFilter}
+        />
+      )}
       <Dialog
         open={listOpen}
         onClose={() => setListOpen(false)}

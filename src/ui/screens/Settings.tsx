@@ -418,7 +418,8 @@ export function SettingsScreen() {
           </div>
         )}
       </Dialog>
-      <DeleteHistoryDialog open={deleteHistoryOpen} onClose={() => setDeleteHistoryOpen(false)} />
+      {/* Mounted only while open so its range and exercise start afresh every time. */}
+      {deleteHistoryOpen && <DeleteHistoryDialog open onClose={() => setDeleteHistoryOpen(false)} />}
     </div>
   );
 }
