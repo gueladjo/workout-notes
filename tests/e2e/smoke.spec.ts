@@ -277,6 +277,28 @@ test('Exercise Overview history is read-only and never copies into the viewed da
   await expect(page.getByText('2 exercises · 3 sets')).toBeVisible();
 });
 
+test('resetting a measurement takes a rollback snapshot first', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/body');
+  await page.getByRole('button', { name: 'Bodyweight' }).click();
+  await page
+    .getByRole('dialog')
+    .getByRole('textbox', { name: /^Value/ })
+    .fill('80');
+  await page.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('80 kg')).toBeVisible();
+  await page.goto('/#/body/measurement/1');
+  await expect(page.getByText('Edit Measurement')).toBeVisible();
+  await page.getByRole('button', { name: 'Reset (delete all values)' }).click();
+  await expect(page.getByText(/a rollback snapshot is taken first/)).toBeVisible();
+  await page.getByRole('button', { name: 'Reset', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Reset Bodyweight');
+  await page.goto('/#/body');
+  await expect(page.getByRole('button', { name: /Bodyweight/ })).toContainText('Not recorded yet');
+  await page.goto('/#/settings');
+  await expect(page.getByText(/Before resetting measurement "Bodyweight"/)).toBeVisible();
+});
+
 test('restores a FitNotes backup and exports one', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'More options' }).click();

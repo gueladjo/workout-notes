@@ -270,7 +270,7 @@ export function SettingsScreen() {
             {snapshots.length > 0 && (
               <div className="toggle" style={{ display: 'block' }}>
                 <div className="list__primary">Rollback snapshots</div>
-                <div className="list__secondary">Automatic copies taken before restores.</div>
+                <div className="list__secondary">Automatic copies taken before restores and deletions.</div>
                 {snapshots.map((s) => (
                   <div key={s.key} className="row row--between" style={{ padding: '6px 0' }}>
                     <span style={{ fontSize: 14 }}>

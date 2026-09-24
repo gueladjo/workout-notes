@@ -52,8 +52,9 @@ home-screen apps; Chrome grants it to installed apps and engaged sites.
   one opens and reconciles the snapshot first, then snapshots the current database ("Before
   rollback"), then replaces the live one. An unreadable snapshot therefore changes nothing, and in
   particular does not prune an older snapshot.
-- **Delete workout history**, **delete exercise** and **delete category** snapshot first, too
-  (labelled with what is about to be deleted); if the snapshot cannot be written nothing is deleted.
+- **Delete workout history**, **delete exercise**, **delete category** and **reset / delete
+  measurement** (Body Tracker) snapshot first, too (labelled with what is about to be deleted); if
+  the snapshot cannot be written nothing is deleted.
   Delete workout history removes the sets, set and workout comments, supersets and workout times of
   the range; routine supersets (the same group tables with `date = ''`) and all other configuration
   stay, whatever the range.

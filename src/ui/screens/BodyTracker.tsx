@@ -20,6 +20,7 @@ import {
 } from '@/db/repo/measurements';
 import { MeasurementGoalType } from '@/db/constants';
 import { updateSettings } from '@/db/repo/settings';
+import { saveSnapshot } from '@/db/persistence';
 import type { MeasurementRecord, MeasurementWithUnit } from '@/db/types';
 import {
   daysBetween,
@@ -683,18 +684,36 @@ export function MeasurementEditorScreen() {
         onClose={() => setConfirm(null)}
         title={confirm === 'delete' ? 'Delete measurement?' : 'Reset measurement?'}
         message={
-          confirm === 'delete'
-            ? 'The measurement and all recorded values will be deleted.'
-            : 'All recorded values will be deleted.'
+          (confirm === 'delete'
+            ? 'The measurement and all recorded values will be deleted'
+            : 'All recorded values will be deleted') + ' (a rollback snapshot is taken first).'
         }
         confirmLabel={confirm === 'delete' ? 'Delete' : 'Reset'}
         danger
         onConfirm={() => {
-          if (!id) return;
-          if (confirm === 'delete') {
-            deleteMeasurement(db, id);
-            navigate(-1);
-          } else resetMeasurement(db, id);
+          if (!id || !confirm) return;
+          // ConfirmDialog closes (confirm -> null) right after onConfirm, so keep the action.
+          const action = confirm;
+          const label = existing?.name ?? `#${id}`;
+          void (async () => {
+            try {
+              await saveSnapshot(
+                db.export(),
+                `Before ${action === 'delete' ? 'deleting' : 'resetting'} measurement "${label}"`,
+              );
+            } catch (err) {
+              toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
+              return;
+            }
+            if (action === 'delete') {
+              deleteMeasurement(db, id);
+              toast(`Deleted ${label}`);
+              navigate(-1);
+            } else {
+              resetMeasurement(db, id);
+              toast(`Reset ${label}`);
+            }
+          })();
         }}
       />
     </div>
