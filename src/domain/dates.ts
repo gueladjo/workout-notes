@@ -125,6 +125,11 @@ export function formatMediumDate(iso: IsoDate): string {
   return `${weekdayName(iso, true)} ${formatShortDate(iso)}`;
 }
 
+/** "Monday, 12 Sep 2026": the weekday with the short date, FitNotes' heading for a day's dialog. */
+export function formatWeekdayDate(iso: IsoDate): string {
+  return `${weekdayName(iso)}, ${formatShortDate(iso)}`;
+}
+
 /** Relative label like "Today", "Yesterday", "3 days ago", "2 months ago". */
 export function relativeDays(iso: IsoDate, today: IsoDate = todayIso()): string {
   const diff = daysBetween(iso, today);

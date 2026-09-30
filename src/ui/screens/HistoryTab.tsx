@@ -17,7 +17,7 @@ import {
   type SetDraft,
   type StoredSet,
 } from '@/ui/format';
-import { formatLongDate, formatDuration } from '@/domain/dates';
+import { formatLongDate, formatWeekdayDate, formatDuration } from '@/domain/dates';
 import { estimatedOneRepMax } from '@/domain/records';
 import { exerciseTypeFields, exerciseTypeHas, type ExerciseTypeId } from '@/db/constants';
 import {
@@ -157,7 +157,7 @@ export function HistoryTab({
       <Dialog
         open={dayDialog !== null}
         onClose={() => setDayDialog(null)}
-        title={dayDialog ? formatLongDate(dayDialog) : ''}
+        title={dayDialog ? formatWeekdayDate(dayDialog) : ''}
         holo
         flush
       >
@@ -305,7 +305,7 @@ export function HistoryTab({
       <Dialog
         open={viewDate !== null}
         onClose={() => setViewDate(null)}
-        title={viewDate ? formatLongDate(viewDate) : ''}
+        title={viewDate ? formatWeekdayDate(viewDate) : ''}
         flush
         holo
         actions={

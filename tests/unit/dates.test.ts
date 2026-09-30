@@ -4,6 +4,7 @@ import {
   addMonths,
   daysBetween,
   formatDuration,
+  formatWeekdayDate,
   isValidIsoDate,
   splitDuration,
   joinDuration,
@@ -45,6 +46,11 @@ describe('dates', () => {
     expect(startOfWeek('2026-09-12', 0)).toBe('2026-09-06'); // Sunday start
     expect(startOfWeek('2026-09-12', 6)).toBe('2026-09-12'); // Saturday start
   });
+  it('formats a day as its weekday and short date for dialog headings', () => {
+    expect(formatWeekdayDate('2026-09-30')).toBe('Wednesday, 30 Sep 2026');
+    expect(formatWeekdayDate('2026-01-04')).toBe('Sunday, 4 Jan 2026');
+  });
+
   it('formats durations', () => {
     expect(formatDuration(65)).toBe('1:05');
     expect(formatDuration(3661)).toBe('1:01:01');
