@@ -550,7 +550,8 @@ test.describe('local dates', () => {
     await page.getByRole('button', { name: 'Log All' }).first().click();
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page).toHaveURL(/#\/$/);
-    await expect(page.getByText('60 kg × 8 reps')).toBeVisible();
+    // Home shows a set as value columns (`SetValues`); the plain text is its accessible name.
+    await expect(page.getByRole('button', { name: 'Flat Barbell Bench Press 60 kg × 8 reps' })).toBeVisible();
   });
 });
 
