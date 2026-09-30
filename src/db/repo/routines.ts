@@ -134,7 +134,13 @@ export function copyRoutine(db: AppDatabase, id: number, newName: string): numbe
       for (const ex of section.exercises) {
         const newExId = addSectionExercise(db, newSectionId, ex.exerciseId);
         idMap.set(ex.exerciseId, newExId);
-        setPredefinedSets(db, newExId, ex.sets, ex.populateSetsType);
+        // The source rows carry their ids; drop them so the copy gets rows of its own.
+        setPredefinedSets(
+          db,
+          newExId,
+          ex.sets.map((s) => ({ ...s, id: undefined })),
+          ex.populateSetsType,
+        );
       }
       for (const g of listRoutineSectionGroups(db, section.id)) {
         createGroup(db, {
@@ -238,15 +244,21 @@ export function reorderSectionExercises(db: AppDatabase, orderedRoutineExerciseI
   });
 }
 
-export type PredefinedSetInput = Pick<
+export interface PredefinedSetInput extends Pick<
   RoutineSet,
   'metricWeight' | 'reps' | 'distanceMetres' | 'durationSeconds' | 'unit'
->;
+> {
+  /** Id of one of the routine exercise's existing rows to update in place; omit for a new row. */
+  id?: number;
+}
 
 /**
- * Replace the predefined sets of a routine exercise. Without an explicit `populateType`, rows mean
- * predefined sets (1); no rows keeps FitNotes' "copy previous workout" (2), which nothing in the app
- * can set back, and otherwise means none (0).
+ * Save the predefined sets of a routine exercise. A row whose `id` is one of this routine
+ * exercise's rows is updated in place, so the `training_log.routine_section_exercise_set_id` links
+ * of the sets logged from it (which `plannedSetsForSection` fills blanks from) survive; any other
+ * row is inserted, and existing rows missing from `sets` are deleted. Without an explicit
+ * `populateType`, rows mean predefined sets (1); no rows keeps FitNotes' "copy previous workout"
+ * (2), which nothing in the app can set back, and otherwise means none (0).
  */
 export function setPredefinedSets(
   db: AppDatabase,
@@ -265,23 +277,40 @@ export function setPredefinedSets(
         : current === PopulateSetsType.COPY_PREVIOUS_WORKOUT
           ? PopulateSetsType.COPY_PREVIOUS_WORKOUT
           : PopulateSetsType.NONE);
-    db.run('DELETE FROM RoutineSectionExerciseSet WHERE routine_section_exercise_id = ?', [
-      routineExerciseId,
-    ]);
+    const existing = new Set(
+      db
+        .all<{ _id: number }>(
+          'SELECT _id FROM RoutineSectionExerciseSet WHERE routine_section_exercise_id = ?',
+          [routineExerciseId],
+        )
+        .map((r) => r._id),
+    );
+    const kept = new Set<number>();
     sets.forEach((s, i) => {
-      db.run(
-        'INSERT INTO RoutineSectionExerciseSet (routine_section_exercise_id, metric_weight, reps, sort_order, distance, duration_seconds, unit) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [
-          routineExerciseId,
-          s.metricWeight,
-          Math.round(s.reps),
-          i + 1,
-          s.distanceMetres,
-          Math.round(s.durationSeconds),
-          s.unit,
-        ],
-      );
+      const values = [
+        s.metricWeight,
+        Math.round(s.reps),
+        i + 1,
+        s.distanceMetres,
+        Math.round(s.durationSeconds),
+        s.unit,
+      ];
+      if (s.id !== undefined && existing.has(s.id) && !kept.has(s.id)) {
+        kept.add(s.id);
+        // Only the columns the app knows: anything a newer FitNotes added to the row is left alone.
+        db.run(
+          'UPDATE RoutineSectionExerciseSet SET metric_weight = ?, reps = ?, sort_order = ?, distance = ?, duration_seconds = ?, unit = ? WHERE _id = ?',
+          [...values, s.id],
+        );
+      } else {
+        db.run(
+          'INSERT INTO RoutineSectionExerciseSet (routine_section_exercise_id, metric_weight, reps, sort_order, distance, duration_seconds, unit) VALUES (?, ?, ?, ?, ?, ?, ?)',
+          [routineExerciseId, ...values],
+        );
+      }
     });
+    for (const id of existing)
+      if (!kept.has(id)) db.run('DELETE FROM RoutineSectionExerciseSet WHERE _id = ?', [id]);
     db.run('UPDATE RoutineSectionExercise SET populate_sets_type = ? WHERE _id = ?', [
       type,
       routineExerciseId,

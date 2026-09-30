@@ -648,6 +648,8 @@ function PredefinedSetsDialog({
         distanceMetres: s.distanceMetres,
         durationSeconds: s.durationSeconds,
         unit: s.unit,
+        // The row's id: saving updates the row in place so the history links of its logged sets survive.
+        meta: s.id,
       })),
     );
   }
@@ -668,7 +670,11 @@ function PredefinedSetsDialog({
           </Button>
           <Button
             onClick={() => {
-              setPredefinedSets(db, ex.id, rows);
+              setPredefinedSets(
+                db,
+                ex.id,
+                rows.map((r) => ({ ...r, id: typeof r.meta === 'number' ? r.meta : undefined })),
+              );
               onClose();
             }}
           >
