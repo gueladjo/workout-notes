@@ -8,6 +8,7 @@ import {
   type ExerciseTypeId,
 } from '../constants';
 import { goalTypesForExercise } from '@/domain/stats';
+import { saveSnapshot } from '../persistence';
 import { recalculatePersonalRecords } from './records';
 import { deleteEmptyGroups } from './groups';
 
@@ -178,6 +179,33 @@ export function updateExercise(db: AppDatabase, id: number, patch: ExerciseUpdat
     }
     recalculatePersonalRecords(db, id);
   });
+}
+
+/**
+ * `updateExercise` as the exercise editor saves it. A patch that changes the type clears the fields
+ * the new type lacks from the exercise's whole history and drops their goals (see `updateExercise`),
+ * so a rollback snapshot is written first, as before a deletion; a patch that keeps the type writes
+ * none (snapshots are capped at `MAX_SNAPSHOTS`). A snapshot that cannot be written rejects with
+ * "snapshot failed (...)" and the database is left untouched. The snapshot is taken outside
+ * `mutate()`, which `db.export()` requires.
+ */
+export async function updateExerciseWithSnapshot(
+  db: AppDatabase,
+  id: number,
+  patch: ExerciseUpdate,
+): Promise<void> {
+  const current = getExercise(db, id);
+  if (!current) throw new Error(`exercise ${id} not found`);
+  if (patch.typeId !== undefined && patch.typeId !== current.typeId) {
+    try {
+      await saveSnapshot(db.export(), `Before changing type of exercise "${current.name}"`);
+    } catch (err) {
+      throw new Error(`snapshot failed (${err instanceof Error ? err.message : String(err)})`, {
+        cause: err,
+      });
+    }
+  }
+  updateExercise(db, id, patch);
 }
 
 export function setFavourite(db: AppDatabase, id: number, favourite: boolean): void {

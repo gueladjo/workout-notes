@@ -1,4 +1,6 @@
 import { describe, expect, it, beforeAll, beforeEach } from 'vitest';
+import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import { loadSqlJs, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
@@ -26,6 +28,7 @@ import {
   getExercise,
   listExercises,
   updateExercise,
+  updateExerciseWithSnapshot,
 } from '../../src/db/repo/exercises';
 import { createCategory, deleteCategory, listCategories } from '../../src/db/repo/categories';
 import {
@@ -59,6 +62,7 @@ import {
   updateMeasurement,
 } from '../../src/db/repo/measurements';
 import { MEASUREMENT_UNIT } from '../../src/db/seed';
+import { listSnapshots, readBlob } from '../../src/db/persistence';
 import { createGoal, listGoals } from '../../src/db/repo/goals';
 import { ExerciseType, DistanceUnit, GoalType, MeasurementGoalType } from '../../src/db/constants';
 
@@ -389,6 +393,46 @@ describe('exercises and categories', () => {
     deleteExercise(app, id);
     expect(getExercise(app, id)).toBeUndefined();
     expect(listSets(app, id, '2026-09-12')).toHaveLength(0);
+  });
+
+  it('writes a rollback snapshot before a type change, and only then', async () => {
+    globalThis.indexedDB = new IDBFactory();
+    const weightSum = (db: AppDatabase) =>
+      db.scalar('SELECT SUM(metric_weight) FROM training_log WHERE exercise_id = ?', [BENCH]);
+    expect(weightSum(app)).toBe(470);
+    // Same type: no snapshot (they are capped, and pruning old ones is not free).
+    await updateExerciseWithSnapshot(app, BENCH, {
+      name: 'Bench Press',
+      typeId: ExerciseType.WEIGHT_AND_REPS,
+    });
+    expect(getExercise(app, BENCH)!.name).toBe('Bench Press');
+    expect(await listSnapshots()).toHaveLength(0);
+    // A type change clears the dropped fields across the history, after the snapshot is written.
+    await updateExerciseWithSnapshot(app, BENCH, { typeId: ExerciseType.REPS });
+    expect(getExercise(app, BENCH)!.typeId).toBe(ExerciseType.REPS);
+    expect(weightSum(app)).toBe(0);
+    const snapshots = await listSnapshots();
+    expect(snapshots.map((s) => s.label)).toEqual(['Before changing type of exercise "Bench Press"']);
+    const before = new AppDatabase(new SQL.Database((await readBlob(snapshots[0]!.key))!));
+    expect(weightSum(before)).toBe(470);
+    expect(getExercise(before, BENCH)!.typeId).toBe(ExerciseType.WEIGHT_AND_REPS);
+  });
+
+  it('changes nothing when the snapshot before a type change cannot be written', async () => {
+    globalThis.indexedDB = {
+      open() {
+        throw new Error('storage unavailable');
+      },
+    } as unknown as IDBFactory;
+    const bytes = app.export();
+    await expect(
+      updateExerciseWithSnapshot(app, BENCH, { name: 'Bench Press', typeId: ExerciseType.REPS }),
+    ).rejects.toThrow('snapshot failed (storage unavailable)');
+    expect(app.version).toBe(0);
+    expect(app.export()).toEqual(bytes);
+    expect(getExercise(app, BENCH)!.name).toBe('Flat Barbell Bench Press');
+    expect(getExercise(app, BENCH)!.typeId).toBe(ExerciseType.WEIGHT_AND_REPS);
+    globalThis.indexedDB = new IDBFactory();
   });
 
   it('"just change unit" rescales stored kilograms so displayed numbers stay the same', () => {

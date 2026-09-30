@@ -18,8 +18,8 @@ memory by sql.js and persisted to IndexedDB. Read this file, then only the doc t
    and must never delete or lower data it does not understand (unknown tables/columns, newer
    `user_version`).
 5. **Destructive operations snapshot first.** Restore, rollback, delete-history, deleting an
-   exercise or category, and resetting or deleting a measurement call `saveSnapshot()` before
-   touching the live database.
+   exercise or category, changing an exercise's type (it clears history fields), and resetting or
+   deleting a measurement call `saveSnapshot()` before touching the live database.
 6. **Storage units are fixed.** Weight in kg (`metric_weight`), distance in metres (`distance`),
    time in seconds. Convert only at the UI edge with `src/domain/units.ts`.
 

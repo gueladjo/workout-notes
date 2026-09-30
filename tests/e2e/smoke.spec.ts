@@ -301,6 +301,58 @@ test('resetting a measurement takes a rollback snapshot first', async ({ page })
   await expect(page.getByText(/Before resetting measurement "Bodyweight"/)).toBeVisible();
 });
 
+/** Open the exercise editor for the fixture's bench press from the Exercise List. */
+async function editBenchPress(page: Page) {
+  await page.goto('/#/exercises?date=2026-09-08');
+  await page.getByRole('button', { name: 'Chest' }).click();
+  const row = page.locator('.list__item', {
+    has: page.getByText('Flat Barbell Bench Press', { exact: true }),
+  });
+  await row.first().getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Edit' }).click();
+  await expect(page.getByText('Edit Exercise')).toBeVisible();
+}
+
+test('changing an exercise type takes a rollback snapshot that brings the cleared values back', async ({
+  page,
+}) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await editBenchPress(page);
+  await page.getByLabel('Type').selectOption({ label: 'Reps Only' });
+  await expect(page.getByText(/a rollback snapshot is taken first/)).toBeVisible();
+  await page.getByRole('button', { name: 'Save' }).last().click();
+  await expect(page.getByRole('status')).toHaveText('Exercise updated');
+  // The weights are gone from the history, as in FitNotes.
+  await page.goto('/#/workout/2026-09-08');
+  await expect(page.getByRole('button', { name: 'Flat Barbell Bench Press 5 reps' })).toBeVisible();
+  // The snapshot written first is offered for rollback and restores them.
+  await page.goto('/#/settings');
+  const snapshot = page.locator('.row', {
+    hasText: 'Before changing type of exercise "Flat Barbell Bench Press"',
+  });
+  await snapshot.getByRole('button', { name: 'Restore' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Restore' }).click();
+  await expect(page.getByRole('status')).toHaveText('Snapshot restored');
+  await page.goto('/#/workout/2026-09-08');
+  await expect(page.getByRole('button', { name: 'Flat Barbell Bench Press 85 kg × 5 reps' })).toBeVisible();
+});
+
+test('a type change saved together with a unit change takes the snapshot too', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await editBenchPress(page);
+  await page.getByLabel('Type').selectOption({ label: 'Weight Only' });
+  await page.getByLabel('Weight Unit').selectOption({ label: 'Imperial (lbs)' });
+  await page.getByRole('button', { name: 'Save' }).last().click();
+  await page.getByRole('button', { name: 'Just change unit' }).click();
+  await expect(page.getByRole('status')).toHaveText('Exercise updated');
+  await page.goto('/#/workout/2026-09-08');
+  await expect(page.getByRole('button', { name: 'Flat Barbell Bench Press 85 lbs' })).toBeVisible();
+  await page.goto('/#/settings');
+  await expect(page.getByText(/Before changing type of exercise "Flat Barbell Bench Press"/)).toBeVisible();
+});
+
 test('skipping predefined sets keeps the exercise and editing offers Cancel only', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/routine/new');

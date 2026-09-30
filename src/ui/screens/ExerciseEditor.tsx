@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useRouteDate, useSettings } from '@/app/hooks';
@@ -9,7 +9,13 @@ import {
   updateCategory,
   categoryNameExists,
 } from '@/db/repo/categories';
-import { createExercise, exerciseNameExists, getExercise, updateExercise } from '@/db/repo/exercises';
+import {
+  createExercise,
+  exerciseNameExists,
+  getExercise,
+  updateExerciseWithSnapshot,
+  type ExerciseUpdate,
+} from '@/db/repo/exercises';
 import {
   ALL_EXERCISE_TYPES,
   EXERCISE_TYPE_LABELS,
@@ -56,10 +62,41 @@ export function ExerciseEditorScreen() {
   const [categoryDialog, setCategoryDialog] = useState(editCategoryId !== undefined);
   const [unitChange, setUnitChange] = useState<null | { prev: 'kg' | 'lbs'; next: 'kg' | 'lbs' }>(null);
   const [error, setError] = useState<string | null>(null);
+  // Saving an edit that changes the type first writes a rollback snapshot (asynchronous): no second
+  // save meanwhile, and the navigate(-1) is skipped if the user left the editor while it was written.
+  const [busy, setBusy] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   const effectiveCategory = categoryId || categories[0]?.id || 0;
 
+  /** Save an edit of the existing exercise (snapshot first when the type changes) and leave. */
+  const applyEdit = (patch: ExerciseUpdate) => {
+    if (!editId || busy) return;
+    setBusy(true);
+    setError(null);
+    void (async () => {
+      try {
+        await updateExerciseWithSnapshot(db, editId, patch);
+      } catch (err) {
+        // A snapshot that could not be written: nothing was changed, the edits stay on screen.
+        setError(`Nothing saved: ${err instanceof Error ? err.message : String(err)}`);
+        setBusy(false);
+        return;
+      }
+      toast('Exercise updated');
+      // The snapshot took a moment: only leave if the user has not already left the editor.
+      if (mounted.current) navigate(-1);
+    })();
+  };
+
   const save = (andNew = false) => {
+    if (busy) return;
     const trimmed = name.trim();
     if (!trimmed) return setError('Enter a name for the exercise.');
     if (exerciseNameExists(db, trimmed, editId))
@@ -72,15 +109,7 @@ export function ExerciseEditorScreen() {
         setUnitChange({ prev: prevUnit, next: nextUnit });
         return;
       }
-      updateExercise(db, editId, {
-        name: trimmed,
-        notes,
-        categoryId: effectiveCategory,
-        typeId,
-        weightUnitId,
-      });
-      toast('Exercise updated');
-      navigate(-1);
+      applyEdit({ name: trimmed, notes, categoryId: effectiveCategory, typeId, weightUnitId });
       return;
     }
     const id = createExercise(db, {
@@ -101,20 +130,20 @@ export function ExerciseEditorScreen() {
   };
 
   const applyUnitChange = (convert: boolean) => {
-    if (!editId || !unitChange) return;
-    updateExercise(db, editId, {
+    if (!unitChange) return;
+    const change = unitChange;
+    // Close the dialog first: the save may take a moment (snapshot) and Save is disabled meanwhile.
+    setUnitChange(null);
+    applyEdit({
       name: name.trim(),
       notes,
       categoryId: effectiveCategory,
       typeId,
       weightUnitId,
       convertWeightsOnUnitChange: convert,
-      previousUnit: unitChange.prev,
-      nextUnit: unitChange.next,
+      previousUnit: change.prev,
+      nextUnit: change.next,
     });
-    setUnitChange(null);
-    toast('Exercise updated');
-    navigate(-1);
   };
 
   return (
@@ -125,7 +154,7 @@ export function ExerciseEditorScreen() {
         actions={
           <>
             {!editId && <IconButton icon="addBox" label="Save and new" primary onClick={() => save(true)} />}
-            <IconButton icon="save" label="Save" primary onClick={() => save(false)} />
+            <IconButton icon="save" label="Save" primary disabled={busy} onClick={() => save(false)} />
           </>
         }
       />
@@ -183,7 +212,7 @@ export function ExerciseEditorScreen() {
               {editId && existing && typeId !== existing.typeId && (
                 <span className="muted" style={{ fontSize: 13 }}>
                   Changing the type deletes values of fields the new type does not have from this exercise's
-                  history, and goals that measure those fields.
+                  history, and goals that measure those fields (a rollback snapshot is taken first).
                 </span>
               )}
             </label>
@@ -209,7 +238,7 @@ export function ExerciseEditorScreen() {
               </div>
             )}
           </div>
-          <Button block large onClick={() => save(false)}>
+          <Button block large disabled={busy} onClick={() => save(false)}>
             Save
           </Button>
         </div>
