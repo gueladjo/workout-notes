@@ -798,6 +798,71 @@ test('a second tab takes the database over and the first one stops', async ({ pa
   await expect(second.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
 });
 
+test('a third window opened during a slow handover gets the database after the second', async ({
+  page,
+  context,
+}) => {
+  await openApp(page);
+  // Hold every IndexedDB open in the first window until the test lets it go: its persist, and so
+  // its handover, stay in flight while the other two windows start.
+  await page.evaluate(() => {
+    const realOpen = indexedDB.open.bind(indexedDB);
+    const gate = new Promise<void>((resolve) => {
+      (window as unknown as { resumeSaves: () => void }).resumeSaves = resolve;
+    });
+    indexedDB.open = (name: string, version?: number) => {
+      // Request-shaped stand-in whose events fire once the gate opens and the real open finishes.
+      const req = {
+        result: undefined as unknown,
+        error: null as unknown,
+        onsuccess: null as ((e: Event) => void) | null,
+        onerror: null as ((e: Event) => void) | null,
+        onupgradeneeded: null as ((e: Event) => void) | null,
+        onblocked: null as ((e: Event) => void) | null,
+      };
+      void gate.then(() => {
+        const real = realOpen(name, version);
+        real.onupgradeneeded = (e) => {
+          req.result = real.result;
+          req.onupgradeneeded?.(e);
+        };
+        real.onblocked = (e) => req.onblocked?.(e);
+        real.onsuccess = (e) => {
+          req.result = real.result;
+          req.onsuccess?.(e);
+        };
+        real.onerror = (e) => {
+          req.error = real.error;
+          req.onerror?.(e);
+        };
+      });
+      return req as unknown as IDBOpenDBRequest;
+    };
+  });
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  // The second window asks the first to hand over and queues for the lock; the third asks while
+  // the second is still queued, so only the second can hear it.
+  const second = await context.newPage();
+  await second.goto('/');
+  const third = await context.newPage();
+  await third.goto('/');
+  const waiting = 'Waiting for the other WorkoutNotes window to save…';
+  await expect(second.getByText(waiting)).toBeVisible({ timeout: 30_000 });
+  await expect(third.getByText(waiting)).toBeVisible({ timeout: 30_000 });
+  await page.evaluate(() => (window as unknown as { resumeSaves: () => void }).resumeSaves());
+  // First to second, then straight on to the third, which gets the set the first window saved.
+  await expect(page.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
+  await expect(third.getByRole('button', { name: 'Flat Barbell Bench Press 100 kg × 5 reps' })).toBeVisible({
+    timeout: 30_000,
+  });
+  await expect(second.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
+});
+
 test('a window on the Recovery screen hands the database over to a new one', async ({ page, context }) => {
   await openApp(page);
   // Replace the stored database with garbage, then reload into the Recovery screen.

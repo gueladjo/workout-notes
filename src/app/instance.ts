@@ -1,9 +1,13 @@
 /**
  * Single running instance per origin. Every persist writes the whole database, so two instances
  * (an installed app plus a browser tab, or two desktop tabs) would silently overwrite each other.
- * The newest instance wins: on start it asks any running instance (BroadcastChannel) to save and
- * stop, then waits for the Web Lock that instance held. The stopped instance shows a "use it here"
- * screen instead of the app. Browsers without both APIs get no guard, as before.
+ * The newest instance wins. On start an instance listens on a BroadcastChannel, asks any running
+ * instance (one `release` message) to save and stop, then queues for the Web Lock that instance
+ * holds. The holder runs its takeover handler (a final flush), waits for its held work and releases
+ * the lock; it shows a "use it here" screen instead of the app. Any `release` comes from a newer
+ * instance, so one received while still queued for the lock is kept: once this instance holds the
+ * lock and has a handler it hands over in turn, and the newest instance gets through however many
+ * start-ups overlap. Browsers without both APIs get no guard, as before.
  */
 const LOCK_NAME = 'workoutnotes:database';
 const CHANNEL_NAME = 'workoutnotes:instance';
@@ -16,7 +20,8 @@ export const TAKEN_OVER_MESSAGE = 'Another WorkoutNotes window has taken over';
 export interface InstanceLock {
   /**
    * Register what to do when another instance asks to take over. The handler runs (typically a
-   * final flush), then the lock is released so the other instance can start.
+   * final flush), then the lock is released so the other instance can start. A request that
+   * arrived earlier (even before this instance held the lock) runs the handler right away.
    */
   onTakeover(handler: () => Promise<void>): void;
   /**
@@ -65,30 +70,36 @@ const holds = new Set<Promise<void>>();
 function acquire(onWaiting: () => void): Promise<InstanceLock> {
   if (!instanceLockSupported()) return Promise.resolve({ onTakeover: () => {}, released: false });
   const channel = new BroadcastChannel(CHANNEL_NAME);
+  let handler: (() => Promise<void>) | null = null;
+  let requested = false;
+  let release = () => {};
+  const run = () => {
+    // The handler only exists once the lock is held (it is registered through the resolved lock),
+    // so a request received while still queued waits here until then.
+    if (released || !handler) return;
+    released = true;
+    channel.close();
+    // The lock goes once the handler and every piece of held work have finished.
+    void handler()
+      .catch(() => {})
+      .then(() => Promise.all(holds))
+      .then(() => release());
+  };
+  // Listening before asking and before queueing: a request that arrives while this instance is
+  // still waiting for the lock comes from a newer one and must not be lost.
+  channel.onmessage = (e: MessageEvent<unknown>) => {
+    if (e.data !== RELEASE) return;
+    requested = true;
+    run();
+  };
   channel.postMessage(RELEASE);
   return new Promise<InstanceLock>((resolve) => {
     const waitingTimer = setTimeout(onWaiting, WAITING_AFTER_MS);
     void navigator.locks.request(LOCK_NAME, () => {
       clearTimeout(waitingTimer);
-      let handler: (() => Promise<void>) | null = null;
-      let requested = false;
       // Holding the lock = keeping this promise pending; releasing = resolving it.
-      const held = new Promise<void>((release) => {
-        const run = () => {
-          if (released || !handler) return;
-          released = true;
-          channel.close();
-          // The lock goes once the handler and every piece of held work have finished.
-          void handler()
-            .catch(() => {})
-            .then(() => Promise.all(holds))
-            .then(() => release());
-        };
-        channel.onmessage = (e: MessageEvent<unknown>) => {
-          if (e.data !== RELEASE) return;
-          requested = true;
-          run();
-        };
+      return new Promise<void>((r) => {
+        release = r;
         resolve({
           onTakeover(h) {
             handler = h;
@@ -99,7 +110,6 @@ function acquire(onWaiting: () => void): Promise<InstanceLock> {
           },
         });
       });
-      return held;
     });
   });
 }

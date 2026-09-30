@@ -9,12 +9,17 @@ import type { InstanceLock } from '../../src/app/instance';
 class FakeLocks {
   private held = false;
   private queue: Array<() => void> = [];
+  /** Every grant and release, in order, so a test can check them against its own events. */
+  readonly log: string[] = [];
   request(_name: string, cb: () => Promise<unknown>): Promise<void> {
     return new Promise<void>((resolve) => {
       const start = () => {
+        if (this.held) throw new Error('lock granted twice');
         this.held = true;
+        this.log.push('lock granted');
         void cb().then(() => {
           this.held = false;
+          this.log.push('lock released');
           resolve();
           this.queue.shift()?.();
         });
@@ -48,8 +53,10 @@ async function windowModule() {
 }
 const tick = () => new Promise((r) => setTimeout(r, 5));
 
+let locks: FakeLocks;
 beforeEach(() => {
-  vi.stubGlobal('navigator', { locks: new FakeLocks() });
+  locks = new FakeLocks();
+  vi.stubGlobal('navigator', { locks });
   vi.stubGlobal('BroadcastChannel', FakeChannel);
 });
 afterEach(() => {
@@ -129,5 +136,128 @@ describe('instance lock', () => {
     expect(a.released).toBe(true);
     expect(flushed).toBe(true);
     expect(acquired).toBe(true);
+  });
+
+  it('passes the lock on to a third window that asked while the second was still queued', async () => {
+    const events = locks.log;
+    const first = await windowModule();
+    const a = await first.acquireInstanceLock(() => {});
+    let finishFlush = () => {};
+    a.onTakeover(
+      () =>
+        new Promise<void>((resolve) => {
+          finishFlush = () => {
+            events.push('a flushed');
+            resolve();
+          };
+        }),
+    );
+    const second = await windowModule();
+    let b: InstanceLock | null = null;
+    void second
+      .acquireInstanceLock(() => {})
+      .then((lock) => {
+        b = lock;
+        events.push('b acquired');
+      });
+    await tick();
+    expect(a.released).toBe(true);
+    expect(b).toBeNull();
+    // A is still flushing when the third window asks: only the queued second one can hear it.
+    const third = await windowModule();
+    let c: InstanceLock | null = null;
+    void third
+      .acquireInstanceLock(() => {})
+      .then((lock) => {
+        c = lock;
+        events.push('c acquired');
+      });
+    await tick();
+    finishFlush();
+    await tick();
+    expect(b).not.toBeNull();
+    expect(c).toBeNull();
+    // Until B can flush it is the owner; once it can, the kept request hands over straight away.
+    expect(b!.released).toBe(false);
+    await expect(second.holdInstanceLock(async () => 1)).resolves.toBe(1);
+    b!.onTakeover(async () => {
+      events.push('b flushed');
+    });
+    await tick();
+    expect(b!.released).toBe(true);
+    expect(c).not.toBeNull();
+    expect(c!.released).toBe(false);
+    await expect(second.holdInstanceLock(async () => 1)).rejects.toThrow(/taken over/);
+    expect(events).toEqual([
+      'lock granted',
+      'a flushed',
+      'lock released',
+      'lock granted',
+      'b acquired',
+      'b flushed',
+      'lock released',
+      'lock granted',
+      'c acquired',
+    ]);
+  });
+
+  it('lets a third window in only after the first has drained its held work', async () => {
+    const events = locks.log;
+    const first = await windowModule();
+    const a = await first.acquireInstanceLock(() => {});
+    a.onTakeover(async () => {
+      events.push('a flushed');
+    });
+    let finishWork = () => {};
+    const work = first.holdInstanceLock(
+      () =>
+        new Promise<void>((resolve) => {
+          finishWork = () => {
+            events.push('a worked');
+            resolve();
+          };
+        }),
+    );
+    const second = await windowModule();
+    let b: InstanceLock | null = null;
+    void second
+      .acquireInstanceLock(() => {})
+      .then((lock) => {
+        b = lock;
+        events.push('b acquired');
+        lock.onTakeover(async () => {
+          events.push('b flushed');
+        });
+      });
+    await tick();
+    expect(a.released).toBe(true);
+    const third = await windowModule();
+    let c: InstanceLock | null = null;
+    void third
+      .acquireInstanceLock(() => {})
+      .then((lock) => {
+        c = lock;
+        events.push('c acquired');
+      });
+    await tick();
+    expect(b).toBeNull();
+    expect(c).toBeNull();
+    finishWork();
+    await work;
+    await tick();
+    expect(b!.released).toBe(true);
+    expect(c!.released).toBe(false);
+    expect(events).toEqual([
+      'lock granted',
+      'a flushed',
+      'a worked',
+      'lock released',
+      'lock granted',
+      'b acquired',
+      'b flushed',
+      'lock released',
+      'lock granted',
+      'c acquired',
+    ]);
   });
 });
