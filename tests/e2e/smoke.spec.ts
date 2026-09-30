@@ -550,8 +550,11 @@ test.describe('local dates', () => {
     await page.getByRole('button', { name: 'Log All' }).first().click();
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(page).toHaveURL(/#\/$/);
-    // Home shows a set as value columns (`SetValues`); the plain text is its accessible name.
-    await expect(page.getByRole('button', { name: 'Flat Barbell Bench Press 60 kg × 8 reps' })).toBeVisible();
+    // Home's card (the routine view's exercise row carries the same name) shows the set as value
+    // columns (`SetValues`), whose accessible name is the plain text.
+    await expect(page.locator('.exercise-card')).toHaveAccessibleName(
+      'Flat Barbell Bench Press 60 kg × 8 reps',
+    );
   });
 });
 
