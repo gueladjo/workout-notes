@@ -74,8 +74,9 @@ The journeys that matter for a local-first app:
 6. a stored database whose data pages are damaged behind an intact header reaches the Recovery
    screen instead of a blank app, and restoring the "Before restore" snapshot from there brings the
    earlier set back,
-7. change an exercise's type (alone, and together with a weight unit change): the history loses the
-   dropped fields, Settings lists the snapshot taken first, and rolling back to it brings them back,
+7. change an exercise's type: the history loses the dropped fields, Settings lists the snapshot
+   taken first, and rolling back to it brings them back; saved together with a weight unit change,
+   the snapshot is listed too,
 8. the shared set editors (`shared set editors` describe block): Edit Sets on the History tab
    refuses malformed and negative values with the Track tab's toast and the stored set is unchanged
    after a reload, a decimal-comma edit saves and survives a reload, Copy Sets refuses a negative

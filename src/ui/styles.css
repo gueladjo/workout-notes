@@ -326,7 +326,12 @@ h4 {
   color: var(--color-text-muted);
 }
 
-.iconbtn:active {
+.iconbtn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.iconbtn:not(:disabled):active {
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
