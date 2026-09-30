@@ -1139,6 +1139,52 @@ test.describe('shared set editors', () => {
     await expect(page.getByRole('button', { name: 'Set 1: 82.5 kg × 5 reps' })).toBeVisible();
   });
 
+  test('Edit Set steps the values like the Track tab, keeps the note and can delete the set', async ({
+    page,
+  }) => {
+    await logBenchSet(page);
+    await page.getByRole('tab', { name: 'History' }).click();
+    const dialog = page.getByRole('dialog');
+    const status = page.getByRole('status');
+    // The set popup: quick stats, then Edit Set as a row.
+    await page.getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }).click();
+    await expect(dialog.getByText('Estimated 1RM')).toBeVisible();
+    await expect(dialog.getByText('Total Volume')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Edit Set' }).click();
+    await expect(dialog.getByText('Edit Set', { exact: true })).toBeVisible();
+    // The fields start from the set; the buttons step by the default 2.5 kg increment and by 1 rep.
+    const weight = dialog.getByRole('textbox', { name: 'Weight (kg)' });
+    const reps = dialog.getByRole('textbox', { name: 'Reps' });
+    await expect(weight).toHaveValue('100');
+    await expect(reps).toHaveValue('5');
+    await dialog.getByRole('button', { name: 'Increase Weight (kg)' }).click();
+    await expect(weight).toHaveValue('102.5');
+    await dialog.getByRole('button', { name: 'Decrease Reps' }).click();
+    await expect(reps).toHaveValue('4');
+    await dialog.getByRole('textbox', { name: 'Notes' }).fill('Felt heavy');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(status).toHaveText('Set updated');
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Set 1: 102.5 kg × 4 reps' })).toBeVisible();
+    await expect(page.getByText('Felt heavy')).toBeVisible();
+    // A malformed weight is refused with the Track tab's toast and the dialog stays open.
+    await page.getByRole('button', { name: 'Set 1: 102.5 kg × 4 reps' }).click();
+    await dialog.getByRole('button', { name: 'Edit Set' }).click();
+    await expect(dialog.getByRole('textbox', { name: 'Notes' })).toHaveValue('Felt heavy');
+    await weight.fill('not-a-number');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(status).toHaveText('Please enter valid values');
+    await expect(dialog.getByText('Edit Set', { exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('button', { name: 'Set 1: 102.5 kg × 4 reps' })).toBeVisible();
+    // Delete removes the set (its only one, so the history is empty).
+    await page.getByRole('button', { name: 'Set 1: 102.5 kg × 4 reps' }).click();
+    await dialog.getByRole('button', { name: 'Edit Set' }).click();
+    await dialog.getByRole('button', { name: 'Delete' }).click();
+    await expect(status).toHaveText('Set deleted');
+    await expect(page.getByText('No history yet')).toBeVisible();
+  });
+
   test('a blank predefined set saves as 0 and Log All refuses a negative value', async ({ page }) => {
     await openApp(page);
     await page.goto('/#/routine/new');

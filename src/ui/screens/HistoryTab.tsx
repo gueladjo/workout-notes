@@ -1,20 +1,24 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useSettings } from '@/app/hooks';
-import { copySets, exerciseHistory, getWorkout, updateSet } from '@/db/repo/workouts';
+import { copySets, deleteSet, exerciseHistory, getWorkout, updateSet } from '@/db/repo/workouts';
+import { setSetComment } from '@/db/repo/comments';
+import type { Settings } from '@/db/repo/settings';
 import type { ExerciseWithCategory, TrainingSetWithComment } from '@/db/types';
 import {
   formatSet,
   formatWeightValue,
   readSetDraft,
+  setDraftFrom,
+  setValueColumns,
   weightUnitFor,
   type SetDraft,
   type StoredSet,
 } from '@/ui/format';
 import { formatLongDate, formatDuration } from '@/domain/dates';
 import { estimatedOneRepMax } from '@/domain/records';
-import { exerciseTypeHas } from '@/db/constants';
+import { exerciseTypeFields, exerciseTypeHas, type ExerciseTypeId } from '@/db/constants';
 import {
   fmt,
   metresToDisplay,
@@ -23,10 +27,12 @@ import {
   speed,
   paceSecondsPerUnit,
   paceDistanceUnit,
+  type WeightUnit,
 } from '@/domain/units';
 import { Icon } from '@/ui/components/Icon';
 import { Dialog } from '@/ui/components/Dialog';
 import { Button } from '@/ui/components/Button';
+import { NumberField, DistanceField, DurationField } from '@/ui/components/NumberField';
 import { WorkoutView } from '@/ui/components/WorkoutView';
 import { SetSelectionDialog, SetEditor, type SelectableExercise } from '@/ui/components/SetSelectionDialog';
 import { useToast } from '@/ui/components/Toast';
@@ -55,6 +61,7 @@ export function HistoryTab({
   const wu = weightUnitFor(exercise, settings);
   const [dayDialog, setDayDialog] = useState<string | null>(null);
   const [setDialog, setSetDialog] = useState<TrainingSetWithComment | null>(null);
+  const [editSet, setEditSet] = useState<TrainingSetWithComment | null>(null);
   const [viewDate, setViewDate] = useState<string | null>(null);
   const [copyDate, setCopyDate] = useState<string | null>(null);
   const [editDate, setEditDate] = useState<string | null>(null);
@@ -65,6 +72,29 @@ export function HistoryTab({
   const isCardio = exerciseTypeHas(exercise.typeId, 'distance') && exerciseTypeHas(exercise.typeId, 'time');
   // Speed and pace of the tapped set: per km / per mile even when the set was logged in m / ft.
   const paceUnit = paceDistanceUnit(resolveDistanceUnit(setDialog?.unit ?? 0, settings.metric));
+  // The tapped set's quick stats, laid out as FitNotes does: a bold label over its value.
+  const stats: { label: string; value: string }[] = [];
+  if (setDialog) {
+    if (isStrength)
+      stats.push(
+        {
+          label: 'Estimated 1RM',
+          value: formatWeightValue(estimatedOneRepMax(setDialog.metricWeight, setDialog.reps), wu),
+        },
+        { label: 'Total Volume', value: formatWeightValue(setDialog.metricWeight * setDialog.reps, wu) },
+      );
+    if (isCardio && setDialog.durationSeconds > 0)
+      stats.push(
+        {
+          label: 'Speed',
+          value: `${fmt(speed(setDialog.distanceMetres, setDialog.durationSeconds, paceUnit), 2)} ${distanceUnitShort(paceUnit)}/h`,
+        },
+        {
+          label: 'Pace',
+          value: `${formatDuration(paceSecondsPerUnit(setDialog.distanceMetres, setDialog.durationSeconds, paceUnit))} /${distanceUnitShort(paceUnit)}`,
+        },
+      );
+  }
 
   const copySelectable: SelectableExercise[] = useMemo(() => {
     const src = history.find((h) => h.date === copyDate);
@@ -204,32 +234,60 @@ export function HistoryTab({
         </div>
       </Dialog>
 
-      {/* Single-set quick stats */}
+      {/* Single-set popup as in FitNotes: the set as the heading, its quick stats, then Edit Set and
+          Copy Set as icon rows (Exercise Overview gets a Close button instead). */}
       <Dialog
         open={setDialog !== null}
         onClose={() => setSetDialog(null)}
-        title={setDialog ? formatSet(setDialog, exercise.typeId, wu, settings) : ''}
+        title={
+          setDialog && (
+            <SetTitle set={setDialog} typeId={exercise.typeId} weightUnit={wu} settings={settings} />
+          )
+        }
+        holo
+        flush
         actions={
           readOnly ? (
             <Button variant="text" onClick={() => setSetDialog(null)}>
               Close
             </Button>
-          ) : (
-            <>
-              <Button
-                variant="text"
-                onClick={() => {
-                  const s = setDialog;
-                  setSetDialog(null);
-                  if (s) setEditDate(s.date);
-                }}
-              >
-                Edit Set
-              </Button>
-              <Button
-                variant="text"
-                onClick={() => {
-                  if (setDialog) {
+          ) : undefined
+        }
+      >
+        {setDialog && (
+          <>
+            {(stats.length > 0 || setDialog.comment) && (
+              <div className="set-dialog__stats">
+                {stats.map((s) => (
+                  <div key={s.label}>
+                    <div className="set-dialog__label">{s.label}</div>
+                    <div className="set-dialog__value">{s.value}</div>
+                  </div>
+                ))}
+                {setDialog.comment && (
+                  <div>
+                    <div className="set-dialog__label">Notes</div>
+                    <div className="set-dialog__comment">{setDialog.comment}</div>
+                  </div>
+                )}
+              </div>
+            )}
+            {!readOnly && (
+              <div className="set-dialog__menu">
+                <button
+                  className="list__item"
+                  onClick={() => {
+                    const s = setDialog;
+                    setSetDialog(null);
+                    setEditSet(s);
+                  }}
+                >
+                  <Icon name="edit" />
+                  <span className="list__text">Edit Set</span>
+                </button>
+                <button
+                  className="list__item"
+                  onClick={() => {
                     copySets(
                       db,
                       [
@@ -245,59 +303,22 @@ export function HistoryTab({
                       date,
                     );
                     toast('Set copied to current workout');
-                  }
-                  setSetDialog(null);
-                }}
-              >
-                Copy Set
-              </Button>
-            </>
-          )
-        }
-      >
-        {setDialog && (
-          <div className="stack">
-            <div className="muted">{formatLongDate(setDialog.date)}</div>
-            {isStrength && (
-              <>
-                <div className="row row--between">
-                  <span className="muted">Estimated 1RM</span>
-                  <b>{formatWeightValue(estimatedOneRepMax(setDialog.metricWeight, setDialog.reps), wu)}</b>
-                </div>
-                <div className="row row--between">
-                  <span className="muted">Volume</span>
-                  <b>{formatWeightValue(setDialog.metricWeight * setDialog.reps, wu)}</b>
-                </div>
-              </>
-            )}
-            {isCardio && setDialog.durationSeconds > 0 && (
-              <>
-                <div className="row row--between">
-                  <span className="muted">Speed</span>
-                  <b>
-                    {fmt(speed(setDialog.distanceMetres, setDialog.durationSeconds, paceUnit), 2)}{' '}
-                    {distanceUnitShort(paceUnit)}/h
-                  </b>
-                </div>
-                <div className="row row--between">
-                  <span className="muted">Pace</span>
-                  <b>
-                    {formatDuration(
-                      paceSecondsPerUnit(setDialog.distanceMetres, setDialog.durationSeconds, paceUnit),
-                    )}{' '}
-                    /{distanceUnitShort(paceUnit)}
-                  </b>
-                </div>
-              </>
-            )}
-            {setDialog.comment && (
-              <div className="set-row__comment" style={{ padding: 0 }}>
-                {setDialog.comment}
+                    setSetDialog(null);
+                  }}
+                >
+                  <Icon name="copy" />
+                  <span className="list__text">Copy Set</span>
+                </button>
               </div>
             )}
-          </div>
+          </>
         )}
       </Dialog>
+
+      {/* Edit one set (FitNotes' Edit Set dialog); mounted only while open so it starts from the set. */}
+      {editSet && (
+        <EditSetDialog key={editSet.id} exercise={exercise} set={editSet} onClose={() => setEditSet(null)} />
+      )}
 
       {/* View full workout */}
       <Dialog
@@ -355,6 +376,144 @@ export function HistoryTab({
 function formatDist(metres: number, unit: number, metric: boolean): string {
   const du = resolveDistanceUnit(unit, metric);
   return `${fmt(metresToDisplay(metres, du))} ${distanceUnitShort(du)}`;
+}
+
+/**
+ * A set as the heading of FitNotes' set popup: big numbers with small units, the "×" between the
+ * weight / distance and the reps / time, as `formatSet` writes it.
+ */
+function SetTitle({
+  set,
+  typeId,
+  weightUnit,
+  settings,
+}: {
+  set: StoredSet;
+  typeId: ExerciseTypeId;
+  weightUnit: WeightUnit;
+  settings: Settings;
+}) {
+  const columns = setValueColumns(set, typeId, weightUnit, settings);
+  const firstGroup = exerciseTypeFields(typeId).filter((f) => f === 'weight' || f === 'distance').length;
+  return (
+    <span className="set-dialog__title">
+      {columns.map((c, i) => (
+        <Fragment key={i}>
+          {i > 0 && <span className="set-dialog__sep">{i === firstGroup ? '×' : '·'}</span>}
+          <span className="set-dialog__num">{c.value}</span>
+          {c.unit && <span className="set-dialog__unit">{c.unit}</span>}
+        </Fragment>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * FitNotes' Edit Set dialog for one set of the history: the Track tab's fields (label over a
+ * -/value/+ row stepping by the exercise's increment, distance with its unit, hh / mm / ss), a Notes
+ * box for the set's comment, and Cancel / Delete / Save. Follows the shared set editor's rules
+ * (`readSetDraft`): an untouched field saves its stored value back exactly, and a malformed,
+ * negative or non-finite value is refused with the Track tab's toast, nothing written. Mounted only
+ * while open, so its fields start from `set`.
+ */
+export function EditSetDialog({
+  exercise,
+  set,
+  onClose,
+}: {
+  exercise: ExerciseWithCategory;
+  set: TrainingSetWithComment;
+  onClose: () => void;
+}) {
+  const db = useDb();
+  const settings = useSettings();
+  const toast = useToast();
+  const wu = weightUnitFor(exercise, settings);
+  const fields = exerciseTypeFields(exercise.typeId);
+  const [distanceUnit, setDistanceUnit] = useState<number>(resolveDistanceUnit(set.unit, settings.metric));
+  const [draft, setDraft] = useState<SetDraft>(() =>
+    setDraftFrom(set, wu, resolveDistanceUnit(set.unit, settings.metric)),
+  );
+  const [notes, setNotes] = useState(set.comment ?? '');
+  const patch = (p: Partial<SetDraft>) => setDraft((d) => ({ ...d, ...p }));
+  const save = () => {
+    const values = readSetDraft(set, draft, wu, resolveDistanceUnit(distanceUnit, settings.metric));
+    if (!values) return toast('Please enter valid values');
+    // One transaction for the values and the note (nested `mutate` calls share it).
+    db.mutate(() => {
+      updateSet(db, set.id, values);
+      if (notes.trim() !== (set.comment ?? '')) setSetComment(db, set.id, notes);
+    });
+    toast('Set updated');
+    onClose();
+  };
+  const remove = () => {
+    deleteSet(db, set.id);
+    toast('Set deleted');
+    onClose();
+  };
+  return (
+    <Dialog
+      open
+      onClose={onClose}
+      title="Edit Set"
+      holo
+      actions={
+        <>
+          <Button variant="text" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="text" onClick={remove}>
+            Delete
+          </Button>
+          <Button variant="text" onClick={save}>
+            Save
+          </Button>
+        </>
+      }
+    >
+      <div className="set-dialog__fields">
+        {fields.includes('weight') && (
+          <NumberField
+            label={`Weight (${wu})`}
+            value={draft.weight}
+            onChange={(weight) => patch({ weight })}
+            step={exercise.weightIncrement ?? settings.weightIncrement}
+            name="weight"
+          />
+        )}
+        {fields.includes('distance') && (
+          <DistanceField
+            value={draft.distance}
+            unit={distanceUnit}
+            onChange={(distance, unit) => {
+              patch({ distance });
+              setDistanceUnit(unit);
+            }}
+          />
+        )}
+        {fields.includes('reps') && (
+          <NumberField
+            label="Reps"
+            value={draft.reps}
+            onChange={(reps) => patch({ reps })}
+            step={1}
+            decimals={0}
+            inputMode="numeric"
+            name="reps"
+          />
+        )}
+        {fields.includes('time') && <DurationField value={draft.time} onChange={(time) => patch({ time })} />}
+        <input
+          className="set-dialog__notes"
+          value={notes}
+          placeholder="Notes …"
+          aria-label="Notes"
+          onChange={(e) => setNotes(e.target.value)}
+        />
+      </div>
+    </Dialog>
+  );
 }
 
 /**

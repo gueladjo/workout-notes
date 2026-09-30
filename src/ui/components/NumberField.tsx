@@ -1,5 +1,8 @@
 import { Icon } from './Icon';
+import { DurationInputs } from './DurationInputs';
 import { parseDecimal } from '@/ui/format';
+import type { DurationParts } from '@/domain/dates';
+import { ALL_DISTANCE_UNITS, distanceUnitShort } from '@/domain/units';
 
 /**
  * Numeric entry with +/- buttons (FitNotes set fields): label above, then the -/value/+ row.
@@ -69,4 +72,69 @@ export function roundTo(n: number, decimals: number): number {
 export function formatNumber(n: number, decimals = 2): string {
   if (!Number.isFinite(n)) return '';
   return String(roundTo(n, decimals));
+}
+
+/** Distance entry as in FitNotes: the value with its unit selector beside it. Metres by default. */
+export function DistanceField({
+  value,
+  unit,
+  onChange,
+}: {
+  value: string;
+  unit: number;
+  onChange: (value: string, unit: number) => void;
+}) {
+  return (
+    <div className="numfield">
+      <div className="numfield__label">
+        <span>Distance</span>
+      </div>
+      <div className="numfield__row">
+        <input
+          className="numfield__input"
+          inputMode="decimal"
+          value={value}
+          name="distance"
+          aria-label="Distance"
+          onChange={(e) => onChange(e.target.value, unit)}
+          onFocus={(e) => e.target.select()}
+        />
+        <select
+          className="numfield__unit"
+          value={unit}
+          onChange={(e) => onChange(value, Number(e.target.value))}
+          aria-label="Distance unit"
+        >
+          {ALL_DISTANCE_UNITS.map((u) => (
+            <option key={u} value={u}>
+              {distanceUnitShort(u)}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+/** Time entry as in FitNotes: hh / mm / ss fields. */
+export function DurationField({
+  value,
+  onChange,
+}: {
+  value: DurationParts;
+  onChange: (v: DurationParts) => void;
+}) {
+  return (
+    <div className="numfield">
+      <div className="numfield__label">
+        <span>Time</span>
+      </div>
+      <DurationInputs
+        value={value}
+        onChange={onChange}
+        className="numfield__row"
+        inputClassName="numfield__input numfield__input--part"
+      />
+    </div>
+  );
 }

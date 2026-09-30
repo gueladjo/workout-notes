@@ -1608,6 +1608,100 @@ h4 {
   flex: 1;
 }
 
+/* ---------- History set popup and Edit Set (FitNotes' set dialogs) ---------- */
+/* The tapped set as the heading: big numbers with small units, all in the Holo title's light blue. */
+.set-dialog__title {
+  display: inline-flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0 6px;
+}
+
+.set-dialog__num {
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-dialog__unit,
+.set-dialog__sep {
+  font-size: 17px;
+}
+
+.set-dialog__sep {
+  padding: 0 6px;
+}
+
+/* Quick stats as FitNotes lays them out: a bold label over its value. */
+.set-dialog__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 20px 10px;
+}
+
+.set-dialog__label {
+  font-size: 15px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+
+.set-dialog__value {
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.set-dialog__comment {
+  font-size: 14px;
+  color: var(--color-text-muted);
+  white-space: pre-wrap;
+}
+
+/* Edit Set / Copy Set as icon rows below the stats, blue icons like FitNotes' (Holo) ones. */
+.set-dialog__menu {
+  border-top: 1px solid var(--color-divider);
+}
+
+.set-dialog__menu .list__item {
+  padding: 14px 20px;
+  font-size: 17px;
+}
+
+.set-dialog__menu .list__item > svg {
+  color: var(--color-primary);
+}
+
+/* Edit Set: the Track tab's fields stacked, labels centred with no rule as in FitNotes' dialog. */
+.set-dialog__fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 10px 0 4px;
+}
+
+.set-dialog__fields .numfield__label {
+  justify-content: center;
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+/* The set's note, underlined like a Holo text box. */
+.set-dialog__notes {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 4px;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-text);
+  font-size: 16px;
+}
+
+.set-dialog__notes:focus {
+  outline: none;
+  border-bottom: 2px solid var(--color-accent);
+}
+
 /* Exercise history: FitNotes-style day header, uppercase with a primary underline. */
 .history-day {
   display: flex;

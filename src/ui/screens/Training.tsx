@@ -25,8 +25,6 @@ import {
   kgToDisplay,
   metresToDisplay,
   resolveDistanceUnit,
-  ALL_DISTANCE_UNITS,
-  distanceUnitShort,
   type WeightUnit,
 } from '@/domain/units';
 import {
@@ -42,8 +40,7 @@ import { Button, IconButton } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
 import { MenuButton } from '@/ui/components/Menu';
 import { Tabs } from '@/ui/components/Tabs';
-import { NumberField, formatNumber } from '@/ui/components/NumberField';
-import { DurationInputs } from '@/ui/components/DurationInputs';
+import { NumberField, DistanceField, DurationField, formatNumber } from '@/ui/components/NumberField';
 import { Checkbox } from '@/ui/components/Toggle';
 import { SetValues } from '@/ui/components/SetValues';
 import { useDragReorder } from '@/ui/components/useDragReorder';
@@ -526,71 +523,6 @@ function TrackTab({
       >
         Jump to the next exercise in this workout?
       </Dialog>
-    </div>
-  );
-}
-
-/** Distance entry as in FitNotes: the value with its unit selector beside it. Metres by default. */
-function DistanceField({
-  value,
-  unit,
-  onChange,
-}: {
-  value: string;
-  unit: number;
-  onChange: (value: string, unit: number) => void;
-}) {
-  return (
-    <div className="numfield">
-      <div className="numfield__label">
-        <span>Distance</span>
-      </div>
-      <div className="numfield__row">
-        <input
-          className="numfield__input"
-          inputMode="decimal"
-          value={value}
-          name="distance"
-          aria-label="Distance"
-          onChange={(e) => onChange(e.target.value, unit)}
-          onFocus={(e) => e.target.select()}
-        />
-        <select
-          className="numfield__unit"
-          value={unit}
-          onChange={(e) => onChange(value, Number(e.target.value))}
-          aria-label="Distance unit"
-        >
-          {ALL_DISTANCE_UNITS.map((u) => (
-            <option key={u} value={u}>
-              {distanceUnitShort(u)}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
-/** Time entry as in FitNotes: hh / mm / ss fields. */
-export function DurationField({
-  value,
-  onChange,
-}: {
-  value: DurationParts;
-  onChange: (v: DurationParts) => void;
-}) {
-  return (
-    <div className="numfield">
-      <div className="numfield__label">
-        <span>Time</span>
-      </div>
-      <DurationInputs
-        value={value}
-        onChange={onChange}
-        className="numfield__row"
-        inputClassName="numfield__input numfield__input--part"
-      />
     </div>
   );
 }
