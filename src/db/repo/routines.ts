@@ -253,10 +253,11 @@ export interface PredefinedSetInput extends Pick<
 }
 
 /**
- * Save the predefined sets of a routine exercise. A row whose `id` is one of this routine
- * exercise's rows is updated in place, so the `training_log.routine_section_exercise_set_id` links
- * of the sets logged from it (which `plannedSetsForSection` fills blanks from) survive; any other
- * row is inserted, and existing rows missing from `sets` are deleted. Without an explicit
+ * Save the predefined sets of a routine exercise. A row with an `id` is updated in place, so the
+ * `training_log.routine_section_exercise_set_id` links of the sets logged from it (which
+ * `plannedSetsForSection` fills blanks from) survive; an `id` that is not one of this routine
+ * exercise's rows, or given twice, is refused and nothing is written. A row without an id is
+ * inserted, and existing rows missing from `sets` are deleted. Without an explicit
  * `populateType`, rows mean predefined sets (1); no rows keeps FitNotes' "copy previous workout"
  * (2), which nothing in the app can set back, and otherwise means none (0).
  */
@@ -295,7 +296,11 @@ export function setPredefinedSets(
         Math.round(s.durationSeconds),
         s.unit,
       ];
-      if (s.id !== undefined && existing.has(s.id) && !kept.has(s.id)) {
+      if (s.id !== undefined) {
+        if (!existing.has(s.id)) {
+          throw new Error(`predefined set ${s.id} is not a row of routine exercise ${routineExerciseId}`);
+        }
+        if (kept.has(s.id)) throw new Error(`predefined set ${s.id} given twice`);
         kept.add(s.id);
         // Only the columns the app knows: anything a newer FitNotes added to the row is left alone.
         db.run(

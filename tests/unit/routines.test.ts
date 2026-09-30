@@ -152,18 +152,29 @@ describe('predefined sets', () => {
     expect(Number(app.scalar('SELECT COUNT(*) FROM RoutineSectionExerciseSet'))).toBe(6);
   });
 
-  it("does not touch another routine exercise's row when handed its id", () => {
+  it("refuses another routine exercise's id, or one given twice, writing nothing", () => {
     const sectionId = addSection(app, createRoutine(app, 'Other'), 'Day 1');
     const other = addSectionExercise(app, sectionId, SQUAT);
-    setPredefinedSets(app, other, [
-      { id: 1, metricWeight: 100, reps: 3, distanceMetres: 0, durationSeconds: 0, unit: 0 },
-    ]);
+    const populateTypes = () =>
+      app.all('SELECT _id, populate_sets_type FROM RoutineSectionExercise ORDER BY _id');
+    const before = populateTypes();
+    expect(() =>
+      setPredefinedSets(app, other, [
+        { id: 1, metricWeight: 100, reps: 3, distanceMetres: 0, durationSeconds: 0, unit: 0 },
+      ]),
+    ).toThrow(/not a row of routine exercise/);
+    // The first copy is written before the second is seen: the whole save must roll back.
+    const own = listRoutineSets(app, BENCH_EX).map(asInput);
+    expect(() => setPredefinedSets(app, BENCH_EX, [...own.map((s) => ({ ...s, reps: 9 })), own[0]!])).toThrow(
+      /given twice/,
+    );
     expect(rows()).toEqual([
       [1, 0, 5, 1],
       [2, 0, 5, 2],
       [3, 0, 5, 3],
     ]);
-    expect(rows(other)).toEqual([[4, 100, 3, 1]]);
+    expect(rows(other)).toEqual([]);
+    expect(populateTypes()).toEqual(before);
   });
 
   it('leaves columns it does not know alone on retained rows', () => {
