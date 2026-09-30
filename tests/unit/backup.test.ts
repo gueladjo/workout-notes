@@ -1,4 +1,4 @@
-import { describe, expect, it, beforeAll } from 'vitest';
+import { describe, expect, it, beforeAll, vi } from 'vitest';
 import 'fake-indexeddb/auto';
 import { loadSqlJs, scalar, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
@@ -98,6 +98,29 @@ describe('backup round trip', () => {
     expect(app.hasUnsavedChanges).toBe(false);
     expect(await readBlob(MAIN_KEY)).toEqual(storedBefore);
     expect(await listSnapshots()).toEqual(snapshotsBefore);
+  });
+
+  it('closes the backup it opened when the flush before the restore fails', async () => {
+    const app = new AppDatabase(createEmptyDatabase(SQL), {
+      persist: async () => {
+        throw new Error('quota');
+      },
+    });
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    const backup = createEmptyDatabase(SQL);
+    seedSampleWorkouts(backup);
+    const bytes = backup.export();
+    backup.close();
+    const closed = vi.spyOn(SQL.Database.prototype, 'close');
+    try {
+      await expect(restoreBackup(app, SQL, bytes)).rejects.toThrow('quota');
+      // The one close is the backup's: the live database is kept, with its unsaved change.
+      expect(closed).toHaveBeenCalledTimes(1);
+    } finally {
+      closed.mockRestore();
+    }
+    expect(app.scalar('SELECT COUNT(*) FROM Routine')).toBe(1);
+    expect(app.hasUnsavedChanges).toBe(true);
   });
 
   it('still opens and reconciles legacy-shaped and newer backups', () => {

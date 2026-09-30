@@ -50,7 +50,13 @@ export function openBackup(SQL: SqlJsStatic, bytes: Uint8Array): { db: Database;
     db.close();
     throw new BackupError(`This backup is damaged and cannot be restored: ${damage}`);
   }
-  const schema = ensureSchema(db);
+  let schema: SchemaReport;
+  try {
+    schema = ensureSchema(db);
+  } catch (err) {
+    db.close();
+    throw err;
+  }
   return { db, schema };
 }
 
@@ -71,8 +77,14 @@ export async function restoreBackup(
   bytes: Uint8Array,
 ): Promise<RestoreSummary> {
   const { db, schema } = openBackup(SQL, bytes);
-  await app.flush();
-  await saveSnapshot(app.export(), 'Before restore');
+  try {
+    await app.flush();
+    await saveSnapshot(app.export(), 'Before restore');
+  } catch (err) {
+    db.close();
+    throw err;
+  }
+  // `replaceDatabase` adopts the backup, or closes it when the database was handed over meanwhile.
   await app.replaceDatabase(db);
   return { ...summarize(app), schema };
 }
