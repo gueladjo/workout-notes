@@ -641,6 +641,15 @@ h4 {
   outline-offset: -1px;
 }
 
+/* A set field holding text that will be refused on save (malformed, negative, not a whole number of seconds). */
+.input[aria-invalid='true'] {
+  border-color: var(--color-danger);
+}
+
+.input[aria-invalid='true']:focus {
+  outline-color: var(--color-danger);
+}
+
 .textarea {
   min-height: 90px;
   resize: vertical;

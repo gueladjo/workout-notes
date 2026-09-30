@@ -47,6 +47,7 @@ mocks of the database. `fake-indexeddb` stands in for IndexedDB in persistence/b
 | `graphs.test.ts`                   | progress-graph series: workouts with no set under the estimated 1RM rep cap, or without a timed set for speed/pace, get no point instead of a 0; display conversion of series values (pace as minutes per km or mile, speed, distance, weight, time); axis labels (`formatGraphAxisValue`, `tickDecimals`: m:ss with tenths under a second of spacing, signed below zero, decimals from the tick spacing) and point values (`formatGraphValue`)                                                                |
 | `wake-lock.test.ts`                | `keepScreenOn()` with a fake WakeLock and document: a sentinel granted after stop() or while one is held is released, re-acquire after the page was hidden, no request while hidden, a denied request is survived                                                                                                                                                                                                                                                                                              |
 | `records.test.ts`, `dates.test.ts` | domain maths: Brzycki, PR selection, actual/estimated rep maxes, date arithmetic and week starts, durations                                                                                                                                                                                                                                                                                                                                                                                                    |
+| `format.test.ts`                   | stat formatting (speed, pace per km or mile), `parseDecimal`, and the shared set editor's draft (`parseSetField`, `setDraftFrom`, `readSetDraft`): malformed, negative, non-finite and bad hh / mm / ss text refused, decimal comma, blank and 0 saved as 0, an untouched field saving the stored value back exactly (20 kg shown as 44.09 lbs, a mile shown as 1, fractional seconds), a typed distance taking the display unit                                                                               |
 
 Sample data comes from `tests/helpers/sample.ts` (`seedSampleWorkouts`), which is also what
 `npm run make-fixture` writes to `tests/fixtures/generated/sample.fitnotes`.
@@ -74,7 +75,13 @@ The journeys that matter for a local-first app:
    screen instead of a blank app, and restoring the "Before restore" snapshot from there brings the
    earlier set back,
 7. change an exercise's type (alone, and together with a weight unit change): the history loses the
-   dropped fields, Settings lists the snapshot taken first, and rolling back to it brings them back.
+   dropped fields, Settings lists the snapshot taken first, and rolling back to it brings them back,
+8. the shared set editors (`shared set editors` describe block): Edit Sets on the History tab
+   refuses malformed and negative values with the Track tab's toast and the stored set is unchanged
+   after a reload, a decimal-comma edit saves and survives a reload, Copy Sets refuses a negative
+   value; a predefined set saved with a blank weight stores 0 (the copy-previous placeholder), the
+   predefined sets editor and Log All refuse a negative value writing nothing, and Log All then logs
+   a corrected one.
 
 ## Visual checks
 

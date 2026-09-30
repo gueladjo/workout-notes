@@ -4,7 +4,14 @@ import { useDb, useQuery } from '@/app/db-context';
 import { useSettings } from '@/app/hooks';
 import { copySets, exerciseHistory, getWorkout, updateSet } from '@/db/repo/workouts';
 import type { ExerciseWithCategory, TrainingSetWithComment } from '@/db/types';
-import { formatSet, formatWeightValue, weightUnitFor } from '@/ui/format';
+import {
+  formatSet,
+  formatWeightValue,
+  readSetDraft,
+  weightUnitFor,
+  type SetDraft,
+  type StoredSet,
+} from '@/ui/format';
 import { formatLongDate, formatDuration } from '@/domain/dates';
 import { estimatedOneRepMax } from '@/domain/records';
 import { exerciseTypeHas } from '@/db/constants';
@@ -21,12 +28,7 @@ import { Icon } from '@/ui/components/Icon';
 import { Dialog } from '@/ui/components/Dialog';
 import { Button } from '@/ui/components/Button';
 import { WorkoutView } from '@/ui/components/WorkoutView';
-import {
-  SetSelectionDialog,
-  SetEditor,
-  type SelectableExercise,
-  type SelectableSet,
-} from '@/ui/components/SetSelectionDialog';
+import { SetSelectionDialog, SetEditor, type SelectableExercise } from '@/ui/components/SetSelectionDialog';
 import { useToast } from '@/ui/components/Toast';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { SetValues } from '@/ui/components/SetValues';
@@ -355,7 +357,10 @@ function formatDist(metres: number, unit: number, metric: boolean): string {
   return `${fmt(metresToDisplay(metres, du))} ${distanceUnitShort(du)}`;
 }
 
-/** Edit multiple sets of one workout day at once. */
+/**
+ * Edit multiple sets of one workout day at once. Only sets typed in are written; a malformed,
+ * negative or non-finite value is refused with the Track tab's toast and nothing is written.
+ */
 export function EditSetsDialog({
   open,
   onClose,
@@ -373,13 +378,26 @@ export function EditSetsDialog({
   const settings = useSettings();
   const toast = useToast();
   const wu = weightUnitFor(exercise, settings);
-  const [edits, setEdits] = useState<Map<number, SelectableSet>>(new Map());
+  const [drafts, setDrafts] = useState<Map<number, SetDraft>>(new Map());
   const [seen, setSeen] = useState(false);
   if (open && !seen) {
     setSeen(true);
-    setEdits(new Map());
+    setDrafts(new Map());
   }
   if (!open && seen) setSeen(false);
+  const save = () => {
+    const updates: { id: number; values: StoredSet }[] = [];
+    for (const s of sets) {
+      const draft = drafts.get(s.id);
+      if (!draft) continue;
+      const values = readSetDraft(s, draft, wu, resolveDistanceUnit(s.unit, settings.metric));
+      if (!values) return toast('Please enter valid values');
+      updates.push({ id: s.id, values });
+    }
+    for (const u of updates) updateSet(db, u.id, u.values);
+    toast('Sets updated');
+    onClose();
+  };
   return (
     <Dialog
       open={open}
@@ -391,22 +409,7 @@ export function EditSetsDialog({
           <Button variant="text" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            onClick={() => {
-              for (const [id, v] of edits)
-                updateSet(db, id, {
-                  metricWeight: v.metricWeight,
-                  reps: v.reps,
-                  distanceMetres: v.distanceMetres,
-                  durationSeconds: v.durationSeconds,
-                  unit: v.unit,
-                });
-              toast('Sets updated');
-              onClose();
-            }}
-          >
-            Save
-          </Button>
+          <Button onClick={save}>Save</Button>
         </>
       }
     >
@@ -416,19 +419,11 @@ export function EditSetsDialog({
             <span className="set-row__index">{i + 1}</span>
             <SetEditor
               typeId={exercise.typeId}
-              value={
-                edits.get(s.id) ?? {
-                  key: String(s.id),
-                  metricWeight: s.metricWeight,
-                  reps: s.reps,
-                  distanceMetres: s.distanceMetres,
-                  durationSeconds: s.durationSeconds,
-                  unit: s.unit,
-                }
-              }
+              set={s}
+              draft={drafts.get(s.id)}
               weightUnit={wu}
               metric={settings.metric}
-              onChange={(v) => setEdits((m) => new Map(m).set(s.id, v))}
+              onChange={(d) => setDrafts((m) => new Map(m).set(s.id, d))}
             />
           </div>
         ))}

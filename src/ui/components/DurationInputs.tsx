@@ -16,6 +16,7 @@ export function DurationInputs({
   className: string;
   inputClassName: string;
 }) {
+  // A box that is not blank or a whole number is what `joinDuration()` turns into NaN: mark it.
   const field = (key: keyof DurationParts, label: string, placeholder: string) => (
     <input
       className={inputClassName}
@@ -23,6 +24,7 @@ export function DurationInputs({
       value={value[key]}
       placeholder={placeholder}
       aria-label={label}
+      aria-invalid={/^\d*$/.test(value[key].trim()) ? undefined : true}
       onChange={(e) => onChange({ ...value, [key]: e.target.value })}
       onFocus={(e) => e.target.select()}
     />

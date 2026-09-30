@@ -2,19 +2,20 @@ import { useMemo, useState } from 'react';
 import { Dialog } from './Dialog';
 import { Button } from './Button';
 import { Checkbox } from './Toggle';
+import { useToast } from './Toast';
 import { useSettings } from '@/app/hooks';
 import { exerciseTypeFields, type ExerciseTypeId } from '@/db/constants';
 import type { ExerciseWithCategory } from '@/db/types';
-import { formatSet, parseDecimal, weightUnitFor } from '@/ui/format';
 import {
-  displayToKg,
-  displayToMetres,
-  kgToDisplay,
-  metresToDisplay,
-  resolveDistanceUnit,
-  fmt,
-} from '@/domain/units';
-import { joinDuration, splitDuration } from '@/domain/dates';
+  formatSet,
+  parseSetField,
+  readSetDraft,
+  setDraftFrom,
+  weightUnitFor,
+  type SetDraft,
+  type StoredSet,
+} from '@/ui/format';
+import { resolveDistanceUnit, type WeightUnit } from '@/domain/units';
 import { DurationInputs } from './DurationInputs';
 
 export interface SelectableSet {
@@ -34,8 +35,25 @@ export interface SelectableExercise {
 }
 
 /**
+ * The set a draft of the shared editor saves over `set` (key and meta kept), or null when a field
+ * of the draft is invalid; without a draft the set is saved as it is. Every caller of the editor
+ * must go through this before writing, so what is typed and what is saved never diverge.
+ */
+export function setFromDraft(
+  set: SelectableSet,
+  draft: SetDraft | undefined,
+  weightUnit: WeightUnit,
+  metric: boolean,
+): SelectableSet | null {
+  if (!draft) return set;
+  const values = readSetDraft(set, draft, weightUnit, resolveDistanceUnit(set.unit, metric));
+  return values && { ...set, ...values };
+}
+
+/**
  * "Copy Workout" / "Log All" style dialog: choose exercises and sets with checkboxes, optionally
- * edit the values, then confirm. Returns the selected (possibly edited) sets.
+ * edit the values, then confirm. Returns the selected (possibly edited) sets; an invalid edit of a
+ * selected set is refused with the Track tab's toast and nothing is confirmed.
  */
 export function SetSelectionDialog({
   open,
@@ -53,8 +71,9 @@ export function SetSelectionDialog({
   onConfirm: (selected: { exercise: ExerciseWithCategory; set: SelectableSet }[]) => void;
 }) {
   const settings = useSettings();
+  const toast = useToast();
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [edited, setEdited] = useState<Map<string, SelectableSet>>(new Map());
+  const [drafts, setDrafts] = useState<Map<string, SetDraft>>(new Map());
   const [editing, setEditing] = useState(false);
   const allKeys = useMemo(() => exercises.flatMap((e) => e.sets.map((s) => s.key)), [exercises]);
   // Reset the selection each time the dialog opens (state adjustment during render, per React docs).
@@ -62,7 +81,7 @@ export function SetSelectionDialog({
   if (open && !seenOpen) {
     setSeenOpen(true);
     setChecked(new Set(allKeys));
-    setEdited(new Map());
+    setDrafts(new Map());
     setEditing(false);
   }
   if (!open && seenOpen) setSeenOpen(false);
@@ -86,9 +105,19 @@ export function SetSelectionDialog({
 
   const confirm = () => {
     const out: { exercise: ExerciseWithCategory; set: SelectableSet }[] = [];
-    for (const ex of exercises)
-      for (const s of ex.sets)
-        if (checked.has(s.key)) out.push({ exercise: ex.exercise, set: edited.get(s.key) ?? s });
+    for (const ex of exercises) {
+      const wu = weightUnitFor(ex.exercise, settings);
+      for (const s of ex.sets) {
+        if (!checked.has(s.key)) continue;
+        const set = setFromDraft(s, drafts.get(s.key), wu, settings.metric);
+        if (!set) {
+          toast('Please enter valid values');
+          setEditing(true);
+          return;
+        }
+        out.push({ exercise: ex.exercise, set });
+      }
+    }
     onConfirm(out);
     onClose();
   };
@@ -133,7 +162,8 @@ export function SetSelectionDialog({
               </div>
             </button>
             {ex.sets.map((s) => {
-              const cur = edited.get(s.key) ?? s;
+              const draft = drafts.get(s.key);
+              const cur = setFromDraft(s, draft, wu, settings.metric);
               return (
                 <div key={s.key} className="set-row" style={{ paddingLeft: 40 }}>
                   <Checkbox
@@ -144,18 +174,19 @@ export function SetSelectionDialog({
                   {editing ? (
                     <SetEditor
                       typeId={ex.exercise.typeId}
-                      value={cur}
+                      set={s}
+                      draft={draft}
                       weightUnit={wu}
                       metric={settings.metric}
-                      onChange={(v) => setEdited((m) => new Map(m).set(s.key, v))}
+                      onChange={(d) => setDrafts((m) => new Map(m).set(s.key, d))}
                     />
                   ) : (
                     <button
                       className="set-row__value"
-                      style={{ textAlign: 'left' }}
+                      style={{ textAlign: 'left', color: cur ? undefined : 'var(--color-danger)' }}
                       onClick={() => toggleSet(s.key)}
                     >
-                      {formatSet(cur, ex.exercise.typeId, wu, settings)}
+                      {cur ? formatSet(cur, ex.exercise.typeId, wu, settings) : 'Invalid values'}
                     </button>
                   )}
                 </div>
@@ -168,22 +199,29 @@ export function SetSelectionDialog({
   );
 }
 
-/** Compact inline editor for a set's values in display units. */
+/**
+ * Compact inline editor for a set's values in display units. The boxes show `draft`, or the stored
+ * `set` until the user types; the owner keeps the draft and reads it with `readSetDraft()` /
+ * `setFromDraft()` when saving. A box holding text that would be refused is marked invalid.
+ */
 export function SetEditor({
   typeId,
-  value,
+  set,
+  draft,
   weightUnit,
   metric,
   onChange,
 }: {
   typeId: ExerciseTypeId;
-  value: SelectableSet;
-  weightUnit: 'kg' | 'lbs';
+  set: StoredSet;
+  draft: SetDraft | undefined;
+  weightUnit: WeightUnit;
   metric: boolean;
-  onChange: (next: SelectableSet) => void;
+  onChange: (next: SetDraft) => void;
 }) {
   const fields = exerciseTypeFields(typeId);
-  const du = resolveDistanceUnit(value.unit, metric);
+  const text = draft ?? setDraftFrom(set, weightUnit, resolveDistanceUnit(set.unit, metric));
+  const invalid = (value: string) => (Number.isNaN(parseSetField(value)) ? true : undefined);
   return (
     <div className="row set-editor">
       {fields.includes('weight') && (
@@ -191,10 +229,9 @@ export function SetEditor({
           className="input"
           inputMode="decimal"
           aria-label="Weight"
-          defaultValue={fmt(kgToDisplay(value.metricWeight, weightUnit))}
-          onChange={(e) =>
-            onChange({ ...value, metricWeight: displayToKg(parseDecimal(e.target.value) || 0, weightUnit) })
-          }
+          aria-invalid={invalid(text.weight)}
+          value={text.weight}
+          onChange={(e) => onChange({ ...text, weight: e.target.value })}
         />
       )}
       {fields.includes('reps') && (
@@ -202,8 +239,9 @@ export function SetEditor({
           className="input"
           inputMode="numeric"
           aria-label="Reps"
-          defaultValue={value.reps}
-          onChange={(e) => onChange({ ...value, reps: parseDecimal(e.target.value) || 0 })}
+          aria-invalid={invalid(text.reps)}
+          value={text.reps}
+          onChange={(e) => onChange({ ...text, reps: e.target.value })}
         />
       )}
       {fields.includes('distance') && (
@@ -211,39 +249,19 @@ export function SetEditor({
           className="input"
           inputMode="decimal"
           aria-label="Distance"
-          defaultValue={fmt(metresToDisplay(value.distanceMetres, du))}
-          onChange={(e) =>
-            onChange({
-              ...value,
-              distanceMetres: displayToMetres(parseDecimal(e.target.value) || 0, du),
-              unit: du,
-            })
-          }
+          aria-invalid={invalid(text.distance)}
+          value={text.distance}
+          onChange={(e) => onChange({ ...text, distance: e.target.value })}
         />
       )}
       {fields.includes('time') && (
-        <DurationEditor
-          seconds={value.durationSeconds}
-          onChange={(durationSeconds) => onChange({ ...value, durationSeconds })}
+        <DurationInputs
+          value={text.time}
+          onChange={(time) => onChange({ ...text, time })}
+          className="duration duration--compact"
+          inputClassName="input"
         />
       )}
     </div>
-  );
-}
-
-/** hh / mm / ss boxes for the inline editor; keeps the typed text, reports whole-number times. */
-function DurationEditor({ seconds, onChange }: { seconds: number; onChange: (seconds: number) => void }) {
-  const [parts, setParts] = useState(() => splitDuration(seconds));
-  return (
-    <DurationInputs
-      value={parts}
-      onChange={(next) => {
-        setParts(next);
-        const secs = joinDuration(next);
-        if (Number.isFinite(secs)) onChange(secs);
-      }}
-      className="duration duration--compact"
-      inputClassName="input"
-    />
   );
 }

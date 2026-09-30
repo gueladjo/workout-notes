@@ -20,11 +20,12 @@ import {
   updateRoutine,
   PopulateSetsType,
   type PlannedSet,
+  type PredefinedSetInput,
 } from '@/db/repo/routines';
 import { exerciseTypeFields } from '@/db/constants';
 import { androidColourToHex } from '@/domain/colour';
 import { formatLongDate, todayIso } from '@/domain/dates';
-import { formatSet, weightUnitFor } from '@/ui/format';
+import { formatSet, weightUnitFor, type SetDraft } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button, IconButton } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
@@ -34,6 +35,7 @@ import { EmptyState } from '@/ui/components/EmptyState';
 import {
   SetSelectionDialog,
   SetEditor,
+  setFromDraft,
   type SelectableExercise,
   type SelectableSet,
 } from '@/ui/components/SetSelectionDialog';
@@ -621,7 +623,8 @@ export function RoutineEditorScreen() {
 /**
  * Predefined sets editor: rows of set fields, blank = copy from previous workout. Right after an
  * exercise was added (`justAdded`) the dismiss button is FitNotes' Skip, otherwise Cancel; neither
- * writes anything.
+ * writes anything. A malformed, negative or non-finite value is refused with the Track tab's toast
+ * and nothing is written.
  */
 function PredefinedSetsDialog({
   open,
@@ -636,10 +639,13 @@ function PredefinedSetsDialog({
 }) {
   const db = useDb();
   const settings = useSettings();
+  const toast = useToast();
   const [rows, setRows] = useState<SelectableSet[]>([]);
+  const [drafts, setDrafts] = useState<Map<string, SetDraft>>(new Map());
   const [seen, setSeen] = useState(false);
   if (open && !seen && ex) {
     setSeen(true);
+    setDrafts(new Map());
     setRows(
       ex.sets.map((s) => ({
         key: String(s.id),
@@ -670,11 +676,13 @@ function PredefinedSetsDialog({
           </Button>
           <Button
             onClick={() => {
-              setPredefinedSets(
-                db,
-                ex.id,
-                rows.map((r) => ({ ...r, id: typeof r.meta === 'number' ? r.meta : undefined })),
-              );
+              const sets: PredefinedSetInput[] = [];
+              for (const r of rows) {
+                const set = setFromDraft(r, drafts.get(r.key), wu, settings.metric);
+                if (!set) return toast('Please enter valid values');
+                sets.push({ ...set, id: typeof set.meta === 'number' ? set.meta : undefined });
+              }
+              setPredefinedSets(db, ex.id, sets);
               onClose();
             }}
           >
@@ -692,10 +700,11 @@ function PredefinedSetsDialog({
             <span className="set-row__index">{i + 1}</span>
             <SetEditor
               typeId={ex.exercise.typeId}
-              value={r}
+              set={r}
+              draft={drafts.get(r.key)}
               weightUnit={wu}
               metric={settings.metric}
-              onChange={(v) => setRows((rs) => rs.map((x, j) => (j === i ? v : x)))}
+              onChange={(d) => setDrafts((m) => new Map(m).set(r.key, d))}
             />
             <IconButton
               icon="close"

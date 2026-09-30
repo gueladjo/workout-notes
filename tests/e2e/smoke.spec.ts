@@ -1057,3 +1057,132 @@ test('reminds about backups on Home and stops once one is saved', async ({ page 
   await expect(page.getByText('Barbell Squat').first()).toBeVisible();
   await expect(page.getByRole('status')).toHaveCount(0);
 });
+
+test.describe('shared set editors', () => {
+  /** Logs 100 kg × 5 reps of the bench press for today and stays on its Track tab. */
+  async function logBenchSet(page: Page) {
+    await openApp(page);
+    await page.getByRole('button', { name: 'Start New Workout' }).click();
+    await page.getByRole('button', { name: 'Chest' }).click();
+    await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+    await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+    await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+    await page.getByTestId('save-set').click();
+    await expect(
+      page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }),
+    ).toBeVisible();
+  }
+
+  test('Edit Sets and Copy Sets refuse malformed and negative values and keep the stored set', async ({
+    page,
+  }) => {
+    await logBenchSet(page);
+    await page.getByRole('tab', { name: 'History' }).click();
+    const dialog = page.getByRole('dialog');
+    const status = page.getByRole('status');
+    const openDay = async (action: 'Edit Sets' | 'Copy Sets') => {
+      await page.getByRole('button', { name: /Current$/ }).click();
+      await dialog.getByRole('button', { name: action }).click();
+    };
+    await openDay('Edit Sets');
+    await expect(dialog.getByText(/^Edit sets/)).toBeVisible();
+    const weight = dialog.getByRole('textbox', { name: 'Weight' });
+    await expect(weight).toHaveValue('100');
+    // Malformed text: marked invalid, refused on Save, the dialog stays open.
+    await weight.fill('not-a-number');
+    await expect(weight).toHaveAttribute('aria-invalid', 'true');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(status).toHaveText('Please enter valid values');
+    await expect(dialog.getByText(/^Edit sets/)).toBeVisible();
+    // A negative number is refused the same way (the first toast has gone by then).
+    await expect(status).toHaveCount(0);
+    await weight.fill('-50');
+    await expect(weight).toHaveAttribute('aria-invalid', 'true');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(status).toHaveText('Please enter valid values');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveCount(0);
+    // Nothing was written: the set is unchanged, also after a reload.
+    await expect(page.getByRole('button', { name: 'Set 1: 100 kg × 5 reps' })).toBeVisible();
+    await page.waitForTimeout(1200);
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Set 1: 100 kg × 5 reps' })).toBeVisible({
+      timeout: 30_000,
+    });
+    // A decimal comma still saves.
+    await openDay('Edit Sets');
+    await weight.fill('82,5');
+    await expect(weight).not.toHaveAttribute('aria-invalid', 'true');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(status).toHaveText('Sets updated');
+    await expect(page.getByRole('button', { name: 'Set 1: 82.5 kg × 5 reps' })).toBeVisible();
+    await page.waitForTimeout(1200);
+    await page.reload();
+    await expect(page.getByRole('button', { name: 'Set 1: 82.5 kg × 5 reps' })).toBeVisible({
+      timeout: 30_000,
+    });
+    // Copy Sets: a negative rep count typed in the selection dialog is refused and nothing is copied.
+    await expect(status).toHaveCount(0);
+    await openDay('Copy Sets');
+    await expect(dialog.getByText(/^Copy sets from/)).toBeVisible();
+    await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
+    await dialog.getByRole('textbox', { name: 'Reps' }).fill('-5');
+    await dialog.getByRole('button', { name: 'Copy', exact: true }).click();
+    await expect(status).toHaveText('Please enter valid values');
+    await expect(dialog.getByText(/^Copy sets from/)).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByRole('button', { name: /^Set 2:/ })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Set 1: 82.5 kg × 5 reps' })).toBeVisible();
+  });
+
+  test('a blank predefined set saves as 0 and Log All refuses a negative value', async ({ page }) => {
+    await openApp(page);
+    await page.goto('/#/routine/new');
+    await page.getByLabel('Name').fill('PPL');
+    await page.getByRole('button', { name: 'Save' }).last().click();
+    await expect(page.getByText('Edit mode')).toBeVisible();
+    await page.getByPlaceholder(/Day name/).fill('Push');
+    await page.getByRole('button', { name: 'Create day' }).click();
+    await page.getByRole('button', { name: 'Add exercise to day' }).click();
+    await page.getByRole('button', { name: 'Chest' }).click();
+    await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+    const dialog = page.getByRole('dialog');
+    const status = page.getByRole('status');
+    // A weight cleared to blank is the "copy from the previous workout" placeholder: stored as 0.
+    await dialog.getByRole('button', { name: 'Add Set' }).click();
+    await dialog.getByRole('textbox', { name: 'Weight' }).fill('');
+    await dialog.getByRole('textbox', { name: 'Reps' }).fill('8');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(dialog).toHaveCount(0);
+    await expect(page.getByText('— × 8 reps')).toBeVisible();
+    // A negative weight in the predefined sets editor is refused and the row keeps its 0.
+    await page.getByRole('button', { name: /^Flat Barbell Bench Press/ }).click();
+    await page.getByRole('menuitem', { name: 'Edit Predefined Sets' }).click();
+    await dialog.getByRole('textbox', { name: 'Weight' }).fill('-60');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(status).toHaveText('Please enter valid values');
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByText('— × 8 reps')).toBeVisible();
+    // Log All: the same negative weight typed in the selection dialog is refused and nothing is logged.
+    await page.goto('/#/routine/1');
+    await page.getByRole('button', { name: 'Log All' }).first().click();
+    await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
+    await dialog.getByRole('textbox', { name: 'Weight' }).fill('-60');
+    await expect(status).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(status).toHaveText('Please enter valid values');
+    await expect(dialog.getByText(/^Log "Push"/)).toBeVisible();
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await page.goto('/#/');
+    await expect(page.getByText('Start New Workout').first()).toBeVisible();
+    // Corrected, the set is logged with the typed weight.
+    await page.goto('/#/routine/1');
+    await page.getByRole('button', { name: 'Log All' }).first().click();
+    await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
+    await dialog.getByRole('textbox', { name: 'Weight' }).fill('70');
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(page).toHaveURL(/#\/$/);
+    await expect(page.getByRole('button', { name: 'Flat Barbell Bench Press 70 kg × 8 reps' })).toBeVisible();
+  });
+});

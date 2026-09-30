@@ -1,11 +1,12 @@
 /**
  * Human formatting of sets, weights and distances according to the exercise type and settings.
  */
-import { exerciseTypeFields, type ExerciseTypeId } from '@/db/constants';
+import { exerciseTypeFields, type DistanceUnitId, type ExerciseTypeId } from '@/db/constants';
 import type { Settings } from '@/db/repo/settings';
 import type { Exercise, TrainingSet } from '@/db/types';
-import { formatDuration } from '@/domain/dates';
+import { formatDuration, joinDuration, splitDuration, type DurationParts } from '@/domain/dates';
 import {
+  displayToKg,
   displayToMetres,
   distanceUnitShort,
   fmt,
@@ -23,6 +24,69 @@ import {
  */
 export function parseDecimal(text: string): number {
   return Number(text.replace(',', '.'));
+}
+
+/**
+ * A number typed in a set field: blank is 0, a decimal comma is a decimal point, and anything
+ * malformed, negative or not finite is NaN, so every set editor refuses what the Track tab refuses.
+ */
+export function parseSetField(text: string): number {
+  const n = text.trim() === '' ? 0 : parseDecimal(text);
+  return Number.isFinite(n) && n >= 0 ? n : NaN;
+}
+
+/** The stored values of a set: weight in kg, distance in metres, time in seconds. */
+export type StoredSet = Pick<
+  TrainingSet,
+  'metricWeight' | 'reps' | 'distanceMetres' | 'durationSeconds' | 'unit'
+>;
+
+/** The text in the boxes of the shared set editor (`SetEditor`), kept as typed until it is saved. */
+export interface SetDraft {
+  weight: string;
+  reps: string;
+  distance: string;
+  time: DurationParts;
+}
+
+/** The text the shared set editor shows for a stored set: weight and distance rounded for display. */
+export function setDraftFrom(set: StoredSet, weightUnit: WeightUnit, distanceUnit: DistanceUnitId): SetDraft {
+  return {
+    weight: fmt(kgToDisplay(set.metricWeight, weightUnit)),
+    reps: String(set.reps),
+    distance: fmt(metresToDisplay(set.distanceMetres, distanceUnit)),
+    time: splitDuration(set.durationSeconds),
+  };
+}
+
+/**
+ * The values a draft saves over `set`, or null when a field is malformed, negative or not finite
+ * (an hh / mm / ss box that is not a whole number included), in which case nothing must be written.
+ * A field whose text is still what `setDraftFrom` showed saves the stored value back exactly, not
+ * its rounding (20 kg reads 44.09 lbs); a typed distance is in `distanceUnit`. Fractional reps and
+ * times pass through: the repositories round them.
+ */
+export function readSetDraft(
+  set: StoredSet,
+  draft: SetDraft,
+  weightUnit: WeightUnit,
+  distanceUnit: DistanceUnitId,
+): StoredSet | null {
+  const w = parseSetField(draft.weight);
+  const r = parseSetField(draft.reps);
+  const d = parseSetField(draft.distance);
+  const t = joinDuration(draft.time);
+  if ([w, r, d, t].some((n) => !Number.isFinite(n) || n < 0)) return null;
+  const shown = setDraftFrom(set, weightUnit, distanceUnit);
+  const distanceTyped = draft.distance !== shown.distance;
+  const timeTyped = (['hours', 'minutes', 'seconds'] as const).some((k) => draft.time[k] !== shown.time[k]);
+  return {
+    metricWeight: draft.weight === shown.weight ? set.metricWeight : displayToKg(w, weightUnit),
+    reps: draft.reps === shown.reps ? set.reps : r,
+    distanceMetres: distanceTyped ? displayToMetres(d, distanceUnit) : set.distanceMetres,
+    durationSeconds: timeTyped ? t : set.durationSeconds,
+    unit: distanceTyped ? distanceUnit : set.unit,
+  };
 }
 
 export interface SetValueParts {
