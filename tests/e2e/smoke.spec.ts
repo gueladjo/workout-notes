@@ -1088,7 +1088,7 @@ test.describe('shared set editors', () => {
       await dialog.getByRole('button', { name: action }).click();
     };
     await openDay('Edit Sets');
-    await expect(dialog.getByText(/^Edit sets/)).toBeVisible();
+    await expect(dialog.getByText('Edit Sets', { exact: true })).toBeVisible();
     const weight = dialog.getByRole('textbox', { name: 'Weight' });
     await expect(weight).toHaveValue('100');
     // Malformed text: marked invalid, refused on Save, the dialog stays open.
@@ -1096,7 +1096,7 @@ test.describe('shared set editors', () => {
     await expect(weight).toHaveAttribute('aria-invalid', 'true');
     await dialog.getByRole('button', { name: 'Save' }).click();
     await expect(status).toHaveText('Please enter valid values');
-    await expect(dialog.getByText(/^Edit sets/)).toBeVisible();
+    await expect(dialog.getByText('Edit Sets', { exact: true })).toBeVisible();
     // A negative number is refused the same way (the first toast has gone by then).
     await expect(status).toHaveCount(0);
     await weight.fill('-50');
@@ -1137,6 +1137,34 @@ test.describe('shared set editors', () => {
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Set 2:/ })).toHaveCount(0);
     await expect(page.getByRole('button', { name: 'Set 1: 82.5 kg × 5 reps' })).toBeVisible();
+  });
+
+  test('the X in Edit Sets drops a set on Save, not on Cancel', async ({ page }) => {
+    await logBenchSet(page);
+    await page.getByRole('tab', { name: 'History' }).click();
+    const dialog = page.getByRole('dialog');
+    // A second set, copied from the first through the set popup.
+    await page.getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }).click();
+    await dialog.getByRole('button', { name: 'Copy Set' }).click();
+    await expect(page.getByRole('button', { name: 'Set 2: 100 kg × 5 reps' })).toBeVisible();
+    // The day popup: totals and the best sets, then Edit Sets as a row.
+    await page.getByRole('button', { name: /Current$/ }).click();
+    await expect(dialog.getByText('Total Sets')).toBeVisible();
+    await expect(dialog.getByText('2 sets')).toBeVisible();
+    await expect(dialog.getByText('Max Volume')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Edit Sets' }).click();
+    await expect(dialog.getByText('Edit Sets', { exact: true })).toBeVisible();
+    await dialog.getByRole('button', { name: 'Remove set 2' }).click();
+    await expect(dialog.getByRole('button', { name: 'Remove set 2' })).toHaveCount(0);
+    await dialog.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.getByRole('button', { name: 'Set 2: 100 kg × 5 reps' })).toBeVisible();
+    await page.getByRole('button', { name: /Current$/ }).click();
+    await dialog.getByRole('button', { name: 'Edit Sets' }).click();
+    await dialog.getByRole('button', { name: 'Remove set 2' }).click();
+    await dialog.getByRole('button', { name: 'Save' }).click();
+    await expect(page.getByRole('status')).toHaveText('Sets updated');
+    await expect(page.getByRole('button', { name: 'Set 2: 100 kg × 5 reps' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Set 1: 100 kg × 5 reps' })).toBeVisible();
   });
 
   test('Edit Set steps the values like the Track tab, keeps the note and can delete the set', async ({

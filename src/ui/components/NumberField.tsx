@@ -7,7 +7,7 @@ import { ALL_DISTANCE_UNITS, distanceUnitShort } from '@/domain/units';
 /**
  * Numeric entry with +/- buttons (FitNotes set fields): label above, then the -/value/+ row.
  * `value` is the raw text so the user can type freely; parse with `parseDecimal()` when saving. `step`
- * drives the buttons.
+ * drives the buttons. `invalid` marks the box (red underline) when its text would be refused on save.
  */
 export function NumberField({
   label,
@@ -19,6 +19,7 @@ export function NumberField({
   inputMode = 'decimal',
   placeholder,
   name,
+  invalid,
 }: {
   label: string;
   value: string;
@@ -29,6 +30,7 @@ export function NumberField({
   inputMode?: 'decimal' | 'numeric';
   placeholder?: string;
   name?: string;
+  invalid?: boolean;
 }) {
   const adjust = (delta: number) => {
     const current = value.trim() === '' ? 0 : parseDecimal(value);
@@ -52,6 +54,7 @@ export function NumberField({
           name={name}
           placeholder={placeholder}
           aria-label={label}
+          aria-invalid={invalid || undefined}
           onChange={(e) => onChange(e.target.value)}
           onFocus={(e) => e.target.select()}
         />
@@ -74,15 +77,20 @@ export function formatNumber(n: number, decimals = 2): string {
   return String(roundTo(n, decimals));
 }
 
-/** Distance entry as in FitNotes: the value with its unit selector beside it. Metres by default. */
+/**
+ * Distance entry as in FitNotes: the value with its unit selector beside it. Metres by default;
+ * `invalid` as on `NumberField`.
+ */
 export function DistanceField({
   value,
   unit,
   onChange,
+  invalid,
 }: {
   value: string;
   unit: number;
   onChange: (value: string, unit: number) => void;
+  invalid?: boolean;
 }) {
   return (
     <div className="numfield">
@@ -96,6 +104,7 @@ export function DistanceField({
           value={value}
           name="distance"
           aria-label="Distance"
+          aria-invalid={invalid || undefined}
           onChange={(e) => onChange(e.target.value, unit)}
           onFocus={(e) => e.target.select()}
         />

@@ -1656,6 +1656,11 @@ h4 {
   white-space: pre-wrap;
 }
 
+/* The set behind a day stat ("(60 kg × 8 reps)"), FitNotes' grey aside. */
+.set-dialog__ref {
+  color: var(--color-text-muted);
+}
+
 /* Edit Set / Copy Set as icon rows below the stats, blue icons like FitNotes' (Holo) ones. */
 .set-dialog__menu {
   border-top: 1px solid var(--color-divider);
@@ -1670,12 +1675,33 @@ h4 {
   color: var(--color-primary);
 }
 
-/* Edit Set: the Track tab's fields stacked, labels centred with no rule as in FitNotes' dialog. */
+/* Edit Set(s): the Track tab's fields stacked, labels centred with no rule as in FitNotes' dialogs. */
 .set-dialog__fields {
   display: flex;
   flex-direction: column;
   gap: 14px;
-  padding: 10px 0 4px;
+  padding: 10px 20px 8px;
+}
+
+/* Edit Sets: one "SET n" section per set, a grey band with the X that drops the set. */
+.set-dialog__section {
+  border-bottom: 1px solid var(--color-divider);
+}
+
+.set-dialog__section:last-child {
+  border-bottom: none;
+}
+
+.set-dialog__section-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 8px 2px 20px;
+  background: var(--color-surface-2);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .set-dialog__fields .numfield__label {

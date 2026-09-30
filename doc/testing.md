@@ -83,7 +83,8 @@ The journeys that matter for a local-first app:
    value; a predefined set saved with a blank weight stores 0 (the copy-previous placeholder), the
    predefined sets editor and Log All refuse a negative value writing nothing, and Log All then logs
    a corrected one; Edit Set on the History tab steps the weight and reps like the Track tab, saves
-   the note, refuses a malformed weight writing nothing, and its Delete removes the set.
+   the note, refuses a malformed weight writing nothing, and its Delete removes the set; the X in
+   Edit Sets drops a set on Save but not on Cancel.
 
 ## Visual checks
 

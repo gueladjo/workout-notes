@@ -9,6 +9,7 @@ import type { ExerciseWithCategory, TrainingSetWithComment } from '@/db/types';
 import {
   formatSet,
   formatWeightValue,
+  parseSetField,
   readSetDraft,
   setDraftFrom,
   setValueColumns,
@@ -31,10 +32,10 @@ import {
 } from '@/domain/units';
 import { Icon } from '@/ui/components/Icon';
 import { Dialog } from '@/ui/components/Dialog';
-import { Button } from '@/ui/components/Button';
+import { Button, IconButton } from '@/ui/components/Button';
 import { NumberField, DistanceField, DurationField } from '@/ui/components/NumberField';
 import { WorkoutView } from '@/ui/components/WorkoutView';
-import { SetSelectionDialog, SetEditor, type SelectableExercise } from '@/ui/components/SetSelectionDialog';
+import { SetSelectionDialog, type SelectableExercise } from '@/ui/components/SetSelectionDialog';
 import { useToast } from '@/ui/components/Toast';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { SetValues } from '@/ui/components/SetValues';
@@ -68,6 +69,7 @@ export function HistoryTab({
   const viewWorkout = useQuery((d) => (viewDate ? getWorkout(d, viewDate) : null), [viewDate]);
 
   const daySets = history.find((h) => h.date === dayDialog)?.sets ?? [];
+  const dayStats = dayDialog ? dayStatsOf(daySets, exercise.typeId, wu, settings) : [];
   const isStrength = exerciseTypeHas(exercise.typeId, 'weight') && exerciseTypeHas(exercise.typeId, 'reps');
   const isCardio = exerciseTypeHas(exercise.typeId, 'distance') && exerciseTypeHas(exercise.typeId, 'time');
   // Speed and pace of the tapped set: per km / per mile even when the set was logged in m / ft.
@@ -150,85 +152,64 @@ export function HistoryTab({
         ))}
       </div>
 
-      {/* Workout-day quick stats */}
+      {/* Workout-day popup as in FitNotes: the date as the heading, the day's totals and best sets,
+          then View Workout, Edit Sets and Copy Sets as icon rows. */}
       <Dialog
         open={dayDialog !== null}
         onClose={() => setDayDialog(null)}
         title={dayDialog ? formatLongDate(dayDialog) : ''}
-        actions={
-          <>
-            <Button
-              variant="text"
-              onClick={() => {
-                setViewDate(dayDialog);
-                setDayDialog(null);
-              }}
-            >
-              View Workout
-            </Button>
-            {!readOnly && (
-              <>
-                <Button
-                  variant="text"
-                  onClick={() => {
-                    setEditDate(dayDialog);
-                    setDayDialog(null);
-                  }}
-                >
-                  Edit Sets
-                </Button>
-                <Button
-                  variant="text"
-                  onClick={() => {
-                    setCopyDate(dayDialog);
-                    setDayDialog(null);
-                  }}
-                >
-                  Copy Sets
-                </Button>
-              </>
-            )}
-          </>
-        }
+        holo
+        flush
       >
-        <div className="stack">
-          <div className="row row--between">
-            <span className="muted">Sets</span>
-            <b>{daySets.length}</b>
-          </div>
-          {isStrength && (
+        <div className="set-dialog__stats">
+          {dayStats.map((s) => (
+            <div key={s.label}>
+              <div className="set-dialog__label">{s.label}</div>
+              <div className="set-dialog__value">
+                {s.value}
+                {s.set && (
+                  <span className="set-dialog__ref">
+                    {' '}
+                    ({formatSet(s.set, exercise.typeId, wu, settings)})
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="set-dialog__menu">
+          <button
+            className="list__item"
+            onClick={() => {
+              setViewDate(dayDialog);
+              setDayDialog(null);
+            }}
+          >
+            <Icon name="menu" />
+            <span className="list__text">View Workout</span>
+          </button>
+          {!readOnly && (
             <>
-              <div className="row row--between">
-                <span className="muted">Total Volume</span>
-                <b>
-                  {formatWeightValue(
-                    daySets.reduce((a, s) => a + s.metricWeight * s.reps, 0),
-                    wu,
-                  )}
-                </b>
-              </div>
-              <div className="row row--between">
-                <span className="muted">Total Reps</span>
-                <b>{daySets.reduce((a, s) => a + s.reps, 0)}</b>
-              </div>
-            </>
-          )}
-          {isCardio && (
-            <>
-              <div className="row row--between">
-                <span className="muted">Total Distance</span>
-                <b>
-                  {formatDist(
-                    daySets.reduce((a, s) => a + s.distanceMetres, 0),
-                    daySets[0]?.unit ?? 0,
-                    settings.metric,
-                  )}
-                </b>
-              </div>
-              <div className="row row--between">
-                <span className="muted">Total Duration</span>
-                <b>{formatDuration(daySets.reduce((a, s) => a + s.durationSeconds, 0))}</b>
-              </div>
+              <button
+                className="list__item"
+                onClick={() => {
+                  setEditDate(dayDialog);
+                  setDayDialog(null);
+                }}
+              >
+                <Icon name="edit" />
+                <span className="list__text">Edit Sets</span>
+              </button>
+              <button
+                className="list__item"
+                onClick={() => {
+                  setCopyDate(dayDialog);
+                  setDayDialog(null);
+                }}
+              >
+                <Icon name="copy" />
+                <span className="list__text">Copy Sets</span>
+              </button>
             </>
           )}
         </div>
@@ -361,14 +342,15 @@ export function HistoryTab({
         }}
       />
 
-      {/* Edit sets of a past workout */}
-      <EditSetsDialog
-        open={editDate !== null}
-        onClose={() => setEditDate(null)}
-        exercise={exercise}
-        sets={history.find((h) => h.date === editDate)?.sets ?? []}
-        date={editDate}
-      />
+      {/* Edit the sets of a past workout (FitNotes' Edit Sets); mounted only while open. */}
+      {editDate && (
+        <EditSetsDialog
+          key={editDate}
+          exercise={exercise}
+          sets={history.find((h) => h.date === editDate)?.sets ?? []}
+          onClose={() => setEditDate(null)}
+        />
+      )}
     </div>
   );
 }
@@ -376,6 +358,87 @@ export function HistoryTab({
 function formatDist(metres: number, unit: number, metric: boolean): string {
   const du = resolveDistanceUnit(unit, metric);
   return `${fmt(metresToDisplay(metres, du))} ${distanceUnitShort(du)}`;
+}
+
+interface DayStat {
+  label: string;
+  value: string;
+  /** The set that achieved a "Max" stat, shown beside the value. */
+  set?: TrainingSetWithComment;
+}
+
+/**
+ * A workout day's stats as FitNotes lists them: Total Sets, then Total Reps / Volume (or Distance /
+ * Duration), then the best set by estimated 1RM, weight, reps and volume (or distance and
+ * duration), each with the set that achieved it. The first of equal sets wins.
+ */
+function dayStatsOf(
+  sets: TrainingSetWithComment[],
+  typeId: ExerciseTypeId,
+  weightUnit: WeightUnit,
+  settings: Settings,
+): DayStat[] {
+  const fields = exerciseTypeFields(typeId);
+  const reps = fields.includes('reps');
+  const strength = fields.includes('weight') && reps;
+  const distance = fields.includes('distance');
+  const time = fields.includes('time');
+  const sum = (f: (s: TrainingSetWithComment) => number) => sets.reduce((a, s) => a + f(s), 0);
+  const best = (f: (s: TrainingSetWithComment) => number) =>
+    sets.reduce<TrainingSetWithComment | undefined>((b, s) => (b && f(b) >= f(s) ? b : s), undefined);
+  const oneRm = (s: TrainingSetWithComment) => estimatedOneRepMax(s.metricWeight, s.reps);
+  const volume = (s: TrainingSetWithComment) => s.metricWeight * s.reps;
+  const dist = (metres: number, unit: number) => formatDist(metres, unit, settings.metric);
+  const stats: DayStat[] = [
+    { label: 'Total Sets', value: `${sets.length} set${sets.length === 1 ? '' : 's'}` },
+  ];
+  if (reps) stats.push({ label: 'Total Reps', value: `${sum((s) => s.reps)} reps` });
+  if (strength) stats.push({ label: 'Total Volume', value: formatWeightValue(sum(volume), weightUnit) });
+  if (distance)
+    stats.push({
+      label: 'Total Distance',
+      value: dist(
+        sum((s) => s.distanceMetres),
+        sets[0]?.unit ?? 0,
+      ),
+    });
+  if (time) stats.push({ label: 'Total Duration', value: formatDuration(sum((s) => s.durationSeconds)) });
+  const max = (
+    label: string,
+    f: (s: TrainingSetWithComment) => number,
+    format: (s: TrainingSetWithComment) => string,
+  ) => {
+    const set = best(f);
+    if (set) stats.push({ label, value: format(set), set });
+  };
+  if (strength) {
+    max('Max Estimated 1RM', oneRm, (s) => formatWeightValue(oneRm(s), weightUnit));
+    max(
+      'Max Weight',
+      (s) => s.metricWeight,
+      (s) => formatWeightValue(s.metricWeight, weightUnit),
+    );
+  }
+  if (reps)
+    max(
+      'Max Reps',
+      (s) => s.reps,
+      (s) => `${s.reps} reps`,
+    );
+  if (strength) max('Max Volume', volume, (s) => formatWeightValue(volume(s), weightUnit));
+  if (distance)
+    max(
+      'Max Distance',
+      (s) => s.distanceMetres,
+      (s) => dist(s.distanceMetres, s.unit),
+    );
+  if (time)
+    max(
+      'Max Duration',
+      (s) => s.durationSeconds,
+      (s) => formatDuration(s.durationSeconds),
+    );
+  return stats;
 }
 
 /**
@@ -408,13 +471,97 @@ function SetTitle({
   );
 }
 
+/** What the edit dialogs hold for one set: the text of its boxes, its distance unit and its note. */
+interface SetEdit {
+  draft: SetDraft;
+  unit: number;
+  notes: string;
+}
+
+function setEditFrom(set: TrainingSetWithComment, weightUnit: WeightUnit, metric: boolean): SetEdit {
+  const unit = resolveDistanceUnit(set.unit, metric);
+  return { draft: setDraftFrom(set, weightUnit, unit), unit, notes: set.comment ?? '' };
+}
+
+/** The values an edit saves over `set` (see `readSetDraft`), or null when a box must be refused. */
+function readSetEdit(
+  set: StoredSet,
+  edit: SetEdit,
+  weightUnit: WeightUnit,
+  metric: boolean,
+): StoredSet | null {
+  return readSetDraft(set, edit.draft, weightUnit, resolveDistanceUnit(edit.unit, metric));
+}
+
 /**
- * FitNotes' Edit Set dialog for one set of the history: the Track tab's fields (label over a
- * -/value/+ row stepping by the exercise's increment, distance with its unit, hh / mm / ss), a Notes
- * box for the set's comment, and Cancel / Delete / Save. Follows the shared set editor's rules
- * (`readSetDraft`): an untouched field saves its stored value back exactly, and a malformed,
- * negative or non-finite value is refused with the Track tab's toast, nothing written. Mounted only
- * while open, so its fields start from `set`.
+ * One set's boxes as FitNotes' Edit Set dialogs show them: the Track tab's fields (label over a
+ * -/value/+ row stepping by the exercise's increment, distance with its unit, hh / mm / ss) and a
+ * Notes box for the set comment. A box whose text would be refused on save is marked invalid.
+ */
+function SetFields({
+  exercise,
+  edit,
+  onChange,
+}: {
+  exercise: ExerciseWithCategory;
+  edit: SetEdit;
+  onChange: (next: SetEdit) => void;
+}) {
+  const settings = useSettings();
+  const wu = weightUnitFor(exercise, settings);
+  const fields = exerciseTypeFields(exercise.typeId);
+  const draft = (p: Partial<SetDraft>) => onChange({ ...edit, draft: { ...edit.draft, ...p } });
+  const invalid = (text: string) => Number.isNaN(parseSetField(text));
+  return (
+    <div className="set-dialog__fields">
+      {fields.includes('weight') && (
+        <NumberField
+          label={`Weight (${wu})`}
+          value={edit.draft.weight}
+          invalid={invalid(edit.draft.weight)}
+          onChange={(weight) => draft({ weight })}
+          step={exercise.weightIncrement ?? settings.weightIncrement}
+        />
+      )}
+      {fields.includes('distance') && (
+        <DistanceField
+          value={edit.draft.distance}
+          unit={edit.unit}
+          invalid={invalid(edit.draft.distance)}
+          onChange={(distance, unit) => onChange({ ...edit, unit, draft: { ...edit.draft, distance } })}
+        />
+      )}
+      {fields.includes('reps') && (
+        <NumberField
+          label="Reps"
+          value={edit.draft.reps}
+          invalid={invalid(edit.draft.reps)}
+          onChange={(reps) => draft({ reps })}
+          step={1}
+          decimals={0}
+          inputMode="numeric"
+        />
+      )}
+      {fields.includes('time') && (
+        <DurationField value={edit.draft.time} onChange={(time) => draft({ time })} />
+      )}
+      <input
+        className="set-dialog__notes"
+        value={edit.notes}
+        placeholder="Notes …"
+        aria-label="Notes"
+        onChange={(e) => onChange({ ...edit, notes: e.target.value })}
+      />
+    </div>
+  );
+}
+
+/**
+ * FitNotes' Edit Set dialog for one set of the history: its boxes (`SetFields`) and Cancel /
+ * Delete / Save. Follows the shared set editor's rules (`readSetDraft`): an untouched field saves
+ * its stored value back exactly, and a malformed, negative or non-finite value is refused with the
+ * Track tab's toast, nothing written. Delete removes the set at once, as the Track tab's does.
+ * Mounted only while open, so its fields start from `set`.
  */
 export function EditSetDialog({
   exercise,
@@ -429,20 +576,14 @@ export function EditSetDialog({
   const settings = useSettings();
   const toast = useToast();
   const wu = weightUnitFor(exercise, settings);
-  const fields = exerciseTypeFields(exercise.typeId);
-  const [distanceUnit, setDistanceUnit] = useState<number>(resolveDistanceUnit(set.unit, settings.metric));
-  const [draft, setDraft] = useState<SetDraft>(() =>
-    setDraftFrom(set, wu, resolveDistanceUnit(set.unit, settings.metric)),
-  );
-  const [notes, setNotes] = useState(set.comment ?? '');
-  const patch = (p: Partial<SetDraft>) => setDraft((d) => ({ ...d, ...p }));
+  const [edit, setEdit] = useState(() => setEditFrom(set, wu, settings.metric));
   const save = () => {
-    const values = readSetDraft(set, draft, wu, resolveDistanceUnit(distanceUnit, settings.metric));
+    const values = readSetEdit(set, edit, wu, settings.metric);
     if (!values) return toast('Please enter valid values');
     // One transaction for the values and the note (nested `mutate` calls share it).
     db.mutate(() => {
       updateSet(db, set.id, values);
-      if (notes.trim() !== (set.comment ?? '')) setSetComment(db, set.id, notes);
+      if (edit.notes.trim() !== (set.comment ?? '')) setSetComment(db, set.id, edit.notes);
     });
     toast('Set updated');
     onClose();
@@ -458,6 +599,7 @@ export function EditSetDialog({
       onClose={onClose}
       title="Edit Set"
       holo
+      flush
       actions={
         <>
           <Button variant="text" onClick={onClose}>
@@ -472,121 +614,95 @@ export function EditSetDialog({
         </>
       }
     >
-      <div className="set-dialog__fields">
-        {fields.includes('weight') && (
-          <NumberField
-            label={`Weight (${wu})`}
-            value={draft.weight}
-            onChange={(weight) => patch({ weight })}
-            step={exercise.weightIncrement ?? settings.weightIncrement}
-            name="weight"
-          />
-        )}
-        {fields.includes('distance') && (
-          <DistanceField
-            value={draft.distance}
-            unit={distanceUnit}
-            onChange={(distance, unit) => {
-              patch({ distance });
-              setDistanceUnit(unit);
-            }}
-          />
-        )}
-        {fields.includes('reps') && (
-          <NumberField
-            label="Reps"
-            value={draft.reps}
-            onChange={(reps) => patch({ reps })}
-            step={1}
-            decimals={0}
-            inputMode="numeric"
-            name="reps"
-          />
-        )}
-        {fields.includes('time') && <DurationField value={draft.time} onChange={(time) => patch({ time })} />}
-        <input
-          className="set-dialog__notes"
-          value={notes}
-          placeholder="Notes …"
-          aria-label="Notes"
-          onChange={(e) => setNotes(e.target.value)}
-        />
-      </div>
+      <SetFields exercise={exercise} edit={edit} onChange={setEdit} />
     </Dialog>
   );
 }
 
 /**
- * Edit multiple sets of one workout day at once. Only sets typed in are written; a malformed,
- * negative or non-finite value is refused with the Track tab's toast and nothing is written.
+ * FitNotes' Edit Sets dialog for one workout day: a scrolling list of "SET n" sections, each with
+ * the set's boxes (`SetFields`) and an X that drops the set. Nothing is written until Save, which
+ * updates the sets touched and their notes and deletes the dropped ones in one transaction; a box
+ * that must be refused (see `readSetDraft`) stops the whole save with the Track tab's toast. Cancel
+ * forgets it all. Mounted only while open, so it starts from the sets as stored.
  */
 export function EditSetsDialog({
-  open,
-  onClose,
   exercise,
   sets,
-  date,
+  onClose,
 }: {
-  open: boolean;
-  onClose: () => void;
   exercise: ExerciseWithCategory;
   sets: TrainingSetWithComment[];
-  date: string | null;
+  onClose: () => void;
 }) {
   const db = useDb();
   const settings = useSettings();
   const toast = useToast();
   const wu = weightUnitFor(exercise, settings);
-  const [drafts, setDrafts] = useState<Map<number, SetDraft>>(new Map());
-  const [seen, setSeen] = useState(false);
-  if (open && !seen) {
-    setSeen(true);
-    setDrafts(new Map());
-  }
-  if (!open && seen) setSeen(false);
+  const [edits, setEdits] = useState<Map<number, SetEdit>>(new Map());
+  const [dropped, setDropped] = useState<Set<number>>(new Set());
+  const kept = sets.filter((s) => !dropped.has(s.id));
   const save = () => {
-    const updates: { id: number; values: StoredSet }[] = [];
-    for (const s of sets) {
-      const draft = drafts.get(s.id);
-      if (!draft) continue;
-      const values = readSetDraft(s, draft, wu, resolveDistanceUnit(s.unit, settings.metric));
+    const updates: { set: TrainingSetWithComment; edit: SetEdit; values: StoredSet }[] = [];
+    for (const set of kept) {
+      const edit = edits.get(set.id);
+      if (!edit) continue;
+      const values = readSetEdit(set, edit, wu, settings.metric);
       if (!values) return toast('Please enter valid values');
-      updates.push({ id: s.id, values });
+      updates.push({ set, edit, values });
     }
-    for (const u of updates) updateSet(db, u.id, u.values);
+    if (updates.length > 0 || dropped.size > 0)
+      db.mutate(() => {
+        for (const { set, edit, values } of updates) {
+          updateSet(db, set.id, values);
+          if (edit.notes.trim() !== (set.comment ?? '')) setSetComment(db, set.id, edit.notes);
+        }
+        for (const id of dropped) deleteSet(db, id);
+      });
     toast('Sets updated');
     onClose();
   };
   return (
     <Dialog
-      open={open}
+      open
       onClose={onClose}
-      title={date ? `Edit sets · ${formatLongDate(date)}` : 'Edit sets'}
-      wide
+      title="Edit Sets"
+      holo
+      flush
       actions={
         <>
           <Button variant="text" onClick={onClose}>
             Cancel
           </Button>
-          <Button onClick={save}>Save</Button>
+          <Button variant="text" onClick={save}>
+            Save
+          </Button>
         </>
       }
     >
-      <div className="stack">
-        {sets.map((s, i) => (
-          <div key={s.id} className="row">
-            <span className="set-row__index">{i + 1}</span>
-            <SetEditor
-              typeId={exercise.typeId}
-              set={s}
-              draft={drafts.get(s.id)}
-              weightUnit={wu}
-              metric={settings.metric}
-              onChange={(d) => setDrafts((m) => new Map(m).set(s.id, d))}
+      {kept.length === 0 && (
+        <div className="muted" style={{ padding: 16 }}>
+          All sets removed. Save to delete them.
+        </div>
+      )}
+      {kept.map((s, i) => (
+        <section key={s.id} className="set-dialog__section">
+          <div className="set-dialog__section-head">
+            <span>Set {i + 1}</span>
+            <IconButton
+              icon="close"
+              label={`Remove set ${i + 1}`}
+              small
+              onClick={() => setDropped((d) => new Set(d).add(s.id))}
             />
           </div>
-        ))}
-      </div>
+          <SetFields
+            exercise={exercise}
+            edit={edits.get(s.id) ?? setEditFrom(s, wu, settings.metric)}
+            onChange={(e) => setEdits((m) => new Map(m).set(s.id, e))}
+          />
+        </section>
+      ))}
     </Dialog>
   );
 }
