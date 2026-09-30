@@ -38,7 +38,8 @@ mocks of the database. `fake-indexeddb` stands in for IndexedDB in persistence/b
 | `schema.test.ts`                   | DDL matches the canonical column lists, seeds, `ensureSchema` upgrade of an old-shaped backup (added columns, BodyWeight and legacy comment migrations with kg to lbs for an imperial backup, version stamp), idempotence, deleted migrated rows staying deleted, migrations only into tables it created, never downgrading, backup validation                                                                                                                                                                 |
 | `workouts.test.ts`                 | repositories: sets/comments/PR flags (tied records re-awarded after moves and re-orders), pre-fill, workout dates, re-ordering keeps comments, copy/move/delete, supersets, exercises (type change, unit change), categories, settings round trip, routines (planned sets, logging, copy), measurements                                                                                                                                                                                                        |
 | `routines.test.ts`                 | predefined sets keep their ids, and so the `training_log` links planning fills blanks from, across an unchanged save, value edits and reorders; additions insert, removals delete only their row, copying a routine allocates rows of its own, an id of another routine exercise is never touched, a column the app does not know survives on retained rows                                                                                                                                                    |
-| `backup.test.ts`                   | export -> open -> export byte identity, restore with snapshot, rejection of non-backups, file naming, CSV layout, snapshot pruning                                                                                                                                                                                                                                                                                                                                                                             |
+| `backup.test.ts`                   | export -> open -> export byte identity, restore with snapshot, rejection of non-backups and of a damaged backup (intact header and schema page, `training_log` root page overwritten: `openBackup` refuses it and `restoreBackup` leaves the stored database, the snapshots and the live data untouched), legacy-shaped and newer backups still reconciling through `openBackup`, file naming, CSV layout, snapshot pruning                                                                                    |
+| `recovery.test.ts`                 | start-up recovery: `openStoredDatabase` wraps garbage, a table shadowed by a view and a database with damaged data pages in `UnreadableDatabaseError` carrying the bytes; `recoverFromSnapshot` and `rollbackToSnapshot` refuse an unreadable or damaged snapshot without writing or pruning anything, and otherwise keep the replaced database as a snapshot; `startFresh`                                                                                                                                    |
 | `download.test.ts`                 | Web Share wrapper: shared vs cancelled share sheet (an AbortError is not a backup)                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | `reminder.test.ts`                 | backup reminder rule (14-day threshold, first-use clock, snooze) and its localStorage bookkeeping                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `instance.test.ts`                 | single-instance lock with fake Web Locks and BroadcastChannels: a new window gets the lock only after the running one's takeover handler and held work (recovery writes) finish, no held work may start afterwards, a takeover requested before the handler exists runs once it is registered, a third window that asks while the second is still queued (the first still flushing, or still draining held work) gets the lock from the second, with the fake's grant/release log showing one holder at a time |
@@ -49,6 +50,8 @@ mocks of the database. `fake-indexeddb` stands in for IndexedDB in persistence/b
 
 Sample data comes from `tests/helpers/sample.ts` (`seedSampleWorkouts`), which is also what
 `npm run make-fixture` writes to `tests/fixtures/generated/sample.fitnotes`.
+`tests/helpers/corrupt.ts` (`damageTableRootPage`) copies a database with one table's root page
+overwritten: header and schema intact, data pages damaged, the case `checkIntegrity` exists for.
 
 ## End-to-end tests (`tests/e2e/smoke.spec.ts`)
 
@@ -66,7 +69,10 @@ The journeys that matter for a local-first app:
 5. two windows: the second takes the database over from a running first one, and from one stuck on
    the Recovery screen; three windows: with the first window's IndexedDB opens held back by the
    test so its handover stays in flight, a third window opened while the second is still queued
-   gets the database (and the first window's set) after the second.
+   gets the database (and the first window's set) after the second,
+6. a stored database whose data pages are damaged behind an intact header reaches the Recovery
+   screen instead of a blank app, and restoring the "Before restore" snapshot from there brings the
+   earlier set back.
 
 ## Visual checks
 

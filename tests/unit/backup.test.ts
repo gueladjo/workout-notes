@@ -1,6 +1,6 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import 'fake-indexeddb/auto';
-import { loadSqlJs, type SqlJsStatic } from '../../src/db/sqlite';
+import { loadSqlJs, scalar, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
 import {
@@ -12,7 +12,15 @@ import {
   summarize,
 } from '../../src/backup/fitnotes';
 import { seedSampleWorkouts } from '../helpers/sample';
-import { listSnapshots, readBlob, writeBlob, saveSnapshot, MAX_SNAPSHOTS } from '../../src/db/persistence';
+import { damageTableRootPage } from '../helpers/corrupt';
+import {
+  listSnapshots,
+  readBlob,
+  writeBlob,
+  saveSnapshot,
+  MAIN_KEY,
+  MAX_SNAPSHOTS,
+} from '../../src/db/persistence';
 import { workoutCsv } from '../../src/backup/csv';
 import { ExerciseWeightUnit } from '../../src/db/constants';
 
@@ -66,6 +74,61 @@ describe('backup round trip', () => {
     expect(
       snapBytes && new AppDatabase(new SQL.Database(snapBytes)).scalar('SELECT COUNT(*) FROM training_log'),
     ).toBe(0);
+  });
+
+  it('rejects a damaged backup before touching the live database or its snapshots', async () => {
+    const source = createEmptyDatabase(SQL);
+    seedSampleWorkouts(source);
+    // Header, schema page and required tables intact: only the sets' data page is damaged.
+    const damaged = damageTableRootPage(SQL, source.export(), 'training_log');
+    const untouched = new Uint8Array(damaged);
+    expect(() => openBackup(SQL, damaged)).toThrow(BackupError);
+    expect(() => openBackup(SQL, damaged)).toThrow(/damaged/);
+    expect(damaged).toEqual(untouched);
+
+    const live = createEmptyDatabase(SQL);
+    seedSampleWorkouts(live);
+    const app = new AppDatabase(live, { persist: (bytes) => writeBlob(MAIN_KEY, bytes, 'live database') });
+    app.changed();
+    await app.flush();
+    const storedBefore = await readBlob(MAIN_KEY);
+    const snapshotsBefore = await listSnapshots();
+    await expect(restoreBackup(app, SQL, damaged)).rejects.toThrow(BackupError);
+    expect(app.scalar('SELECT COUNT(*) FROM training_log')).toBe(10);
+    expect(app.hasUnsavedChanges).toBe(false);
+    expect(await readBlob(MAIN_KEY)).toEqual(storedBefore);
+    expect(await listSnapshots()).toEqual(snapshotsBefore);
+  });
+
+  it('still opens and reconciles legacy-shaped and newer backups', () => {
+    const legacy = new SQL.Database();
+    legacy.run('CREATE TABLE Category(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL)');
+    legacy.run(
+      'CREATE TABLE exercise(_id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, category_id INTEGER NOT NULL)',
+    );
+    legacy.run(
+      'CREATE TABLE training_log (_id INTEGER PRIMARY KEY AUTOINCREMENT, exercise_id INTEGER NOT NULL, date DATE NOT NULL, metric_weight INTEGER NOT NULL, reps INTEGER NOT NULL)',
+    );
+    legacy.run("INSERT INTO Category (name) VALUES ('Chest')");
+    legacy.run("INSERT INTO exercise (name, category_id) VALUES ('Bench', 1)");
+    legacy.run(
+      "INSERT INTO training_log (exercise_id, date, metric_weight, reps) VALUES (1, '2015-01-01', 100, 5)",
+    );
+    const upgraded = openBackup(SQL, legacy.export());
+    expect(upgraded.schema.addedColumns).toContain('training_log.distance');
+    expect(upgraded.schema.createdTables).toContain('Routine');
+    expect(scalar(upgraded.db, 'SELECT reps FROM training_log')).toBe(5);
+    upgraded.db.close();
+
+    const newer = createEmptyDatabase(SQL);
+    newer.run('PRAGMA user_version = 30');
+    newer.run('CREATE TABLE FutureTable (x INTEGER)');
+    newer.run('INSERT INTO FutureTable VALUES (1)');
+    const kept = openBackup(SQL, newer.export());
+    expect(kept.schema).toEqual({ createdTables: [], addedColumns: [], migrations: [] });
+    expect(scalar(kept.db, 'PRAGMA user_version')).toBe(30);
+    expect(scalar(kept.db, 'SELECT x FROM FutureTable')).toBe(1);
+    kept.db.close();
   });
 
   it('rejects non-SQLite and non-FitNotes files', () => {

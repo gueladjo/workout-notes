@@ -111,3 +111,35 @@ export function looksLikeSqlite(bytes: Uint8Array): boolean {
   }
   return true;
 }
+
+/**
+ * Walk every page of the database and return what SQLite finds wrong with it, or null when it is
+ * sound. Opening a database reads nothing and the schema checks read only page 1, so a damaged
+ * data page would otherwise surface as a failing query long after the file was accepted.
+ *
+ * `quick_check` rather than `integrity_check`: both visit every table and index b-tree page and
+ * report page-level damage ("database disk image is malformed"), which is what makes a database
+ * unusable. `integrity_check` additionally verifies that every index entry matches its table row
+ * and that UNIQUE constraints hold, which is far more work on a large file and only finds faults
+ * that give wrong query results rather than errors. This runs on every start-up and on every
+ * restore and rollback, on databases that may be tens of MB, so the cheaper walk is the right
+ * trade. The limit of 1 stops at the first problem (a damaged file does not need to be walked to
+ * the end to list faults nobody can repair here); on a sound file both forms do the same full walk.
+ * SQLite reports damage either as non-"ok" rows or, when it cannot even read a page, by throwing;
+ * both come back as text.
+ */
+export function checkIntegrity(db: Database): string | null {
+  let rows: Row[];
+  try {
+    rows = all(db, 'PRAGMA quick_check(1)');
+  } catch (err) {
+    return err instanceof Error ? err.message : String(err);
+  }
+  const report = rows
+    .map((row) => String(Object.values(row)[0]))
+    .join('; ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (report === 'ok') return null;
+  return report || 'the integrity check returned no result';
+}

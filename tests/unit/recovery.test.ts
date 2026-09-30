@@ -5,6 +5,7 @@ import { loadSqlJs, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
 import { seedSampleWorkouts } from '../helpers/sample';
+import { damageTableRootPage } from '../helpers/corrupt';
 import {
   listSnapshots,
   MAIN_KEY,
@@ -66,6 +67,21 @@ describe('start-up recovery', () => {
     expect(good).toEqual(copy);
   });
 
+  it('wraps a database whose data pages are damaged behind an intact header and schema', () => {
+    const damaged = damageTableRootPage(SQL, goodBytes(), 'training_log');
+    const untouched = new Uint8Array(damaged);
+    let caught: unknown;
+    try {
+      openStoredDatabase(SQL, damaged);
+    } catch (err) {
+      caught = err;
+    }
+    expect(caught).toBeInstanceOf(UnreadableDatabaseError);
+    expect((caught as UnreadableDatabaseError).bytes).toBe(damaged);
+    expect((caught as UnreadableDatabaseError).message).toMatch(/damaged/);
+    expect(damaged).toEqual(untouched);
+  });
+
   it('restores a snapshot over the unreadable database and keeps the damaged bytes', async () => {
     await writeBlob(MAIN_KEY, garbage, 'live database');
     const key = await saveSnapshot(goodBytes(), 'Before restore');
@@ -81,6 +97,21 @@ describe('start-up recovery', () => {
     const key = await saveSnapshot(new Uint8Array(200).fill(1), 'Before restore');
     await expect(recoverFromSnapshot(SQL, key, garbage)).rejects.toThrow(UnreadableDatabaseError);
     expect(await readBlob(MAIN_KEY)).toEqual(garbage);
+    expect((await listSnapshots()).map((s) => s.label)).toEqual(['Before restore']);
+  });
+
+  it('refuses a snapshot with damaged data pages, for recovery and for rollback alike', async () => {
+    const damaged = damageTableRootPage(SQL, goodBytes(), 'training_log');
+    await writeBlob(MAIN_KEY, garbage, 'live database');
+    const key = await saveSnapshot(damaged, 'Before restore');
+    await expect(recoverFromSnapshot(SQL, key, garbage)).rejects.toThrow(UnreadableDatabaseError);
+    expect(await readBlob(MAIN_KEY)).toEqual(garbage);
+    expect((await listSnapshots()).map((s) => s.label)).toEqual(['Before restore']);
+
+    const app = new AppDatabase(openStoredDatabase(SQL, goodBytes()));
+    await expect(rollbackToSnapshot(app, SQL, key)).rejects.toThrow(UnreadableDatabaseError);
+    expect(app.scalar('SELECT COUNT(*) FROM training_log')).toBe(10);
+    expect(app.hasUnsavedChanges).toBe(false);
     expect((await listSnapshots()).map((s) => s.label)).toEqual(['Before restore']);
   });
 

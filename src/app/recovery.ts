@@ -5,6 +5,7 @@
  * No browser-only imports, so the whole path is unit-tested in Node with fake-indexeddb.
  */
 import type { Database, SqlJsStatic } from '@/db/sqlite';
+import { checkIntegrity } from '@/db/sqlite';
 import type { AppDatabase } from '@/db/store';
 import { createEmptyDatabase, ensureSchema } from '@/db/schema';
 import { MAIN_KEY, readBlob, saveSnapshot, writeBlob } from '@/db/persistence';
@@ -30,13 +31,20 @@ export function defaultMetric(): boolean {
 }
 
 /**
- * Open stored bytes and reconcile the schema. Any failure (corrupt file, a table shadowed by a
- * view, ...) is wrapped in `UnreadableDatabaseError` carrying the bytes so the caller can recover.
+ * Open stored bytes, check them and reconcile the schema. Any failure (corrupt file, a damaged
+ * data page, a table shadowed by a view, ...) is wrapped in `UnreadableDatabaseError` carrying the
+ * bytes so the caller can recover. Snapshots are opened through here too (`recoverFromSnapshot`,
+ * `rollbackToSnapshot`), so a damaged snapshot is refused the same way.
  */
 export function openStoredDatabase(SQL: SqlJsStatic, bytes: Uint8Array): Database {
   let db: Database | undefined;
   try {
     db = new SQL.Database(new Uint8Array(bytes));
+    // Opening reads nothing and reconciling reads only the schema page: a damaged data page would
+    // otherwise be found by the first screen that queries it, past the point where the Recovery
+    // screen can be offered. Checked before reconciling, on the bytes as stored.
+    const damage = checkIntegrity(db);
+    if (damage) throw new Error(`The database is damaged: ${damage}`);
     ensureSchema(db);
     return db;
   } catch (err) {

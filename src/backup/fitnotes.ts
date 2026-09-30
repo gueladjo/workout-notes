@@ -4,7 +4,7 @@
  * A rollback snapshot of the current database is stored in IndexedDB before every restore.
  */
 import type { Database, SqlJsStatic } from '@/db/sqlite';
-import { looksLikeSqlite, scalar } from '@/db/sqlite';
+import { checkIntegrity, looksLikeSqlite, scalar } from '@/db/sqlite';
 import { ensureSchema, validateBackupDatabase, type SchemaReport } from '@/db/schema';
 import type { AppDatabase } from '@/db/store';
 import { saveSnapshot } from '@/db/persistence';
@@ -25,12 +25,14 @@ export function openBackup(SQL: SqlJsStatic, bytes: Uint8Array): { db: Database;
   if (!looksLikeSqlite(bytes)) {
     throw new BackupError('This file is not a FitNotes backup (it is not a SQLite database).');
   }
-  let db: Database;
+  let db: Database | undefined;
   try {
     db = new SQL.Database(new Uint8Array(bytes));
-    // Force a read so corrupt files fail here rather than later.
+    // sql.js opens lazily: read the schema page now so a file that is not a database at all fails
+    // here with a clear message. Only page 1 is read; the data pages are checked further down.
     scalar(db, "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table'");
   } catch (err) {
+    db?.close();
     throw new BackupError(
       `The file could not be opened as a database: ${err instanceof Error ? err.message : String(err)}`,
     );
@@ -39,6 +41,14 @@ export function openBackup(SQL: SqlJsStatic, bytes: Uint8Array): { db: Database;
   if (problem) {
     db.close();
     throw new BackupError(problem);
+  }
+  // Everything above reads only the header and the schema page. A damaged data page would
+  // otherwise be noticed by the first query that touches it, after the live database has been
+  // replaced and persisted; check the file as given, before reconciling it.
+  const damage = checkIntegrity(db);
+  if (damage) {
+    db.close();
+    throw new BackupError(`This backup is damaged and cannot be restored: ${damage}`);
   }
   const schema = ensureSchema(db);
   return { db, schema };

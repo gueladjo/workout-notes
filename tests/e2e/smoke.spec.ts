@@ -2,6 +2,8 @@ import { test, expect, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
+import { loadSqlJs } from '../../src/db/sqlite';
+import { damageTableRootPage } from '../helpers/corrupt';
 
 /**
  * The journeys that matter most for a local-first app: log a set and have it survive a reload,
@@ -891,6 +893,53 @@ test('a window on the Recovery screen hands the database over to a new one', asy
   await expect(second.getByText('WorkoutNotes could not open its database')).toBeVisible({ timeout: 30_000 });
   await second.getByRole('button', { name: 'Start with an empty database' }).click();
   await expect(second.getByText('Start New Workout').first()).toBeVisible({ timeout: 30_000 });
+});
+
+test('a stored database with damaged data pages reaches the Recovery screen and a snapshot restores it', async ({
+  page,
+}) => {
+  await openApp(page);
+  // A set of our own, so the snapshot taken by the restore below is recognisably this data.
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  await expect(
+    page.getByTestId('set-list').getByRole('button', { name: 'Set 1: 100 kg × 5 reps' }),
+  ).toBeVisible();
+  // Restoring the fixture flushes that set and keeps it as the "Before restore" snapshot.
+  await restoreFixture(page);
+  // The fixture with its training_log root page overwritten: header and schema page are intact,
+  // so opening and reconciling succeed and only a walk of the data pages tells it is damaged.
+  const damaged = damageTableRootPage(await loadSqlJs(), readFileSync(FIXTURE), 'training_log');
+  await page.evaluate(
+    (base64) =>
+      new Promise<void>((resolve, reject) => {
+        const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+        const req = indexedDB.open('workoutnotes', 1);
+        req.onerror = () => reject(req.error);
+        req.onsuccess = () => {
+          const tx = req.result.transaction('blobs', 'readwrite');
+          tx.objectStore('blobs').put(bytes, 'main');
+          tx.onerror = () => reject(tx.error);
+          tx.oncomplete = () => {
+            req.result.close();
+            resolve();
+          };
+        };
+      }),
+    Buffer.from(damaged).toString('base64'),
+  );
+  // Leaving the settings route: a URL without the fragment is a full navigation, so the app boots again.
+  await page.goto('/');
+  await expect(page.getByText('WorkoutNotes could not open its database')).toBeVisible({ timeout: 30_000 });
+  await expect(page.getByText(/^The database is damaged/)).toBeVisible();
+  await page.getByRole('button', { name: /^Restore snapshot: Before restore/ }).click();
+  await expect(page.getByRole('button', { name: 'Flat Barbell Bench Press 100 kg × 5 reps' })).toBeVisible({
+    timeout: 30_000,
+  });
 });
 
 test('ships a Content Security Policy that the app runs cleanly under', async ({ page }) => {
