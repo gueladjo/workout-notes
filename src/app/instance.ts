@@ -4,14 +4,18 @@
  * The newest instance wins. On start an instance listens on a BroadcastChannel, asks any running
  * instance (one `release` message) to save and stop, then queues for the Web Lock that instance
  * holds. The holder runs its takeover handler (a final flush), waits for its held work and releases
- * the lock; it shows a "use it here" screen instead of the app. Any `release` comes from a newer
- * instance, so one received while still queued for the lock is kept: once this instance holds the
- * lock and has a handler it hands over in turn, and the newest instance gets through however many
- * start-ups overlap. Browsers without both APIs get no guard, as before.
+ * the lock; it shows a "use it here" screen instead of the app. Only the holder acts on a request.
+ * An instance still queued for the lock ignores what it hears, because the lock's queue, not the
+ * message, says which instance is newer (two windows starting together would otherwise hand over
+ * to each other, and one closed before its turn would be handed over to). Instead each new holder
+ * announces itself (`acquired`) and every instance still queued asks again, so the lock moves on
+ * to the next in line and the newest instance gets through however many start-ups overlap.
+ * Browsers without both APIs get no guard, as before.
  */
 const LOCK_NAME = 'workoutnotes:database';
 const CHANNEL_NAME = 'workoutnotes:instance';
 const RELEASE = 'release';
+const ACQUIRED = 'acquired';
 /** How long a lock request may pend before the caller is told another instance is still saving. */
 const WAITING_AFTER_MS = 300;
 
@@ -21,7 +25,7 @@ export interface InstanceLock {
   /**
    * Register what to do when another instance asks to take over. The handler runs (typically a
    * final flush), then the lock is released so the other instance can start. A request that
-   * arrived earlier (even before this instance held the lock) runs the handler right away.
+   * arrived earlier (since this instance took the lock) runs the handler right away.
    */
   onTakeover(handler: () => Promise<void>): void;
   /**
@@ -71,11 +75,12 @@ function acquire(onWaiting: () => void): Promise<InstanceLock> {
   if (!instanceLockSupported()) return Promise.resolve({ onTakeover: () => {}, released: false });
   const channel = new BroadcastChannel(CHANNEL_NAME);
   let handler: (() => Promise<void>) | null = null;
+  let holding = false;
   let requested = false;
   let release = () => {};
   const run = () => {
-    // The handler only exists once the lock is held (it is registered through the resolved lock),
-    // so a request received while still queued waits here until then.
+    // The handler is registered through the resolved lock, so a request that arrives before that
+    // waits here until it is.
     if (released || !handler) return;
     released = true;
     channel.close();
@@ -85,18 +90,26 @@ function acquire(onWaiting: () => void): Promise<InstanceLock> {
       .then(() => Promise.all(holds))
       .then(() => release());
   };
-  // Listening before asking and before queueing: a request that arrives while this instance is
-  // still waiting for the lock comes from a newer one and must not be lost.
+  // Listening before asking and before queueing, so that the announcement of a new holder cannot
+  // be missed while this instance is queued.
   channel.onmessage = (e: MessageEvent<unknown>) => {
-    if (e.data !== RELEASE) return;
-    requested = true;
-    run();
+    if (e.data === RELEASE) {
+      // A request heard while queued may come from an instance ahead of or behind this one in the
+      // lock's queue; whoever is still waiting asks again once this instance holds the lock.
+      if (!holding) return;
+      requested = true;
+      run();
+    } else if (e.data === ACQUIRED && !holding) {
+      channel.postMessage(RELEASE);
+    }
   };
   channel.postMessage(RELEASE);
   return new Promise<InstanceLock>((resolve) => {
     const waitingTimer = setTimeout(onWaiting, WAITING_AFTER_MS);
     void navigator.locks.request(LOCK_NAME, () => {
       clearTimeout(waitingTimer);
+      holding = true;
+      channel.postMessage(ACQUIRED);
       // Holding the lock = keeping this promise pending; releasing = resolving it.
       return new Promise<void>((r) => {
         release = r;

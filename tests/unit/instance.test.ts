@@ -3,8 +3,9 @@ import type { InstanceLock } from '../../src/app/instance';
 
 /**
  * Fakes for the two browser APIs the lock uses: a LockManager that grants one holder at a time in
- * request order, and BroadcastChannels that deliver to every other channel of the same name on a
- * later task. Each "window" is a fresh copy of the module, whose lock is cached per module.
+ * request order, and BroadcastChannels that deliver on a later task to every other channel of the
+ * same name open by then (as with a browser's broker, a channel opened while the message was in
+ * flight hears it). Each "window" is a fresh copy of the module, whose lock is cached per module.
  */
 class FakeLocks {
   private held = false;
@@ -38,9 +39,11 @@ class FakeChannel {
     channels.get(name)!.add(this);
   }
   postMessage(data: unknown): void {
-    for (const ch of channels.get(this.name) ?? []) {
-      if (ch !== this) setTimeout(() => ch.onmessage?.({ data }), 0);
-    }
+    setTimeout(() => {
+      for (const ch of channels.get(this.name) ?? []) {
+        if (ch !== this) ch.onmessage?.({ data });
+      }
+    }, 0);
   }
   close(): void {
     channels.get(this.name)?.delete(this);
@@ -199,6 +202,70 @@ describe('instance lock', () => {
       'lock granted',
       'c acquired',
     ]);
+  });
+
+  it('leaves the later of two windows that start together running, not neither', async () => {
+    const events = locks.log;
+    const first = await windowModule();
+    const second = await windowModule();
+    // Both ask before either has heard the other, so each hears the other's request while queued.
+    const a = await first.acquireInstanceLock(() => {});
+    const b = second.acquireInstanceLock(() => {});
+    a.onTakeover(async () => {
+      events.push('a flushed');
+    });
+    await tick();
+    const lockB = await b;
+    lockB.onTakeover(async () => {
+      events.push('b flushed');
+    });
+    await tick();
+    expect(a.released).toBe(true);
+    expect(lockB.released).toBe(false);
+    await expect(second.holdInstanceLock(async () => 1)).resolves.toBe(1);
+    expect(events).toEqual(['lock granted', 'a flushed', 'lock released', 'lock granted']);
+  });
+
+  it('does not hand over to a window that asked and was closed before its turn', async () => {
+    const events = locks.log;
+    const first = await windowModule();
+    const a = await first.acquireInstanceLock(() => {});
+    let finishFlush = () => {};
+    a.onTakeover(
+      () =>
+        new Promise<void>((resolve) => {
+          finishFlush = () => {
+            events.push('a flushed');
+            resolve();
+          };
+        }),
+    );
+    const second = await windowModule();
+    let b: InstanceLock | null = null;
+    void second
+      .acquireInstanceLock(() => {})
+      .then((lock) => {
+        b = lock;
+        events.push('b acquired');
+      });
+    await tick();
+    expect(a.released).toBe(true);
+    // A third window asks while the second is queued and is closed again before the lock reaches
+    // it: the browser drops its lock request, so here it never queues, and its channel goes.
+    const third = new FakeChannel('workoutnotes:instance');
+    third.postMessage('release');
+    await tick();
+    third.close();
+    finishFlush();
+    await tick();
+    expect(b).not.toBeNull();
+    b!.onTakeover(async () => {
+      events.push('b flushed');
+    });
+    await tick();
+    expect(b!.released).toBe(false);
+    await expect(second.holdInstanceLock(async () => 1)).resolves.toBe(1);
+    expect(events).toEqual(['lock granted', 'a flushed', 'lock released', 'lock granted', 'b acquired']);
   });
 
   it('lets a third window in only after the first has drained its held work', async () => {
