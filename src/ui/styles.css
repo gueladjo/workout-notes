@@ -707,6 +707,12 @@ h4 {
   border-bottom: 2px solid var(--color-accent);
 }
 
+/* An hh / mm / ss box on the Track tab holding text that is not a whole number (see `.input[aria-invalid]`). */
+.numfield__input[aria-invalid='true'],
+.numfield__input[aria-invalid='true']:focus {
+  border-bottom-color: var(--color-danger);
+}
+
 .numfield__label {
   display: flex;
   align-items: center;
