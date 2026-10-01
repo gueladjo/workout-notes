@@ -20,6 +20,7 @@ export function NumberField({
   placeholder,
   name,
   invalid,
+  autoFocus,
 }: {
   label: string;
   value: string;
@@ -31,6 +32,7 @@ export function NumberField({
   placeholder?: string;
   name?: string;
   invalid?: boolean;
+  autoFocus?: boolean;
 }) {
   const adjust = (delta: number) => {
     const current = value.trim() === '' ? 0 : parseDecimal(value);
@@ -55,6 +57,7 @@ export function NumberField({
           placeholder={placeholder}
           aria-label={label}
           aria-invalid={invalid || undefined}
+          autoFocus={autoFocus}
           onChange={(e) => onChange(e.target.value)}
           onFocus={(e) => e.target.select()}
         />

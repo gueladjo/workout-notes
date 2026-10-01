@@ -6,7 +6,7 @@ import { getExercise } from '@/db/repo/exercises';
 import { allSetsForExercise, getWorkout } from '@/db/repo/workouts';
 import { createGoal, deleteGoal, listGoals, updateGoal, type GoalInput } from '@/db/repo/goals';
 import { updateSettings } from '@/db/repo/settings';
-import { GOAL_TYPE_LABELS, GoalType, exerciseTypeHas } from '@/db/constants';
+import { GOAL_TYPE_LABELS, GoalType, exerciseTypeHas, type DistanceUnitId } from '@/db/constants';
 import type { ExerciseWithCategory, Goal, TrainingSet } from '@/db/types';
 import { actualRepMaxes, estimatedRepMaxes } from '@/domain/records';
 import { exerciseStats, goalProgress, goalTypesForExercise } from '@/domain/stats';
@@ -40,7 +40,7 @@ import { TopBar } from '@/ui/components/TopBar';
 import { Tabs } from '@/ui/components/Tabs';
 import { Button, IconButton } from '@/ui/components/Button';
 import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
-import { DurationInputs } from '@/ui/components/DurationInputs';
+import { NumberField, DistanceField, DurationField } from '@/ui/components/NumberField';
 import { WorkoutView } from '@/ui/components/WorkoutView';
 import { EmptyState } from '@/ui/components/EmptyState';
 import { Icon } from '@/ui/components/Icon';
@@ -551,30 +551,34 @@ function GoalEditor({
   const toast = useToast();
   const wu = weightUnitFor(exercise, settings);
   const types = goalTypesForExercise(exercise.typeId);
-  // One unit for the field, its label and the saved row: the goal's own, so editing it after a
-  // change of unit system (or an imported goal in another unit) keeps the distance it had.
-  const du = resolveDistanceUnit(goal?.unit ?? 0, settings.metric);
   const [typeId, setTypeId] = useState<number>(types[0] ?? 0);
   const [weight, setWeight] = useState('');
   const [reps, setReps] = useState('');
   const [distance, setDistance] = useState('');
+  // The distance field's unit, its label's and the saved row's: the goal's own to start with, so
+  // editing it after a change of unit system (or an imported goal in another unit) keeps the
+  // distance it had; the selector beside the value changes it.
+  const [du, setDu] = useState<DistanceUnitId>(() => resolveDistanceUnit(0, settings.metric));
   const [time, setTime] = useState<DurationParts>(EMPTY_DURATION);
   const [title, setTitle] = useState('');
   const [targetDate, setTargetDate] = useState('');
   const [startDate, setStartDate] = useState('');
   const [seen, setSeen] = useState(false);
-  // The weight and distance fields show rounded text; remember it so a field the user did not
-  // touch saves the stored value back exactly instead of its rounding.
-  const [shown, setShown] = useState({ weight: '', distance: '' });
+  // The weight and distance fields show rounded text; remember it (and the distance unit it was
+  // in) so a field the user did not touch saves the stored value back exactly instead of its
+  // rounding.
+  const [shown, setShown] = useState({ weight: '', distance: '', unit: 0 });
   if (open && !seen) {
     setSeen(true);
+    const unit = resolveDistanceUnit(goal?.unit ?? 0, settings.metric);
     const weightText = goal?.metricWeight ? fmt(kgToDisplay(goal.metricWeight, wu)) : '';
-    const distanceText = goal?.distanceMetres ? fmt(metresToDisplay(goal.distanceMetres, du)) : '';
-    setShown({ weight: weightText, distance: distanceText });
+    const distanceText = goal?.distanceMetres ? fmt(metresToDisplay(goal.distanceMetres, unit)) : '';
+    setShown({ weight: weightText, distance: distanceText, unit });
     setTypeId(goal?.typeId ?? types[0] ?? 0);
     setWeight(weightText);
     setReps(goal?.reps ? String(goal.reps) : '');
     setDistance(distanceText);
+    setDu(unit);
     setTime(splitDuration(goal?.durationSeconds ?? 0));
     setTitle(goal?.title ?? '');
     setTargetDate(goal?.targetDate ?? '');
@@ -603,6 +607,8 @@ function GoalEditor({
   const needsTime = [GoalType.MAX_DURATION, GoalType.TOTAL_DURATION, GoalType.MAX_WORKOUT_DURATION].includes(
     typeId as never,
   );
+  // A box holding text that is not a positive number is marked: it will be refused on Save.
+  const invalidTarget = (text: string) => text.trim() !== '' && !(parseDecimal(text) > 0);
   const save = () => {
     // A goal is its target: each field the type needs must hold a positive number. Anything else is
     // refused like a malformed set on the Track tab, instead of a typo or an emptied field saving
@@ -632,7 +638,7 @@ function GoalEditor({
       reps: needsReps ? r : 0,
       distanceMetres: !needsDistance
         ? 0
-        : goal && distance === shown.distance
+        : goal && distance === shown.distance && du === shown.unit
           ? goal.distanceMetres
           : displayToMetres(d, du),
       durationSeconds: needsTime ? t : 0,
@@ -648,6 +654,7 @@ function GoalEditor({
       open={open}
       onClose={onClose}
       title={goal ? 'Edit Goal' : 'New Goal'}
+      flush
       actions={
         <>
           {goal && (
@@ -662,80 +669,80 @@ function GoalEditor({
         </>
       }
     >
-      <label className="field">
-        <span className="field__label">Type</span>
-        <select className="select" value={typeId} onChange={(e) => setTypeId(Number(e.target.value))}>
-          {types.map((t) => (
-            <option key={t} value={t}>
-              {GOAL_TYPE_LABELS[t as keyof typeof GOAL_TYPE_LABELS]}
-            </option>
-          ))}
-        </select>
-      </label>
-      <div className="grid-2">
+      <div className="dialog-fields">
+        <label>
+          <span className="dialog-fields__label">Type</span>
+          <select
+            className="dialog-fields__input"
+            value={typeId}
+            onChange={(e) => setTypeId(Number(e.target.value))}
+          >
+            {types.map((t) => (
+              <option key={t} value={t}>
+                {GOAL_TYPE_LABELS[t as keyof typeof GOAL_TYPE_LABELS]}
+              </option>
+            ))}
+          </select>
+        </label>
         {needsWeight && (
-          <label className="field">
-            <span className="field__label">Weight ({wu})</span>
-            <input
-              className="input"
-              inputMode="decimal"
-              value={weight}
-              onChange={(e) => setWeight(e.target.value)}
-            />
-          </label>
+          <NumberField
+            label={`Weight (${wu})`}
+            value={weight}
+            invalid={invalidTarget(weight)}
+            onChange={setWeight}
+            step={exercise.weightIncrement ?? settings.weightIncrement}
+          />
         )}
         {needsReps && (
-          <label className="field">
-            <span className="field__label">Reps</span>
-            <input
-              className="input"
-              inputMode="numeric"
-              value={reps}
-              onChange={(e) => setReps(e.target.value)}
-            />
-          </label>
+          <NumberField
+            label="Reps"
+            value={reps}
+            invalid={invalidTarget(reps)}
+            onChange={setReps}
+            step={1}
+            decimals={0}
+            inputMode="numeric"
+          />
         )}
         {needsDistance && (
-          <label className="field">
-            <span className="field__label">Distance ({distanceUnitShort(du)})</span>
+          <DistanceField
+            value={distance}
+            unit={du}
+            invalid={invalidTarget(distance)}
+            onChange={(value, unit) => {
+              setDistance(value);
+              setDu(resolveDistanceUnit(unit, settings.metric));
+            }}
+          />
+        )}
+        {needsTime && <DurationField value={time} onChange={setTime} />}
+        <input
+          className="dialog-fields__input"
+          value={title}
+          placeholder="Title (optional)"
+          aria-label="Title (optional)"
+          onChange={(e) => setTitle(e.target.value)}
+        />
+        <div className="dialog-fields__row">
+          <label>
+            <span className="dialog-fields__label">Start date</span>
             <input
-              className="input"
-              inputMode="decimal"
-              value={distance}
-              onChange={(e) => setDistance(e.target.value)}
+              className="dialog-fields__input"
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
             />
           </label>
-        )}
-        {needsTime && (
-          <div className="field field--wide">
-            <span className="field__label">Time</span>
-            <DurationInputs value={time} onChange={setTime} className="duration" inputClassName="input" />
-          </div>
-        )}
-      </div>
-      <label className="field">
-        <span className="field__label">Title (optional)</span>
-        <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} />
-      </label>
-      <div className="grid-2">
-        <label className="field">
-          <span className="field__label">Start date</span>
-          <input
-            className="input"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field__label">Target date</span>
-          <input
-            className="input"
-            type="date"
-            value={targetDate}
-            onChange={(e) => setTargetDate(e.target.value)}
-          />
-        </label>
+          <label>
+            <span className="dialog-fields__label">Target date</span>
+            <input
+              className="dialog-fields__input"
+              type="date"
+              value={targetDate}
+              onChange={(e) => setTargetDate(e.target.value)}
+            />
+          </label>
+        </div>
       </div>
     </Dialog>
   );

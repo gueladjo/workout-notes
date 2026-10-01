@@ -63,7 +63,7 @@ export function SetFields({
   const draft = (p: Partial<SetDraft>) => onChange({ ...edit, draft: { ...edit.draft, ...p } });
   const invalid = (text: string) => Number.isNaN(parseSetField(text));
   return (
-    <div className="set-dialog__fields">
+    <div className="dialog-fields">
       {fields.includes('weight') && (
         <NumberField
           label={`Weight (${wu})`}
@@ -97,7 +97,7 @@ export function SetFields({
       )}
       {notes && (
         <input
-          className="set-dialog__notes"
+          className="dialog-fields__input"
           value={edit.notes}
           placeholder="Notes …"
           aria-label="Notes"

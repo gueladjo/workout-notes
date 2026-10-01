@@ -38,6 +38,7 @@ import { Tabs } from '@/ui/components/Tabs';
 import { Button, IconButton } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
 import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
+import { NumberField } from '@/ui/components/NumberField';
 import { LineChart } from '@/ui/components/LineChart';
 import { MenuButton } from '@/ui/components/Menu';
 import { EmptyState } from '@/ui/components/EmptyState';
@@ -190,6 +191,7 @@ function RecordDialog({
       open={open}
       onClose={onClose}
       title={measurement.name}
+      flush
       actions={
         <>
           {record && (
@@ -210,42 +212,44 @@ function RecordDialog({
         </>
       }
     >
-      <div className="grid-2">
-        <label className="field">
-          <span className="field__label">Date</span>
-          <input
-            className="input"
-            type="date"
-            value={date}
-            onChange={(e) => e.target.value && setDate(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field__label">Time</span>
-          <input
-            className="input"
-            type="time"
-            value={time.slice(0, 5)}
-            onChange={(e) => e.target.value && setTime(e.target.value)}
-          />
-        </label>
-      </div>
-      <label className="field">
-        <span className="field__label">Value ({measurement.unitShort || 'no unit'})</span>
-        <input
-          className="input"
-          inputMode="decimal"
+      <div className="dialog-fields">
+        <div className="dialog-fields__row">
+          <label>
+            <span className="dialog-fields__label">Date</span>
+            <input
+              className="dialog-fields__input"
+              type="date"
+              value={date}
+              onChange={(e) => e.target.value && setDate(e.target.value)}
+            />
+          </label>
+          <label>
+            <span className="dialog-fields__label">Time</span>
+            <input
+              className="dialog-fields__input"
+              type="time"
+              value={time.slice(0, 5)}
+              onChange={(e) => e.target.value && setTime(e.target.value)}
+            />
+          </label>
+        </div>
+        <NumberField
+          label={`Value (${measurement.unitShort || 'no unit'})`}
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          invalid={value.trim() !== '' && !Number.isFinite(parseDecimal(value))}
+          onChange={setValue}
+          step={0.1}
+          decimals={3}
           autoFocus
-          onFocus={(e) => e.target.select()}
-          style={{ fontSize: 22, textAlign: 'center' }}
         />
-      </label>
-      <label className="field">
-        <span className="field__label">Comment</span>
-        <input className="input" value={comment} onChange={(e) => setComment(e.target.value)} />
-      </label>
+        <input
+          className="dialog-fields__input"
+          value={comment}
+          placeholder="Comment …"
+          aria-label="Comment"
+          onChange={(e) => setComment(e.target.value)}
+        />
+      </div>
     </Dialog>
   );
 }

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { loadSqlJs } from '../../src/db/sqlite';
+import { DistanceUnit } from '../../src/db/constants';
 import { damageTableRootPage } from '../helpers/corrupt';
 
 /**
@@ -467,12 +468,12 @@ test('a goal refuses an invalid target instead of saving 0', async ({ page }) =>
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status')).toHaveText('Please enter valid values');
   await expect(dialog).toBeVisible();
-  await dialog.getByLabel('Weight (kg)').fill('100');
+  await dialog.getByRole('textbox', { name: 'Weight (kg)' }).fill('100');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Max Weight: 100 kg')).toBeVisible();
   // A typo on an existing goal keeps its target instead of overwriting it with 0.
   await page.getByRole('button', { name: /Max Weight: 100 kg/ }).click();
-  await dialog.getByLabel('Weight (kg)').fill('1o0');
+  await dialog.getByRole('textbox', { name: 'Weight (kg)' }).fill('1o0');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByRole('status')).toHaveText('Please enter valid values');
   await expect(dialog).toBeVisible();
@@ -815,7 +816,8 @@ test('a distance goal keeps its distance when saved after a change of unit syste
   await page.getByRole('button', { name: 'Add goal' }).click();
   const dialog = page.getByRole('dialog');
   await dialog.getByLabel('Type').selectOption({ label: 'Max Distance' });
-  await dialog.getByLabel('Distance (mi)').fill('1');
+  await expect(dialog.getByLabel('Distance unit')).toHaveValue(String(DistanceUnit.MILES));
+  await dialog.getByRole('textbox', { name: 'Distance', exact: true }).fill('1');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Max Distance: 1 mi')).toBeVisible();
   // Metric now; opening the goal shows it in its own unit and saving it changes nothing.
@@ -823,7 +825,8 @@ test('a distance goal keeps its distance when saved after a change of unit syste
   await page.getByLabel('Unit System').selectOption({ label: 'Metric (kg)' });
   await page.goto(goals);
   await page.getByRole('button', { name: /Max Distance: 1 mi/ }).click();
-  await expect(dialog.getByLabel('Distance (mi)')).toHaveValue('1');
+  await expect(dialog.getByRole('textbox', { name: 'Distance', exact: true })).toHaveValue('1');
+  await expect(dialog.getByLabel('Distance unit')).toHaveValue(String(DistanceUnit.MILES));
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(page.getByText('Max Distance: 1 mi')).toBeVisible();
   await page.waitForTimeout(1200);

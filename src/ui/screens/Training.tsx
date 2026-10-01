@@ -497,6 +497,7 @@ function TrackTab({
         open={show1rm}
         onClose={() => setShow1rm(false)}
         weightUnit={wu}
+        weightStep={increment}
         initialWeight={values.weight}
         initialReps={values.reps}
       />

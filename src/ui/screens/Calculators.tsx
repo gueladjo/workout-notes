@@ -1,21 +1,27 @@
 import { useState } from 'react';
 import { Dialog } from '@/ui/components/Dialog';
 import { Button } from '@/ui/components/Button';
+import { NumberField } from '@/ui/components/NumberField';
 import { estimatedOneRepMax, weightForReps } from '@/domain/records';
 import { fmt } from '@/domain/units';
 import { parseDecimal } from '@/ui/format';
 
-/** 1RM Calculator: Brzycki estimate for a weight/reps pair and the projected 2RM..15RM table. */
+/**
+ * 1RM Calculator: Brzycki estimate for a weight/reps pair (the Track tab's -/value/+ fields, the
+ * weight stepping by `weightStep`) and the projected 2RM..15RM table.
+ */
 export function OneRepMaxDialog({
   open,
   onClose,
   weightUnit,
+  weightStep,
   initialWeight,
   initialReps,
 }: {
   open: boolean;
   onClose: () => void;
   weightUnit: string;
+  weightStep: number;
   initialWeight: string;
   initialReps: string;
 }) {
@@ -36,40 +42,23 @@ export function OneRepMaxDialog({
       open={open}
       onClose={onClose}
       title="1RM Calculator"
+      flush
       actions={
         <Button variant="text" onClick={onClose}>
           Close
         </Button>
       }
     >
-      <div className="grid-2">
-        <label className="field">
-          <span className="field__label">Weight ({weightUnit})</span>
-          <input
-            className="input"
-            inputMode="decimal"
-            value={weight}
-            onChange={(e) => setWeight(e.target.value)}
-          />
-        </label>
-        <label className="field">
-          <span className="field__label">Reps</span>
-          <input
-            className="input"
-            inputMode="numeric"
-            value={reps}
-            onChange={(e) => setReps(e.target.value)}
-          />
-        </label>
-      </div>
-      <div className="point-details__body" style={{ marginBottom: 12 }}>
-        <div className="muted" style={{ fontSize: 12 }}>
-          Estimated 1RM (Brzycki)
+      <div className="dialog-fields">
+        <NumberField label={`Weight (${weightUnit})`} value={weight} onChange={setWeight} step={weightStep} />
+        <NumberField label="Reps" value={reps} onChange={setReps} step={1} decimals={0} inputMode="numeric" />
+        <div className="dialog-fields__result">
+          <div className="set-dialog__label">Estimated 1RM (Brzycki)</div>
+          <div className="point-details__value">{orm > 0 ? `${fmt(orm, 1)} ${weightUnit}` : '—'}</div>
         </div>
-        <div className="point-details__value">{orm > 0 ? `${fmt(orm, 1)} ${weightUnit}` : '—'}</div>
       </div>
       {orm > 0 && (
-        <div className="list" style={{ boxShadow: 'none', border: '1px solid var(--color-border)' }}>
+        <div className="set-dialog__menu">
           {Array.from({ length: 14 }, (_, i) => i + 2).map((n) => (
             <div key={n} className="stat-row">
               <span>{n}RM</span>
