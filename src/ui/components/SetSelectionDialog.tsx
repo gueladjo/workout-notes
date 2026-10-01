@@ -3,20 +3,11 @@ import { Dialog } from './Dialog';
 import { Button } from './Button';
 import { Checkbox } from './Toggle';
 import { useToast } from './Toast';
+import { SetFields, readSetEdit, setEditFrom, type SetEdit } from './SetFields';
 import { useSettings } from '@/app/hooks';
-import { exerciseTypeFields, type ExerciseTypeId } from '@/db/constants';
 import type { ExerciseWithCategory } from '@/db/types';
-import {
-  formatSet,
-  parseSetField,
-  readSetDraft,
-  setDraftFrom,
-  weightUnitFor,
-  type SetDraft,
-  type StoredSet,
-} from '@/ui/format';
-import { resolveDistanceUnit, type WeightUnit } from '@/domain/units';
-import { DurationInputs } from './DurationInputs';
+import { formatSet, weightUnitFor } from '@/ui/format';
+import type { WeightUnit } from '@/domain/units';
 
 export interface SelectableSet {
   key: string;
@@ -35,25 +26,27 @@ export interface SelectableExercise {
 }
 
 /**
- * The set a draft of the shared editor saves over `set` (key and meta kept), or null when a field
- * of the draft is invalid; without a draft the set is saved as it is. Every caller of the editor
- * must go through this before writing, so what is typed and what is saved never diverge.
+ * The set an edit (`SetFields`) saves over `set` (key and meta kept), or null when a box of the
+ * edit must be refused; without an edit the set is saved as it is. Every caller of the fields must
+ * go through this before writing, so what is typed and what is saved never diverge.
  */
-export function setFromDraft(
+export function setFromEdit(
   set: SelectableSet,
-  draft: SetDraft | undefined,
+  edit: SetEdit | undefined,
   weightUnit: WeightUnit,
   metric: boolean,
 ): SelectableSet | null {
-  if (!draft) return set;
-  const values = readSetDraft(set, draft, weightUnit, resolveDistanceUnit(set.unit, metric));
+  if (!edit) return set;
+  const values = readSetEdit(set, edit, weightUnit, metric);
   return values && { ...set, ...values };
 }
 
 /**
- * "Copy Workout" / "Log All" style dialog: choose exercises and sets with checkboxes, optionally
- * edit the values, then confirm. Returns the selected (possibly edited) sets; an invalid edit of a
- * selected set is refused with the Track tab's toast and nothing is confirmed.
+ * "Copy Workout" / "Log All" style dialog: choose exercises and sets with checkboxes (FitNotes'
+ * list of "60 kg × 8 reps" rows), or with Edit, one "SET n" section per set with its boxes
+ * (`SetFields`) to change the values first, then confirm. Returns the selected (possibly edited)
+ * sets; an invalid edit of a selected set is refused with the Track tab's toast and nothing is
+ * confirmed.
  */
 export function SetSelectionDialog({
   open,
@@ -73,7 +66,7 @@ export function SetSelectionDialog({
   const settings = useSettings();
   const toast = useToast();
   const [checked, setChecked] = useState<Set<string>>(new Set());
-  const [drafts, setDrafts] = useState<Map<string, SetDraft>>(new Map());
+  const [edits, setEdits] = useState<Map<string, SetEdit>>(new Map());
   const [editing, setEditing] = useState(false);
   const allKeys = useMemo(() => exercises.flatMap((e) => e.sets.map((s) => s.key)), [exercises]);
   // Reset the selection each time the dialog opens (state adjustment during render, per React docs).
@@ -81,7 +74,7 @@ export function SetSelectionDialog({
   if (open && !seenOpen) {
     setSeenOpen(true);
     setChecked(new Set(allKeys));
-    setDrafts(new Map());
+    setEdits(new Map());
     setEditing(false);
   }
   if (!open && seenOpen) setSeenOpen(false);
@@ -109,7 +102,7 @@ export function SetSelectionDialog({
       const wu = weightUnitFor(ex.exercise, settings);
       for (const s of ex.sets) {
         if (!checked.has(s.key)) continue;
-        const set = setFromDraft(s, drafts.get(s.key), wu, settings.metric);
+        const set = setFromEdit(s, edits.get(s.key), wu, settings.metric);
         if (!set) {
           toast('Please enter valid values');
           setEditing(true);
@@ -161,34 +154,39 @@ export function SetSelectionDialog({
                 <div className="list__primary">{ex.exercise.name}</div>
               </div>
             </button>
-            {ex.sets.map((s) => {
-              const draft = drafts.get(s.key);
-              const cur = setFromDraft(s, draft, wu, settings.metric);
-              return (
+            {ex.sets.map((s, i) => {
+              const edit = edits.get(s.key);
+              const cur = setFromEdit(s, edit, wu, settings.metric);
+              return editing ? (
+                <section key={s.key} className="set-dialog__section">
+                  <div className="set-dialog__section-head">
+                    <Checkbox
+                      checked={checked.has(s.key)}
+                      onChange={() => toggleSet(s.key)}
+                      label={`Include set ${i + 1}`}
+                    />
+                    <span className="set-dialog__section-name">Set {i + 1}</span>
+                  </div>
+                  <SetFields
+                    exercise={ex.exercise}
+                    edit={edit ?? setEditFrom(s, wu, settings.metric)}
+                    onChange={(e) => setEdits((m) => new Map(m).set(s.key, e))}
+                  />
+                </section>
+              ) : (
                 <div key={s.key} className="set-row" style={{ paddingLeft: 40 }}>
                   <Checkbox
                     checked={checked.has(s.key)}
                     onChange={() => toggleSet(s.key)}
-                    label="Include set"
+                    label={`Include set ${i + 1}`}
                   />
-                  {editing ? (
-                    <SetEditor
-                      typeId={ex.exercise.typeId}
-                      set={s}
-                      draft={draft}
-                      weightUnit={wu}
-                      metric={settings.metric}
-                      onChange={(d) => setDrafts((m) => new Map(m).set(s.key, d))}
-                    />
-                  ) : (
-                    <button
-                      className="set-row__value"
-                      style={{ textAlign: 'left', color: cur ? undefined : 'var(--color-danger)' }}
-                      onClick={() => toggleSet(s.key)}
-                    >
-                      {cur ? formatSet(cur, ex.exercise.typeId, wu, settings) : 'Invalid values'}
-                    </button>
-                  )}
+                  <button
+                    className="set-row__value"
+                    style={{ textAlign: 'left', color: cur ? undefined : 'var(--color-danger)' }}
+                    onClick={() => toggleSet(s.key)}
+                  >
+                    {cur ? formatSet(cur, ex.exercise.typeId, wu, settings) : 'Invalid values'}
+                  </button>
                 </div>
               );
             })}
@@ -196,72 +194,5 @@ export function SetSelectionDialog({
         );
       })}
     </Dialog>
-  );
-}
-
-/**
- * Compact inline editor for a set's values in display units. The boxes show `draft`, or the stored
- * `set` until the user types; the owner keeps the draft and reads it with `readSetDraft()` /
- * `setFromDraft()` when saving. A box holding text that would be refused is marked invalid.
- */
-export function SetEditor({
-  typeId,
-  set,
-  draft,
-  weightUnit,
-  metric,
-  onChange,
-}: {
-  typeId: ExerciseTypeId;
-  set: StoredSet;
-  draft: SetDraft | undefined;
-  weightUnit: WeightUnit;
-  metric: boolean;
-  onChange: (next: SetDraft) => void;
-}) {
-  const fields = exerciseTypeFields(typeId);
-  const text = draft ?? setDraftFrom(set, weightUnit, resolveDistanceUnit(set.unit, metric));
-  const invalid = (value: string) => (Number.isNaN(parseSetField(value)) ? true : undefined);
-  return (
-    <div className="row set-editor">
-      {fields.includes('weight') && (
-        <input
-          className="input"
-          inputMode="decimal"
-          aria-label="Weight"
-          aria-invalid={invalid(text.weight)}
-          value={text.weight}
-          onChange={(e) => onChange({ ...text, weight: e.target.value })}
-        />
-      )}
-      {fields.includes('reps') && (
-        <input
-          className="input"
-          inputMode="numeric"
-          aria-label="Reps"
-          aria-invalid={invalid(text.reps)}
-          value={text.reps}
-          onChange={(e) => onChange({ ...text, reps: e.target.value })}
-        />
-      )}
-      {fields.includes('distance') && (
-        <input
-          className="input"
-          inputMode="decimal"
-          aria-label="Distance"
-          aria-invalid={invalid(text.distance)}
-          value={text.distance}
-          onChange={(e) => onChange({ ...text, distance: e.target.value })}
-        />
-      )}
-      {fields.includes('time') && (
-        <DurationInputs
-          value={text.time}
-          onChange={(time) => onChange({ ...text, time })}
-          className="duration duration--compact"
-          inputClassName="input"
-        />
-      )}
-    </div>
   );
 }

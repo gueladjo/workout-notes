@@ -41,25 +41,26 @@ accents over dark surfaces.
   (`{open && <XDialog open … />}`, as `GroupDialog`, `ExerciseFilterDialog`, `UnitDialog` and
   `DeleteHistoryDialog` are), or resets its fields on open with the `seen` pattern (`RecordDialog`,
   `GoalEditor`); a permanently mounted dialog would keep stale text from its previous opening.
-- The shared set editor (`SetEditor` and `SetSelectionDialog` in
-  `src/ui/components/SetSelectionDialog.tsx`, behind Copy Sets on the History tab,
-  Copy Workout on the Calendar, Log All and the predefined sets of a routine) follows the Track
-  tab's rules: the text is kept as typed until Save (`SetDraft`), blank is 0, a decimal comma is a
-  decimal point, an untouched field saves its stored value back exactly rather than its rounded
-  text, and a malformed, negative or non-finite value or an hh / mm / ss box that is not a whole
-  number is marked invalid (`aria-invalid`) and refused on Save with the "Please enter valid
-  values" toast, nothing written (`readSetDraft` in `src/ui/format.ts`, `setFromDraft` next to the
-  dialog).
+- Every set dialog is built from `SetFields` (`src/ui/components/SetFields.tsx`): the Track tab's
+  fields (`NumberField`, `DistanceField` and `DurationField` in `src/ui/components/NumberField.tsx`,
+  the weight stepping by the exercise's increment) and, for the History tab's Edit Set and Edit
+  Sets, a Notes box for the set comment. They follow the Track tab's rules: the text is kept as
+  typed until Save (`SetDraft`), blank is 0, a decimal comma is a decimal point, an untouched field
+  saves its stored value back exactly rather than its rounded text, and a malformed, negative or
+  non-finite value or an hh / mm / ss box that is not a whole number is marked invalid
+  (`aria-invalid`) and refused on Save with the "Please enter valid values" toast, nothing written
+  (`readSetDraft` in `src/ui/format.ts`, `readSetEdit` / `setFromEdit` next to the dialogs).
+- The shared set selection (`SetSelectionDialog` in `src/ui/components/SetSelectionDialog.tsx`,
+  behind Copy Sets on the History tab, Copy Workout on the Calendar and Log All on a routine day)
+  lists exercises and their sets with checkboxes as FitNotes does; Edit swaps the rows for one
+  "SET n" section per set with its fields to change the values first. A routine's predefined sets
+  (`PredefinedSetsDialog` in `src/ui/screens/Routines.tsx`) are the same sections with an X and
+  Add Set.
 - Edit Set and Edit Sets on the History tab (`EditSetDialog`, `EditSetsDialog` in
-  `src/ui/screens/HistoryTab.tsx`) are FitNotes' set dialogs: the Track tab's fields
-  (`NumberField`, `DistanceField` and `DurationField` in `src/ui/components/NumberField.tsx`, the
-  weight stepping by the exercise's increment) over a Notes box for the set comment (`SetFields`),
-  with Holo buttons. Edit Sets lists one "SET n" section per set of the day with an X that drops
-  the set; nothing is written until Save, which updates the sets touched and their notes and
-  deletes the dropped ones in one transaction (Cancel forgets it all). Both save through
-  `readSetDraft` like the shared set editor: an untouched field round-trips exactly, and a box
-  whose text would be refused is marked (`aria-invalid`) and stops the save with the toast, nothing
-  written. Edit Set's Delete removes the set at once, as the Track tab's Delete does.
+  `src/ui/screens/HistoryTab.tsx`) are FitNotes' set dialogs. Edit Sets lists one "SET n" section
+  per set of the day with an X that drops the set; nothing is written until Save, which updates
+  the sets touched and their notes and deletes the dropped ones in one transaction (Cancel forgets
+  it all). Edit Set's Delete removes the set at once, as the Track tab's Delete does.
 
 ## Deviations from FitNotes
 

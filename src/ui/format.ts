@@ -41,7 +41,7 @@ export type StoredSet = Pick<
   'metricWeight' | 'reps' | 'distanceMetres' | 'durationSeconds' | 'unit'
 >;
 
-/** The text in the boxes of the shared set editor (`SetEditor`), kept as typed until it is saved. */
+/** The text in the boxes of a set dialog (`SetFields`), kept as typed until it is saved. */
 export interface SetDraft {
   weight: string;
   reps: string;

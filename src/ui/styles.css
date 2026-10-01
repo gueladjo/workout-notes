@@ -771,31 +771,6 @@ h4 {
   text-align: center;
 }
 
-.duration--compact {
-  gap: 4px;
-}
-
-.duration--compact .input {
-  padding-left: 4px;
-  padding-right: 4px;
-}
-
-/* Inline set editor: every value box shares the row, the three time boxes together get two shares. */
-.set-editor {
-  flex: 1;
-  min-width: 0;
-  gap: 6px;
-}
-
-.set-editor > .input {
-  flex: 1 1 0;
-  min-width: 0;
-}
-
-.set-editor > .duration {
-  flex: 2 1 0;
-}
-
 .field--wide {
   grid-column: 1 / -1;
 }
@@ -1681,25 +1656,42 @@ h4 {
   padding: 10px 20px 8px;
 }
 
-/* Edit Sets: one "SET n" section per set, a grey band with the X that drops the set. */
+/* Edit Sets, Copy Sets, Log All, predefined sets: one "SET n" section per set under a grey band
+   holding the X that drops the set or the checkbox that includes it. */
 .set-dialog__section {
   border-bottom: 1px solid var(--color-divider);
 }
 
-.set-dialog__section:last-child {
+.set-dialog__section:last-of-type {
   border-bottom: none;
 }
 
 .set-dialog__section-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 10px;
+  min-height: 36px;
   padding: 2px 8px 2px 20px;
   background: var(--color-surface-2);
   font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
+}
+
+.set-dialog__section-name {
+  flex: 1;
+}
+
+.set-dialog__hint {
+  margin: 0;
+  padding: 10px 20px 4px;
+  font-size: 13px;
+}
+
+.set-dialog__add {
+  display: flex;
+  margin: 10px 20px 12px;
 }
 
 .set-dialog__fields .numfield__label {

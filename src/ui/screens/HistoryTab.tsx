@@ -6,17 +6,7 @@ import { copySets, deleteSet, exerciseHistory, getWorkout, updateSet } from '@/d
 import { setSetComment } from '@/db/repo/comments';
 import type { Settings } from '@/db/repo/settings';
 import type { ExerciseWithCategory, TrainingSetWithComment } from '@/db/types';
-import {
-  formatSet,
-  formatWeightValue,
-  parseSetField,
-  readSetDraft,
-  setDraftFrom,
-  setValueColumns,
-  weightUnitFor,
-  type SetDraft,
-  type StoredSet,
-} from '@/ui/format';
+import { formatSet, formatWeightValue, setValueColumns, weightUnitFor, type StoredSet } from '@/ui/format';
 import { formatLongDate, formatWeekdayDate, formatDuration } from '@/domain/dates';
 import { estimatedOneRepMax } from '@/domain/records';
 import { exerciseTypeFields, exerciseTypeHas, type ExerciseTypeId } from '@/db/constants';
@@ -33,7 +23,7 @@ import {
 import { Icon } from '@/ui/components/Icon';
 import { Dialog } from '@/ui/components/Dialog';
 import { Button, IconButton } from '@/ui/components/Button';
-import { NumberField, DistanceField, DurationField } from '@/ui/components/NumberField';
+import { SetFields, readSetEdit, setEditFrom, type SetEdit } from '@/ui/components/SetFields';
 import { WorkoutView } from '@/ui/components/WorkoutView';
 import { SetSelectionDialog, type SelectableExercise } from '@/ui/components/SetSelectionDialog';
 import { useToast } from '@/ui/components/Toast';
@@ -468,93 +458,8 @@ function SetTitle({
   );
 }
 
-/** What the edit dialogs hold for one set: the text of its boxes, its distance unit and its note. */
-interface SetEdit {
-  draft: SetDraft;
-  unit: number;
-  notes: string;
-}
-
-function setEditFrom(set: TrainingSetWithComment, weightUnit: WeightUnit, metric: boolean): SetEdit {
-  const unit = resolveDistanceUnit(set.unit, metric);
-  return { draft: setDraftFrom(set, weightUnit, unit), unit, notes: set.comment ?? '' };
-}
-
-/** The values an edit saves over `set` (see `readSetDraft`), or null when a box must be refused. */
-function readSetEdit(
-  set: StoredSet,
-  edit: SetEdit,
-  weightUnit: WeightUnit,
-  metric: boolean,
-): StoredSet | null {
-  return readSetDraft(set, edit.draft, weightUnit, resolveDistanceUnit(edit.unit, metric));
-}
-
 /**
- * One set's boxes as FitNotes' Edit Set dialogs show them: the Track tab's fields (label over a
- * -/value/+ row stepping by the exercise's increment, distance with its unit, hh / mm / ss) and a
- * Notes box for the set comment. A box whose text would be refused on save is marked invalid.
- */
-function SetFields({
-  exercise,
-  edit,
-  onChange,
-}: {
-  exercise: ExerciseWithCategory;
-  edit: SetEdit;
-  onChange: (next: SetEdit) => void;
-}) {
-  const settings = useSettings();
-  const wu = weightUnitFor(exercise, settings);
-  const fields = exerciseTypeFields(exercise.typeId);
-  const draft = (p: Partial<SetDraft>) => onChange({ ...edit, draft: { ...edit.draft, ...p } });
-  const invalid = (text: string) => Number.isNaN(parseSetField(text));
-  return (
-    <div className="set-dialog__fields">
-      {fields.includes('weight') && (
-        <NumberField
-          label={`Weight (${wu})`}
-          value={edit.draft.weight}
-          invalid={invalid(edit.draft.weight)}
-          onChange={(weight) => draft({ weight })}
-          step={exercise.weightIncrement ?? settings.weightIncrement}
-        />
-      )}
-      {fields.includes('distance') && (
-        <DistanceField
-          value={edit.draft.distance}
-          unit={edit.unit}
-          invalid={invalid(edit.draft.distance)}
-          onChange={(distance, unit) => onChange({ ...edit, unit, draft: { ...edit.draft, distance } })}
-        />
-      )}
-      {fields.includes('reps') && (
-        <NumberField
-          label="Reps"
-          value={edit.draft.reps}
-          invalid={invalid(edit.draft.reps)}
-          onChange={(reps) => draft({ reps })}
-          step={1}
-          decimals={0}
-          inputMode="numeric"
-        />
-      )}
-      {fields.includes('time') && (
-        <DurationField value={edit.draft.time} onChange={(time) => draft({ time })} />
-      )}
-      <input
-        className="set-dialog__notes"
-        value={edit.notes}
-        placeholder="Notes …"
-        aria-label="Notes"
-        onChange={(e) => onChange({ ...edit, notes: e.target.value })}
-      />
-    </div>
-  );
-}
-
-/**
- * FitNotes' Edit Set dialog for one set of the history: its boxes (`SetFields`) and Cancel /
+ * FitNotes' Edit Set dialog for one set of the history: its boxes (`SetFields`, with its note) and Cancel /
  * Delete / Save. Follows the shared set editor's rules (`readSetDraft`): an untouched field saves
  * its stored value back exactly, and a malformed, negative or non-finite value is refused with the
  * Track tab's toast, nothing written. Delete removes the set at once, as the Track tab's does.
@@ -610,7 +515,7 @@ export function EditSetDialog({
         </>
       }
     >
-      <SetFields exercise={exercise} edit={edit} onChange={setEdit} />
+      <SetFields exercise={exercise} edit={edit} onChange={setEdit} notes />
     </Dialog>
   );
 }
@@ -683,7 +588,7 @@ export function EditSetsDialog({
       {kept.map((s, i) => (
         <section key={s.id} className="set-dialog__section">
           <div className="set-dialog__section-head">
-            <span>Set {i + 1}</span>
+            <span className="set-dialog__section-name">Set {i + 1}</span>
             <IconButton
               icon="close"
               label={`Remove set ${i + 1}`}
@@ -695,6 +600,7 @@ export function EditSetsDialog({
             exercise={exercise}
             edit={edits.get(s.id) ?? setEditFrom(s, wu, settings.metric)}
             onChange={(e) => setEdits((m) => new Map(m).set(s.id, e))}
+            notes
           />
         </section>
       ))}

@@ -22,10 +22,9 @@ import {
   type PlannedSet,
   type PredefinedSetInput,
 } from '@/db/repo/routines';
-import { exerciseTypeFields } from '@/db/constants';
 import { androidColourToHex } from '@/domain/colour';
 import { formatLongDate, todayIso } from '@/domain/dates';
-import { formatSet, weightUnitFor, type SetDraft } from '@/ui/format';
+import { formatSet, weightUnitFor } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button, IconButton } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
@@ -34,11 +33,11 @@ import { Dialog, ConfirmDialog } from '@/ui/components/Dialog';
 import { EmptyState } from '@/ui/components/EmptyState';
 import {
   SetSelectionDialog,
-  SetEditor,
-  setFromDraft,
+  setFromEdit,
   type SelectableExercise,
   type SelectableSet,
 } from '@/ui/components/SetSelectionDialog';
+import { SetFields, setEditFrom, type SetEdit } from '@/ui/components/SetFields';
 import { GroupDialog } from './GroupDialog';
 import { useToast } from '@/ui/components/Toast';
 import type { RoutineExerciseDetail, RoutineSectionDetail } from '@/db/types';
@@ -621,10 +620,11 @@ export function RoutineEditorScreen() {
 }
 
 /**
- * Predefined sets editor: rows of set fields, blank = copy from previous workout. Right after an
- * exercise was added (`justAdded`) the dismiss button is FitNotes' Skip, otherwise Cancel; neither
- * writes anything. A malformed, negative or non-finite value is refused with the Track tab's toast
- * and nothing is written.
+ * Predefined sets editor, laid out like the History tab's Edit Sets: one "SET n" section per set
+ * with its boxes (`SetFields`) and an X, then Add Set; a value left at 0 is copied from the
+ * previous workout. Right after an exercise was added (`justAdded`) the dismiss button is
+ * FitNotes' Skip, otherwise Cancel; neither writes anything. A malformed, negative or non-finite
+ * value is refused with the Track tab's toast and nothing is written.
  */
 function PredefinedSetsDialog({
   open,
@@ -641,11 +641,11 @@ function PredefinedSetsDialog({
   const settings = useSettings();
   const toast = useToast();
   const [rows, setRows] = useState<SelectableSet[]>([]);
-  const [drafts, setDrafts] = useState<Map<string, SetDraft>>(new Map());
+  const [edits, setEdits] = useState<Map<string, SetEdit>>(new Map());
   const [seen, setSeen] = useState(false);
   if (open && !seen && ex) {
     setSeen(true);
-    setDrafts(new Map());
+    setEdits(new Map());
     setRows(
       ex.sets.map((s) => ({
         key: String(s.id),
@@ -662,13 +662,12 @@ function PredefinedSetsDialog({
   if (!open && seen) setSeen(false);
   if (!ex) return null;
   const wu = weightUnitFor(ex.exercise, settings);
-  const fields = exerciseTypeFields(ex.exercise.typeId);
   return (
     <Dialog
       open={open}
       onClose={onClose}
       title={`Predefined sets · ${ex.exercise.name}`}
-      wide
+      flush
       actions={
         <>
           <Button variant="text" onClick={onClose}>
@@ -678,7 +677,7 @@ function PredefinedSetsDialog({
             onClick={() => {
               const sets: PredefinedSetInput[] = [];
               for (const r of rows) {
-                const set = setFromDraft(r, drafts.get(r.key), wu, settings.metric);
+                const set = setFromEdit(r, edits.get(r.key), wu, settings.metric);
                 if (!set) return toast('Please enter valid values');
                 sets.push({ ...set, id: typeof set.meta === 'number' ? set.meta : undefined });
               }
@@ -691,35 +690,31 @@ function PredefinedSetsDialog({
         </>
       }
     >
-      <p className="muted" style={{ fontSize: 13, marginTop: 0 }}>
-        Leave a field at 0 to copy its value from the previous workout each time. Fields: {fields.join(', ')}.
+      <p className="muted set-dialog__hint">
+        A value left at 0 is copied from the previous workout each time.
       </p>
-      <div className="stack">
-        {rows.map((r, i) => (
-          <div key={r.key} className="row">
-            <span className="set-row__index">{i + 1}</span>
-            <SetEditor
-              typeId={ex.exercise.typeId}
-              set={r}
-              draft={drafts.get(r.key)}
-              weightUnit={wu}
-              metric={settings.metric}
-              onChange={(d) => setDrafts((m) => new Map(m).set(r.key, d))}
-            />
+      {rows.map((r, i) => (
+        <section key={r.key} className="set-dialog__section">
+          <div className="set-dialog__section-head">
+            <span className="set-dialog__section-name">Set {i + 1}</span>
             <IconButton
               icon="close"
-              label="Remove set"
+              label={`Remove set ${i + 1}`}
               small
               onClick={() => setRows((rs) => rs.filter((_, j) => j !== i))}
             />
           </div>
-        ))}
-      </div>
+          <SetFields
+            exercise={ex.exercise}
+            edit={edits.get(r.key) ?? setEditFrom(r, wu, settings.metric)}
+            onChange={(e) => setEdits((m) => new Map(m).set(r.key, e))}
+          />
+        </section>
+      ))}
       <Button
         variant="outline"
-        block
         icon="add"
-        style={{ marginTop: 12 }}
+        className="set-dialog__add"
         onClick={() =>
           setRows((rs) => [
             ...rs,
