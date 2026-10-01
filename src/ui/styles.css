@@ -1733,6 +1733,54 @@ h4 {
   flex: 1;
 }
 
+/* Copy Sets, Copy Workout, Log All (FitNotes' Copy Sets): the exercise as an uppercase band with
+   the checkbox that includes all its sets at the right, then its sets as the History tab's
+   number/unit rows, no rule between them, each with its own checkbox under the band's. */
+.set-select + .set-select {
+  border-top: 1px solid var(--color-divider);
+}
+
+.set-select__exercise {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 0 16px 0 20px;
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-divider);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.set-select__name {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  text-align: left;
+  /* The browser's button style resets text-transform; take the band's uppercase. */
+  text-transform: inherit;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.set-select__set {
+  border-bottom: none;
+  min-height: 48px;
+  padding: 0 16px 0 24px;
+}
+
+.set-select__invalid {
+  color: var(--color-danger);
+}
+
+/* In Edit mode the "SET n" band carries the include checkbox where the exercise band has its own. */
+.set-select__head {
+  padding-right: 16px;
+}
+
 .set-dialog__hint {
   margin: 0;
   padding: 10px 20px 4px;

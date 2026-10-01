@@ -1130,12 +1130,12 @@ test.describe('shared set editors', () => {
     // Copy Sets: a negative rep count typed in the selection dialog is refused and nothing is copied.
     await expect(status).toHaveCount(0);
     await openDay('Copy Sets');
-    await expect(dialog.getByText(/^Copy sets from/)).toBeVisible();
+    await expect(dialog.getByText('Copy Sets', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Edit', exact: true }).click();
     await dialog.getByRole('textbox', { name: 'Reps' }).fill('-5');
     await dialog.getByRole('button', { name: 'Copy', exact: true }).click();
     await expect(status).toHaveText('Please enter valid values');
-    await expect(dialog.getByText(/^Copy sets from/)).toBeVisible();
+    await expect(dialog.getByText('Copy Sets', { exact: true })).toBeVisible();
     await dialog.getByRole('button', { name: 'Cancel' }).click();
     await expect(dialog).toHaveCount(0);
     await expect(page.getByRole('button', { name: /^Set 2:/ })).toHaveCount(0);

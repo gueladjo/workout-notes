@@ -4,9 +4,10 @@ import { Button } from './Button';
 import { Checkbox } from './Toggle';
 import { useToast } from './Toast';
 import { SetFields, readSetEdit, setEditFrom, type SetEdit } from './SetFields';
+import { SetValues } from './SetValues';
 import { useSettings } from '@/app/hooks';
 import type { ExerciseWithCategory } from '@/db/types';
-import { formatSet, weightUnitFor } from '@/ui/format';
+import { weightUnitFor } from '@/ui/format';
 import type { WeightUnit } from '@/domain/units';
 
 export interface SelectableSet {
@@ -42,11 +43,12 @@ export function setFromEdit(
 }
 
 /**
- * "Copy Workout" / "Log All" style dialog: choose exercises and sets with checkboxes (FitNotes'
- * list of "60 kg × 8 reps" rows), or with Edit, one "SET n" section per set with its boxes
- * (`SetFields`) to change the values first, then confirm. Returns the selected (possibly edited)
- * sets; an invalid edit of a selected set is refused with the Track tab's toast and nothing is
- * confirmed.
+ * FitNotes' Copy Sets dialog (also behind Copy Workout and Log All): each exercise as an uppercase
+ * band with the checkbox that includes all its sets at the right, its sets as the History tab's
+ * number/unit rows each with its own checkbox at the right, and Cancel / Edit / Copy. Edit swaps
+ * the rows for one "SET n" section per set with its boxes (`SetFields`) to change the values
+ * first. Returns the selected (possibly edited) sets; an invalid edit of a selected set is refused
+ * with the Track tab's toast and nothing is confirmed.
  */
 export function SetSelectionDialog({
   open,
@@ -123,11 +125,11 @@ export function SetSelectionDialog({
       flush
       actions={
         <>
-          <Button variant="text" onClick={() => setEditing((e) => !e)}>
-            {editing ? 'Done' : 'Edit'}
-          </Button>
           <Button variant="text" onClick={onClose}>
             Cancel
+          </Button>
+          <Button variant="text" onClick={() => setEditing((e) => !e)}>
+            {editing ? 'Done' : 'Edit'}
           </Button>
           <Button onClick={confirm} disabled={checked.size === 0}>
             {confirmLabel}
@@ -143,29 +145,29 @@ export function SetSelectionDialog({
       {exercises.map((ex) => {
         const wu = weightUnitFor(ex.exercise, settings);
         return (
-          <div key={ex.exercise.id}>
-            <button className="list__item" onClick={() => toggleExercise(ex)}>
+          <div key={ex.exercise.id} className="set-select">
+            <div className="set-select__exercise">
+              <button className="set-select__name" onClick={() => toggleExercise(ex)}>
+                {ex.exercise.name}
+              </button>
               <Checkbox
                 checked={ex.sets.every((s) => checked.has(s.key))}
                 onChange={() => toggleExercise(ex)}
                 label={ex.exercise.name}
               />
-              <div className="list__text">
-                <div className="list__primary">{ex.exercise.name}</div>
-              </div>
-            </button>
+            </div>
             {ex.sets.map((s, i) => {
               const edit = edits.get(s.key);
               const cur = setFromEdit(s, edit, wu, settings.metric);
               return editing ? (
                 <section key={s.key} className="set-dialog__section">
-                  <div className="set-dialog__section-head">
+                  <div className="set-dialog__section-head set-select__head">
+                    <span className="set-dialog__section-name">Set {i + 1}</span>
                     <Checkbox
                       checked={checked.has(s.key)}
                       onChange={() => toggleSet(s.key)}
                       label={`Include set ${i + 1}`}
                     />
-                    <span className="set-dialog__section-name">Set {i + 1}</span>
                   </div>
                   <SetFields
                     exercise={ex.exercise}
@@ -174,19 +176,19 @@ export function SetSelectionDialog({
                   />
                 </section>
               ) : (
-                <div key={s.key} className="set-row" style={{ paddingLeft: 40 }}>
+                <div key={s.key} className="set-row set-select__set">
+                  <button className="set-row__value" onClick={() => toggleSet(s.key)}>
+                    {cur ? (
+                      <SetValues set={cur} typeId={ex.exercise.typeId} weightUnit={wu} settings={settings} />
+                    ) : (
+                      <span className="set-select__invalid">Invalid values</span>
+                    )}
+                  </button>
                   <Checkbox
                     checked={checked.has(s.key)}
                     onChange={() => toggleSet(s.key)}
                     label={`Include set ${i + 1}`}
                   />
-                  <button
-                    className="set-row__value"
-                    style={{ textAlign: 'left', color: cur ? undefined : 'var(--color-danger)' }}
-                    onClick={() => toggleSet(s.key)}
-                  >
-                    {cur ? formatSet(cur, ex.exercise.typeId, wu, settings) : 'Invalid values'}
-                  </button>
                 </div>
               );
             })}

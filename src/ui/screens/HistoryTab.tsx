@@ -7,7 +7,7 @@ import { setSetComment } from '@/db/repo/comments';
 import type { Settings } from '@/db/repo/settings';
 import type { ExerciseWithCategory, TrainingSetWithComment } from '@/db/types';
 import { formatSet, formatWeightValue, setValueColumns, weightUnitFor, type StoredSet } from '@/ui/format';
-import { formatLongDate, formatShortDate, formatWeekdayDate, formatDuration } from '@/domain/dates';
+import { formatLongDate, formatWeekdayDate, formatDuration } from '@/domain/dates';
 import { estimatedOneRepMax } from '@/domain/records';
 import { exerciseTypeFields, exerciseTypeHas, type ExerciseTypeId } from '@/db/constants';
 import {
@@ -312,11 +312,11 @@ export function HistoryTab({
         )}
       </Dialog>
 
-      {/* Copy sets from a past workout */}
+      {/* Copy sets from a past workout (FitNotes' Copy Sets dialog) */}
       <SetSelectionDialog
         open={copyDate !== null}
         onClose={() => setCopyDate(null)}
-        title={copyDate ? `Copy sets from ${formatShortDate(copyDate)}` : ''}
+        title="Copy Sets"
         exercises={copySelectable}
         confirmLabel="Copy"
         onConfirm={(sel) => {

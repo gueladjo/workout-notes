@@ -52,10 +52,12 @@ accents over dark surfaces.
   (`readSetDraft` in `src/ui/format.ts`, `readSetEdit` / `setFromEdit` next to the dialogs).
 - The shared set selection (`SetSelectionDialog` in `src/ui/components/SetSelectionDialog.tsx`,
   behind Copy Sets on the History tab, Copy Workout on the Calendar and Log All on a routine day)
-  lists exercises and their sets with checkboxes as FitNotes does; Edit swaps the rows for one
-  "SET n" section per set with its fields to change the values first. A routine's predefined sets
-  (`PredefinedSetsDialog` in `src/ui/screens/Routines.tsx`) are the same sections with an X and
-  Add Set.
+  is FitNotes' Copy Sets dialog: each exercise as an uppercase band with the checkbox that
+  includes all its sets at the right, its sets as the History tab's number/unit rows each with its
+  own checkbox at the right, and Cancel / Edit / Copy (or Save); Edit swaps the rows for one
+  "SET n" section per set with its fields to change the values first, the checkbox in the band. A
+  routine's predefined sets (`PredefinedSetsDialog` in `src/ui/screens/Routines.tsx`) are the same
+  sections with an X and Add Set.
 - Edit Set and Edit Sets on the History tab (`EditSetDialog`, `EditSetsDialog` in
   `src/ui/screens/HistoryTab.tsx`) are FitNotes' set dialogs. Edit Sets lists one "SET n" section
   per set of the day with an X that drops the set; nothing is written until Save, which updates
