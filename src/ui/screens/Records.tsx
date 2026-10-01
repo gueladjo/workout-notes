@@ -414,7 +414,6 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
         onClose={() => setViewDate(null)}
         title={viewDate ? formatLongDate(viewDate) : ''}
         flush
-        holo
         actions={
           <Button variant="text" onClick={() => setViewDate(null)}>
             Close

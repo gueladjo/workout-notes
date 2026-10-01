@@ -32,7 +32,9 @@ accents over dark surfaces.
 
 ## Conventions
 
-- `Dialog` (`src/ui/components/Dialog.tsx`) reports `onClose` only for closes the user made
+- `Dialog` (`src/ui/components/Dialog.tsx`) is FitNotes' (Holo) dialog for every popup: light-blue
+  title over an accent rule, the actions as flat full-width buttons split by dividers, all in the
+  text colour except a destructive one in red. It reports `onClose` only for closes the user made
   (Escape, backdrop, the buttons a screen wires to it). Setting `open` to false closes it silently,
   so a screen can swap two dialogs on one piece of state (`GroupDialog`, `DeleteHistoryDialog`).
 - A dialog whose fields are `useState` initialised from props is mounted only while open

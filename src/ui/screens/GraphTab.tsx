@@ -214,7 +214,6 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
         onClose={() => setViewDate(null)}
         title={viewDate ? formatLongDate(viewDate) : ''}
         flush
-        holo
         actions={
           <Button variant="text" onClick={() => setViewDate(null)}>
             Close

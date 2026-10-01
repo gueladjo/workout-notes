@@ -2,9 +2,10 @@ import { useLayoutEffect, useRef, type ReactNode } from 'react';
 import { Button } from './Button';
 
 /**
- * Modal dialog on top of the native <dialog> element (focus trapping, Escape, backdrop for free).
- * `holo` gives it FitNotes' (Android Holo) look: light-blue title over an accent rule and the
- * actions as full-width buttons split by a divider at the bottom.
+ * Modal dialog on top of the native <dialog> element (focus trapping, Escape, backdrop for free),
+ * in FitNotes' (Android Holo) look: light-blue title over an accent rule and the actions as
+ * full-width flat buttons split by dividers at the bottom. `flush` drops the body padding for
+ * lists, `wide` widens it for tables.
  */
 export function Dialog({
   open,
@@ -14,7 +15,6 @@ export function Dialog({
   actions,
   wide,
   flush,
-  holo,
 }: {
   open: boolean;
   onClose: () => void;
@@ -23,7 +23,6 @@ export function Dialog({
   actions?: ReactNode;
   wide?: boolean;
   flush?: boolean;
-  holo?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   // Closes made here because `open` turned false. The browser still fires a `close` event for each
@@ -45,7 +44,7 @@ export function Dialog({
   return (
     <dialog
       ref={ref}
-      className={`dialog${wide ? ' dialog--wide' : ''}${holo ? ' dialog--holo' : ''}`}
+      className={`dialog${wide ? ' dialog--wide' : ''}`}
       onClose={() => {
         // Only a close the user caused (an Escape the browser refused to cancel) is reported.
         if (selfCloses.current > 0) selfCloses.current--;

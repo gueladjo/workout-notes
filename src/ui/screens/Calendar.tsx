@@ -267,7 +267,6 @@ export function CalendarScreen() {
         onClose={() => setSelected(null)}
         title={selected ? formatLongDate(selected) : ''}
         flush
-        holo
         actions={
           <>
             <Button variant="text" onClick={() => setSelected(null)}>

@@ -158,7 +158,6 @@ export function HistoryTab({
         open={dayDialog !== null}
         onClose={() => setDayDialog(null)}
         title={dayDialog ? formatWeekdayDate(dayDialog) : ''}
-        holo
         flush
       >
         <div className="set-dialog__stats">
@@ -225,7 +224,6 @@ export function HistoryTab({
             <SetTitle set={setDialog} typeId={exercise.typeId} weightUnit={wu} settings={settings} />
           )
         }
-        holo
         flush
         actions={
           readOnly ? (
@@ -307,7 +305,6 @@ export function HistoryTab({
         onClose={() => setViewDate(null)}
         title={viewDate ? formatWeekdayDate(viewDate) : ''}
         flush
-        holo
         actions={
           <Button variant="text" onClick={() => setViewDate(null)}>
             Close
@@ -598,7 +595,6 @@ export function EditSetDialog({
       open
       onClose={onClose}
       title="Edit Set"
-      holo
       flush
       actions={
         <>
@@ -667,7 +663,6 @@ export function EditSetsDialog({
       open
       onClose={onClose}
       title="Edit Sets"
-      holo
       flush
       actions={
         <>

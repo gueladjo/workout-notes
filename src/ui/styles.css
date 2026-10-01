@@ -932,14 +932,17 @@ h4 {
   background: var(--color-backdrop);
 }
 
+/* FitNotes' (Holo) dialog: light-blue title over an accent rule, flat full-width buttons split by dividers. */
 .dialog__title {
-  padding: 18px 20px 8px;
-  font-size: 18px;
-  font-weight: 600;
+  padding: 18px 20px 10px;
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--color-accent);
+  border-bottom: 2px solid var(--color-accent);
 }
 
 .dialog__body {
-  padding: 8px 20px;
+  padding: 12px 20px;
   overflow-y: auto;
   flex: 1;
 }
@@ -950,44 +953,39 @@ h4 {
 
 .dialog__actions {
   display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-  padding: 8px 12px 12px;
-}
-
-.dialog--wide {
-  width: min(96vw, 560px);
-}
-
-/* FitNotes' (Holo) dialog: light-blue title over an accent rule, split full-width buttons. */
-.dialog--holo .dialog__title {
-  padding: 18px 20px 10px;
-  font-size: 22px;
-  font-weight: 400;
-  color: var(--color-accent);
-  border-bottom: 2px solid var(--color-accent);
-}
-
-.dialog--holo .dialog__actions {
-  gap: 0;
-  padding: 0;
   border-top: 1px solid var(--color-divider);
 }
 
-.dialog--holo .dialog__actions > .btn {
+.dialog__actions > .btn {
   flex: 1;
   min-height: 52px;
   border-radius: 0;
+  border-color: transparent;
   padding: 8px;
   font-size: 16px;
   font-weight: 400;
   letter-spacing: 0;
   text-transform: none;
   color: var(--color-text);
+  background: transparent;
 }
 
-.dialog--holo .dialog__actions > .btn + .btn {
+.dialog__actions > .btn:not(:disabled):active {
+  background: var(--color-surface-2);
+}
+
+.dialog__actions > .btn + .btn {
   border-left: 1px solid var(--color-divider);
+}
+
+/* A destructive action keeps its red text (FitNotes shows it plain). */
+.dialog__actions > .btn--danger,
+.dialog__actions > .btn--danger-text {
+  color: var(--color-danger);
+}
+
+.dialog--wide {
+  width: min(96vw, 560px);
 }
 
 /* ---------- Misc ---------- */
