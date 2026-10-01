@@ -513,7 +513,7 @@ test('Update keeps the exact weight of a set whose lbs field was not touched', a
   await page.getByRole('tab', { name: 'History' }).click();
   await page.getByRole('button', { name: 'Set 1: 20 kg × 5 reps' }).click();
   const dialog = page.getByRole('dialog');
-  await expect(dialog.getByText('Volume', { exact: true })).toBeVisible();
+  await expect(dialog.getByText('Total Volume', { exact: true })).toBeVisible();
   await expect(dialog.getByText('100 kg', { exact: true })).toBeVisible();
 });
 

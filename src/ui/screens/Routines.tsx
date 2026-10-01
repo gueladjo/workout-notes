@@ -23,7 +23,7 @@ import {
   type PredefinedSetInput,
 } from '@/db/repo/routines';
 import { androidColourToHex } from '@/domain/colour';
-import { formatLongDate, todayIso } from '@/domain/dates';
+import { formatShortDate, todayIso } from '@/domain/dates';
 import { formatSet, weightUnitFor } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button, IconButton } from '@/ui/components/Button';
@@ -234,7 +234,7 @@ export function RoutineScreen() {
       <SetSelectionDialog
         open={logSection !== null}
         onClose={() => setLogSection(null)}
-        title={`Log "${logSection?.name}" on ${formatLongDate(date)}`}
+        title={`Log "${logSection?.name}" on ${formatShortDate(date)}`}
         exercises={selectable}
         confirmLabel="Save"
         onConfirm={(sel) => {

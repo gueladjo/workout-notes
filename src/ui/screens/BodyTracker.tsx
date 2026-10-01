@@ -25,6 +25,7 @@ import type { MeasurementRecord, MeasurementWithUnit } from '@/db/types';
 import {
   daysBetween,
   formatLongDate,
+  formatWeekdayDate,
   formatShortDate,
   formatTimeShort,
   nowTime,
@@ -460,7 +461,7 @@ function GraphTab() {
       <Dialog
         open={showDay !== null}
         onClose={() => setShowDay(null)}
-        title={showDay ? formatLongDate(showDay) : ''}
+        title={showDay ? formatWeekdayDate(showDay) : ''}
         flush
         actions={
           <Button variant="text" onClick={() => setShowDay(null)}>

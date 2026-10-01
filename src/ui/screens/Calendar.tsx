@@ -12,7 +12,14 @@ import {
 } from '@/db/repo/workouts';
 import { updateSettings } from '@/db/repo/settings';
 import { androidColourToHex } from '@/domain/colour';
-import { addDays, formatLongDate, formatMediumDate, todayIso } from '@/domain/dates';
+import {
+  addDays,
+  formatLongDate,
+  formatMediumDate,
+  formatShortDate,
+  formatWeekdayDate,
+  todayIso,
+} from '@/domain/dates';
 import { displayToKg, kgToDisplay, fmt } from '@/domain/units';
 import { formatSet, parseDecimal, weightUnitFor } from '@/ui/format';
 import { TopBar } from '@/ui/components/TopBar';
@@ -247,7 +254,7 @@ export function CalendarScreen() {
       <SetSelectionDialog
         open={copyMode && selected !== null}
         onClose={() => setSelected(null)}
-        title={selected ? `Copy from ${formatLongDate(selected)}` : 'Copy'}
+        title={selected ? `Copy from ${formatShortDate(selected)}` : 'Copy'}
         exercises={selectable}
         confirmLabel="Copy"
         onConfirm={(sel) => {
@@ -265,7 +272,7 @@ export function CalendarScreen() {
       <Dialog
         open={!copyMode && selected !== null}
         onClose={() => setSelected(null)}
-        title={selected ? formatLongDate(selected) : ''}
+        title={selected ? formatWeekdayDate(selected) : ''}
         flush
         actions={
           <>

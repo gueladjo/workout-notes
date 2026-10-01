@@ -14,8 +14,8 @@ import {
   addDays,
   endOfMonth,
   endOfYear,
-  formatLongDate,
   formatShortDate,
+  formatWeekdayDate,
   startOfMonth,
   startOfWeek,
   startOfYear,
@@ -412,7 +412,7 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
       <Dialog
         open={viewDate !== null}
         onClose={() => setViewDate(null)}
-        title={viewDate ? formatLongDate(viewDate) : ''}
+        title={viewDate ? formatWeekdayDate(viewDate) : ''}
         flush
         actions={
           <Button variant="text" onClick={() => setViewDate(null)}>

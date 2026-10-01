@@ -7,7 +7,7 @@ import { setSetComment } from '@/db/repo/comments';
 import type { Settings } from '@/db/repo/settings';
 import type { ExerciseWithCategory, TrainingSetWithComment } from '@/db/types';
 import { formatSet, formatWeightValue, setValueColumns, weightUnitFor, type StoredSet } from '@/ui/format';
-import { formatLongDate, formatWeekdayDate, formatDuration } from '@/domain/dates';
+import { formatLongDate, formatShortDate, formatWeekdayDate, formatDuration } from '@/domain/dates';
 import { estimatedOneRepMax } from '@/domain/records';
 import { exerciseTypeFields, exerciseTypeHas, type ExerciseTypeId } from '@/db/constants';
 import {
@@ -316,7 +316,7 @@ export function HistoryTab({
       <SetSelectionDialog
         open={copyDate !== null}
         onClose={() => setCopyDate(null)}
-        title={copyDate ? `Copy sets from ${formatLongDate(copyDate)}` : ''}
+        title={copyDate ? `Copy sets from ${formatShortDate(copyDate)}` : ''}
         exercises={copySelectable}
         confirmLabel="Copy"
         onConfirm={(sel) => {

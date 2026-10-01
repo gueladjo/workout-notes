@@ -15,7 +15,15 @@ import {
   graphOptionsForType,
   trendLine,
 } from '@/domain/graphs';
-import { addDays, addMonths, daysBetween, formatLongDate, formatShortDate, todayIso } from '@/domain/dates';
+import {
+  addDays,
+  addMonths,
+  daysBetween,
+  formatLongDate,
+  formatShortDate,
+  formatWeekdayDate,
+  todayIso,
+} from '@/domain/dates';
 import { formatSet, formatWeightValue, weightUnitFor } from '@/ui/format';
 import { resolveDistanceUnit } from '@/domain/units';
 import { LineChart } from '@/ui/components/LineChart';
@@ -212,7 +220,7 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
       <Dialog
         open={viewDate !== null}
         onClose={() => setViewDate(null)}
-        title={viewDate ? formatLongDate(viewDate) : ''}
+        title={viewDate ? formatWeekdayDate(viewDate) : ''}
         flush
         actions={
           <Button variant="text" onClick={() => setViewDate(null)}>
