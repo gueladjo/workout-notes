@@ -99,7 +99,10 @@ body {
   font-size: 15px;
   line-height: 1.4;
   color: var(--color-text);
-  background: var(--color-bg);
+  /* The canvas is the app bar colour, not the page ground: iOS 26 paints the strip behind the
+     status bar of the installed app with the page background whenever it finds no fixed or sticky
+     bar to sample (see .status-bar-fill), and it must stay black like the bar below it. */
+  background: var(--color-bar);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
@@ -107,6 +110,7 @@ body {
 
 #root {
   height: 100%;
+  background: var(--color-bg);
 }
 
 button,
@@ -163,6 +167,23 @@ h4 {
 }
 
 /* ---------- Top app bar ---------- */
+/* Always-mounted strip under the iOS status bar. WebKit colours the status bar area of the
+   installed app from the fixed or sticky box it samples at the top edge (wider than 90% of the
+   viewport, taller than 10px, opaque background) and, once the user has interacted, keeps that
+   box's colour only while the same element stays in the document. Every screen mounts its own
+   .topbar, so without this strip the colour was lost on the first navigation. It is above the
+   bars (same colour, so invisible) and below drawers, menus and dialogs. */
+.status-bar-fill {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: max(12px, var(--safe-top));
+  background: var(--color-bar);
+  pointer-events: none;
+  z-index: 25;
+}
+
 .topbar {
   display: flex;
   align-items: center;

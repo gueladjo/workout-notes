@@ -73,6 +73,7 @@ export function App() {
     <DbProvider db={boot.app}>
       <SqlProvider sql={boot.SQL}>
         <ThemeApplier />
+        <div className="status-bar-fill" aria-hidden="true" />
         <ToastProvider>
           <HashRouter>
             <Routes>

@@ -85,6 +85,15 @@ forces it); iOS keeps the values it read when the app was added, which is why `i
 the `black-translucent` status bar style so the app bar itself shows through. Reinstalling the app
 also picks up the new colour.
 
+iOS 26 adds a rule of its own. The installed app may sit below an opaque status bar
+(`env(safe-area-inset-top)` is then 0) and WebKit colours that strip from the fixed or sticky box it
+finds at the top edge of the page (at least 90% of the viewport wide, taller than 10px, opaque
+background). Once the user has interacted it keeps that box's colour only while the same element
+stays in the document, and with no box it falls back to the page background. Every screen mounts
+its own `.topbar`, so `App` also mounts a permanent `.status-bar-fill` strip in the bar colour above
+the bars, and `body` carries the bar colour while `#root` carries the page ground
+(`src/ui/styles.css`).
+
 ### Content Security Policy
 
 `vite.config.ts` injects a `Content-Security-Policy` meta into the built `index.html` (not in
