@@ -94,6 +94,11 @@ its own `.topbar`, so `App` also mounts a permanent `.status-bar-fill` strip in 
 the bars, and `body` carries the bar colour while `#root` carries the page ground
 (`src/ui/styles.css`).
 
+At the bottom edge the installed app does reach the screen, and `env(safe-area-inset-bottom)`
+(`--safe-bottom`) is the home-indicator strip every screen keeps clear of controls. On a bar that
+sits there (the Calendar's `.home-nav--bottom`) the inset is padding on the controls, not on the
+bar, so a tap in the strip still hits the nearest control instead of dead padding.
+
 ### Content Security Policy
 
 `vite.config.ts` injects a `Content-Security-Policy` meta into the built `index.html` (not in

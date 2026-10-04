@@ -229,14 +229,7 @@ export function CalendarScreen() {
             showDots={settings.calendarCategoryDots}
           />
           {settings.calendarNavigationBar && (
-            <div
-              className="home-nav"
-              style={{
-                borderTop: '1px solid var(--color-border)',
-                borderBottom: 'none',
-                paddingBottom: 'var(--safe-bottom)',
-              }}
-            >
+            <div className="home-nav home-nav--bottom">
               <IconButton icon="chevronLeft" label="Previous workout" primary onClick={() => jump(-1)} />
               <button className="home-nav__date" onClick={() => setView('list')}>
                 <div className="home-nav__title">{filteredDates.length} workouts</div>

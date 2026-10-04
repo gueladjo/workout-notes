@@ -1367,6 +1367,28 @@ h4 {
   color: var(--color-on-bar-muted);
 }
 
+/* Calendar's copy sits at the bottom of the screen. The home-indicator inset is padding on the
+   three controls rather than on the bar, so the strip under the labels is still part of a button
+   and a tap there hits the nearest control, as on a native opaque tab bar, instead of landing on
+   dead padding. Where the inset is 0 (Android, desktop) only the pressed highlight changes shape. */
+.home-nav--bottom {
+  align-items: stretch;
+  padding-bottom: 0;
+  border-top: 1px solid var(--color-border);
+  border-bottom: none;
+}
+
+.home-nav--bottom .iconbtn {
+  height: auto;
+  min-height: 44px;
+  padding-bottom: var(--safe-bottom);
+  border-radius: var(--radius-sm);
+}
+
+.home-nav--bottom .home-nav__date {
+  padding-bottom: calc(4px + var(--safe-bottom));
+}
+
 .exercise-card {
   display: flex;
   gap: 0;
