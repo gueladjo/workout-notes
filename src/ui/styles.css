@@ -184,6 +184,11 @@ h4 {
   z-index: 25;
 }
 
+/* The bars are flex children of .screen above the scroller (.screen__content), so they never
+   scroll and must not be sticky or fixed: on iOS a sticky or fixed box is a composited layer
+   whose position the scrolling tree drives from the visual viewport (keyboard panning,
+   overscroll), at fractional device pixels, which renders its text blurry. In normal flow the
+   text is painted pixel-snapped with the rest of the page. */
 .topbar {
   display: flex;
   align-items: center;
@@ -192,9 +197,6 @@ h4 {
   padding: var(--safe-top) 6px 0;
   background: var(--color-bar);
   color: var(--color-on-bar);
-  position: sticky;
-  top: 0;
-  z-index: 20;
 }
 
 .topbar__title {
@@ -237,9 +239,6 @@ h4 {
 .tabs {
   display: flex;
   background: var(--color-bar-2);
-  position: sticky;
-  top: 0;
-  z-index: 10;
 }
 
 .tabs__tab {

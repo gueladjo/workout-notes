@@ -89,10 +89,13 @@ iOS 26 adds a rule of its own. The installed app may sit below an opaque status 
 (`env(safe-area-inset-top)` is then 0) and WebKit colours that strip from the fixed or sticky box it
 finds at the top edge of the page (at least 90% of the viewport wide, taller than 10px, opaque
 background). Once the user has interacted it keeps that box's colour only while the same element
-stays in the document, and with no box it falls back to the page background. Every screen mounts
-its own `.topbar`, so `App` also mounts a permanent `.status-bar-fill` strip in the bar colour above
-the bars, and `body` carries the bar colour while `#root` carries the page ground
-(`src/ui/styles.css`).
+stays in the document, and with no box it falls back to the page background. The app bars are not
+that box: `.topbar` and `.tabs` sit in normal flow above the scroller (`.screen__content`), never
+sticky or fixed, because on iOS a sticky or fixed box is a composited layer that the scrolling
+tree places from the visual viewport (keyboard panning, overscroll) at fractional device pixels,
+which blurs its text. So `App` mounts a permanent `.status-bar-fill` strip in the bar colour above
+the bars as the one box WebKit samples, and `body` carries the bar colour while `#root` carries the
+page ground (`src/ui/styles.css`).
 
 At the bottom edge the installed app does reach the screen, and `env(safe-area-inset-bottom)`
 (`--safe-bottom`) is the home-indicator strip every screen keeps clear of controls. On a bar that
