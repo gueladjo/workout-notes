@@ -185,10 +185,10 @@ h4 {
 }
 
 /* The bars are flex children of .screen above the scroller (.screen__content), so they never
-   scroll and must not be sticky or fixed: on iOS a sticky or fixed box is a composited layer
-   whose position the scrolling tree drives from the visual viewport (keyboard panning,
-   overscroll), at fractional device pixels, which renders its text blurry. In normal flow the
-   text is painted pixel-snapped with the rest of the page. */
+   scroll and stay in normal flow: sticky or fixed would add nothing but a composited layer and a
+   second box for WebKit's top-edge sampling (see .status-bar-fill). The app bar still looks soft
+   at times on iOS 26+; that is Liquid Glass's scroll-edge blur drawn over the installed app by the
+   system, not the page (doc/architecture.md). */
 .topbar {
   display: flex;
   align-items: center;

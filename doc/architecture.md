@@ -89,13 +89,20 @@ iOS 26 adds a rule of its own. The installed app may sit below an opaque status 
 (`env(safe-area-inset-top)` is then 0) and WebKit colours that strip from the fixed or sticky box it
 finds at the top edge of the page (at least 90% of the viewport wide, taller than 10px, opaque
 background). Once the user has interacted it keeps that box's colour only while the same element
-stays in the document, and with no box it falls back to the page background. The app bars are not
-that box: `.topbar` and `.tabs` sit in normal flow above the scroller (`.screen__content`), never
-sticky or fixed, because on iOS a sticky or fixed box is a composited layer that the scrolling
-tree places from the visual viewport (keyboard panning, overscroll) at fractional device pixels,
-which blurs its text. So `App` mounts a permanent `.status-bar-fill` strip in the bar colour above
-the bars as the one box WebKit samples, and `body` carries the bar colour while `#root` carries the
-page ground (`src/ui/styles.css`).
+stays in the document, and with no box it falls back to the page background. So `App` mounts a
+permanent `.status-bar-fill` strip in the bar colour above the bars as the one box WebKit samples
+(`.topbar` and `.tabs` sit in normal flow above the scroller, `.screen__content`, so they are not
+candidates), and `body` carries the bar colour while `#root` carries the page ground
+(`src/ui/styles.css`).
+
+The same system chrome can blur the app bar. iOS 26 and later draw Liquid Glass's scroll-edge
+effect, a progressive blur reaching about 40pt below the status bar, over the top of the installed
+app, and no meta tag or CSS property turns it off. On an iPhone with iOS 27 the bar title looked
+soft at times, and Settings > Accessibility > Display & Text Size > Reduce Transparency removed it
+(checked 2026-10-08), so the blur is the device setting's to control, as in native apps. The only
+known app-side remedy is to keep bar content out of that band in the standalone iOS app
+(`@supports (-webkit-touch-callout: none)` with `display-mode: standalone`), at the cost of a taller
+bar; it is not done.
 
 At the bottom edge the installed app does reach the screen, and `env(safe-area-inset-bottom)`
 (`--safe-bottom`) is the home-indicator strip every screen keeps clear of controls. On a bar that
