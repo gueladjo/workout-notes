@@ -16,7 +16,8 @@ storage on your device.
   FitNotes exercise types (weight/reps, distance/time and the advanced combinations).
 - Training screen with Track (weight/reps/distance/time fields, +/- increments, comments, mark sets
   complete, auto-select next set), History (quick stats, edit and copy past sets) and Graph tabs.
-- Personal records (actual and estimated rep maxes, Brzycki 1RM), statistics per period, goals.
+- Personal records (actual and estimated rep maxes, Brzycki 1RM), a 1RM calculator, statistics per
+  period, goals.
 - Supersets / circuits with auto-jump between grouped exercises.
 - Routines with days, predefined sets ("copy previous" blanks), groups and "Log All".
 - Calendar month and list views with category dots and category / exercise filters.
@@ -62,6 +63,16 @@ backup regularly** (Settings > Backup). Browser storage is not a backup.
 Settings > Restore Backup, pick the `FitNotes_Backup_….fitnotes` file. To go back to Android,
 Settings > Save/Share Backup and restore the file in FitNotes.
 
+### Safety nets
+
+- Only one tab, window or installed copy runs at a time. Opening a second one makes the first save
+  and stop; it then shows "WorkoutNotes is open in another window" with a button to take it back.
+- Restore, Delete Workout History, deleting an exercise or category, changing an exercise's type and
+  resetting or deleting a measurement keep a rollback snapshot first. Settings lists the newest five.
+- If the stored database cannot be opened, a Recovery screen offers to save the unreadable file,
+  restore a snapshot or start fresh.
+- Home shows a quiet reminder when the last backup is more than two weeks old.
+
 ## Develop
 
 ```bash
@@ -71,7 +82,7 @@ npm run setup:e2e    # only prepare the Playwright browser (test:e2e does this i
 npm run inspect-backup -- path/to/backup.fitnotes   # print schema and counts of a real backup
 npm run make-fixture                                 # write tests/fixtures/generated/sample.fitnotes
 npm run make-icons                                   # regenerate public/icons
-npm run screenshots                                  # build, serve and screenshot the main screens into ./screenshots
+npm run screenshots                                  # build, serve and screenshot the main screens into ./screenshots (needs the Playwright browser: setup:e2e once)
 npm run clean                                        # delete node_modules and generated output (`-- --keep-deps` keeps node_modules)
 ```
 

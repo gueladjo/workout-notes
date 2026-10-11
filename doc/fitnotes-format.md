@@ -112,7 +112,7 @@ is unverified).
 Default categories in id order: Shoulders `#8e44ad`, Triceps `#27ae60`, Biceps `#f39c12`, Chest
 `#c0392b`, Back `#2980b9`, Legs `#54b2b6`, Abs `#2c3e50`, Cardio `#7f8c8d`. Colours are stored as
 signed 32-bit ARGB ints (`(0xff000000 | rgb) | 0`, e.g. `-7453523`). The default exercise list
-(97 exercises) is in `src/db/seed.ts`; Plank/Side Plank are Weight and Time, cardio is Distance and
+(96 exercises) is in `src/db/seed.ts`; Plank/Side Plank are Weight and Time, cardio is Distance and
 Time.
 
 ### `settings` row (verified columns, partly inferred semantics)

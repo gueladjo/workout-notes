@@ -42,15 +42,18 @@ src/
   domain/            pure functions: units, dates, records (Brzycki/PRs), graphs, stats, colours
   backup/            restore/export of .fitnotes, CSV export, file download/share helpers
   app/               bootstrap (open db), single-instance lock, start-up recovery, update hand-off,
-                     React contexts/hooks, routes, return-to protocol
+                     screen wake lock, React contexts/hooks, routes, return-to protocol
   ui/
+    format.ts        the text edge: set-field parsing (decimal comma, blank = 0) and number/unit text
+    share.ts         the Share Workout text, built from format.ts
     components/      TopBar, Menu, Dialog, Tabs, NumberField, MonthGrid, LineChart, ...
     screens/         one file per screen (Home, ExerciseList, Training, Calendar, Routines, ...)
     styles.css       design tokens (light/dark) and every component style
 ```
 
 Dependency direction: `ui -> app -> db/repo -> db/store -> db/sqlite`, with `domain` usable from
-anywhere. `db/*` has no browser-only imports so unit tests and scripts run in Node.
+anywhere and itself importing nothing but `db/constants`, `db/types` and the seed ids. `db/*` has no
+browser-only imports so unit tests and scripts run in Node.
 
 ### Reading and writing
 
@@ -116,7 +119,8 @@ development, where React Fast Refresh needs inline scripts). It allows only same
 styles, images, fonts, workers, the manifest and fetches, plus `'wasm-unsafe-eval'` for sql.js and
 `'unsafe-inline'` styles for React's `style` props, so a stray network request would be blocked by
 the browser rather than merely being against the rules. The e2e suite runs the built app with the
-policy in place and fails on any violation logged to the console.
+policy in place; one test logs a set and saves a backup under it and fails on any violation logged
+to the console.
 
 ## Cross-cutting rules
 
@@ -125,4 +129,6 @@ policy in place and fails on any violation logged to the console.
   distance unit (`training_log.unit`).
 - Settings are a single row in FitNotes' `settings` table (`repo/settings.ts`) so they travel with
   backups; the only browser-local state is the backup-reminder bookkeeping (`backup/reminder.ts`).
+- A fresh database starts in kilograms unless the browser locale is `en-US`, FitNotes' own default
+  (`defaultMetric` in `src/app/recovery.ts`); a restored backup brings its own `settings.metric`.
 - Dates are local calendar dates as `YYYY-MM-DD` text; never converted through UTC.
