@@ -180,7 +180,8 @@ function RecordDialog({
   if (!open && seen) setSeen(false);
   if (!measurement) return null;
   const save = () => {
-    const v = shown && value === shown.text ? shown.value : parseDecimal(value);
+    // Blank is no value, not 0 (`parseDecimal('')` is 0): a record must be typed.
+    const v = shown && value === shown.text ? shown.value : value.trim() ? parseDecimal(value) : NaN;
     if (!Number.isFinite(v)) return toast('Enter a value');
     const t = time.length === 5 ? `${time}:00` : time;
     if (record) updateRecord(db, record.id, { value: v, date, time: t, comment });

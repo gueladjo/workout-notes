@@ -280,6 +280,28 @@ test('Exercise Overview history is read-only and never copies into the viewed da
   await expect(page.getByText('2 exercises · 3 sets')).toBeVisible();
 });
 
+test('a body measurement record refuses a blank value instead of saving 0', async ({ page }) => {
+  await openApp(page);
+  await page.goto('/#/body');
+  await page.getByRole('button', { name: 'Bodyweight' }).click();
+  const dialog = page.getByRole('dialog');
+  const value = dialog.getByRole('textbox', { name: /^Value/ });
+  await expect(value).toHaveValue('');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByRole('status')).toHaveText('Enter a value');
+  await expect(dialog).toBeVisible();
+  await value.fill('   ');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+  await expect(page.getByRole('button', { name: /Bodyweight/ })).toContainText('Not recorded yet');
+  // A typed 0 is a value like any other.
+  await page.getByRole('button', { name: 'Bodyweight' }).click();
+  await value.fill('0');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByText('0 kg')).toBeVisible();
+});
+
 test('resetting a measurement takes a rollback snapshot first', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/body');
