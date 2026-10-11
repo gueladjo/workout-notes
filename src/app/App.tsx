@@ -7,6 +7,7 @@ import { TakenOverScreen, WaitingForInstanceScreen } from '@/ui/screens/Instance
 import { DbProvider, useQuery } from './db-context';
 import { SqlProvider } from './sql-context';
 import { ToastProvider } from '@/ui/components/Toast';
+import { SaveFailedBanner } from '@/ui/components/SaveFailedBanner';
 import { getSettings } from '@/db/repo/settings';
 import { AppTheme } from '@/db/constants';
 import type { AppDatabase } from '@/db/store';
@@ -101,6 +102,7 @@ export function App() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </HashRouter>
+          <SaveFailedBanner />
         </ToastProvider>
       </SqlProvider>
     </DbProvider>

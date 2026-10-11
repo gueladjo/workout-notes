@@ -1064,6 +1064,58 @@ test('reminds about backups on Home and stops once one is saved', async ({ page 
   await expect(page.getByRole('status')).toHaveCount(0);
 });
 
+test('warns on every screen while saving fails and offers the backup until it works again', async ({
+  page,
+}) => {
+  await openApp(page);
+  // From now on every IndexedDB write fails, as when the device is out of space.
+  await page.evaluate(() => {
+    const put = IDBObjectStore.prototype.put;
+    const w = window as unknown as { restorePut: () => void };
+    IDBObjectStore.prototype.put = function () {
+      throw new DOMException('The quota has been exceeded.', 'QuotaExceededError');
+    };
+    w.restorePut = () => {
+      IDBObjectStore.prototype.put = put;
+    };
+  });
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  const banner = page.getByRole('alert');
+  await expect(banner).toContainText(
+    'Changes are not being saved on this device (The quota has been exceeded.)',
+  );
+  // It follows the user to other screens; Settings > Storage says the same.
+  await page.goto('/#/settings');
+  await expect(banner).toBeVisible();
+  await expect(page.getByText(/Last save failed: The quota has been exceeded\./)).toBeVisible();
+  // The backup still carries the unsaved set.
+  let download = page.waitForEvent('download');
+  await banner.getByRole('button', { name: 'Save Backup' }).click();
+  const sql = await loadSqlJs();
+  const saved = new sql.Database(readFileSync(await (await download).path()));
+  expect(saved.exec('SELECT COUNT(*) FROM training_log')[0]!.values[0]![0]).toBe(1);
+  saved.close();
+  await expect(banner).toBeVisible();
+  // Once writes work again, the next backup's save goes through and the banner goes away.
+  await page.evaluate(() => (window as unknown as { restorePut: () => void }).restorePut());
+  download = page.waitForEvent('download');
+  await banner.getByRole('button', { name: 'Save Backup' }).click();
+  await download;
+  await expect(page.getByRole('status')).toContainText('Saving to this device works again');
+  await expect(banner).toHaveCount(0);
+  await expect(page.getByText(/Last save failed/)).toHaveCount(0);
+  await page.goto('/#/');
+  await page.reload();
+  await expect(page.getByRole('button', { name: /Flat Barbell Bench Press 100 kg × 5 reps/ })).toBeVisible({
+    timeout: 30_000,
+  });
+});
+
 test.describe('shared set editors', () => {
   /** Logs 100 kg × 5 reps of the bench press for today and stays on its Track tab. */
   async function logBenchSet(page: Page) {

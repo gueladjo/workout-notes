@@ -53,3 +53,13 @@ function sameDeps(a: readonly unknown[], b: readonly unknown[]): boolean {
   for (let i = 0; i < a.length; i++) if (!Object.is(a[i], b[i])) return false;
   return true;
 }
+
+/** Why saving to this device last failed, or null; re-renders when that changes. */
+export function usePersistError(): string | null {
+  const db = useDb();
+  return useSyncExternalStore(
+    (cb) => db.subscribePersist(cb),
+    () => db.lastPersistError,
+    () => db.lastPersistError,
+  );
+}

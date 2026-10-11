@@ -142,4 +142,42 @@ describe('AppDatabase', () => {
     expect(app.lastPersistError).toBeNull();
     expect(app.hasUnsavedChanges).toBe(false);
   });
+
+  it('tells persist subscribers when saving starts failing and when it works again, debounced saves included', async () => {
+    vi.useFakeTimers();
+    let fail = true;
+    const persist = vi.fn(async () => {
+      if (fail) throw new Error('quota');
+    });
+    const app = new AppDatabase(createEmptyDatabase(SQL), { persist, persistDelayMs: 1 });
+    const seen: (string | null)[] = [];
+    app.subscribePersist(() => seen.push(app.lastPersistError));
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    await vi.advanceTimersByTimeAsync(5);
+    expect(seen).toEqual(['quota']);
+    // Failing again with the same error is not news.
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('b')"));
+    await vi.advanceTimersByTimeAsync(5);
+    expect(persist).toHaveBeenCalledTimes(2);
+    expect(seen).toEqual(['quota']);
+    fail = false;
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('c')"));
+    await vi.advanceTimersByTimeAsync(5);
+    expect(seen).toEqual(['quota', null]);
+    expect(app.hasUnsavedChanges).toBe(false);
+    vi.useRealTimers();
+  });
+
+  it('replaceDatabase() adopts the new database even when saving it fails, and says why', async () => {
+    const persist = vi.fn(async () => {
+      throw new Error('quota');
+    });
+    const app = new AppDatabase(createEmptyDatabase(SQL), { persist, persistDelayMs: 1 });
+    const next = createEmptyDatabase(SQL);
+    next.run("INSERT INTO Routine (name) VALUES ('restored')");
+    await expect(app.replaceDatabase(next)).resolves.toBe('quota');
+    expect(app.scalar('SELECT COUNT(*) FROM Routine')).toBe(1);
+    expect(app.hasUnsavedChanges).toBe(true);
+    expect(app.lastPersistError).toBe('quota');
+  });
 });

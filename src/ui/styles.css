@@ -1093,6 +1093,32 @@ h4 {
   min-width: 0;
 }
 
+/* Every screen: saving to this device fails, so changes live only in memory (SaveFailedBanner).
+   Fixed at the bottom like a snackbar so it never moves the bars WebKit samples at the top edge;
+   the toast (z-index 60) shows over it. */
+.save-failed {
+  position: fixed;
+  left: 8px;
+  right: 8px;
+  bottom: calc(8px + var(--safe-bottom));
+  z-index: 55;
+  padding: 6px 4px 6px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--color-danger-soft);
+  color: var(--color-text);
+  box-shadow: var(--shadow-lg);
+  font-size: 13px;
+  line-height: 1.35;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.save-failed__text {
+  flex: 1;
+  min-width: 0;
+}
+
 /* Full-width instruction strip under the app bar (Copy Workout's "Select the workout..."). */
 .banner--prompt {
   margin: 0;

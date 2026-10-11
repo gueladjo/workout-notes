@@ -16,6 +16,8 @@ export interface RestoreSummary {
   routines: number;
   measurements: number;
   schema: SchemaReport;
+  /** Set when the backup is live but saving it to this device failed (see `replaceDatabase`). */
+  persistError: string | null;
 }
 
 export class BackupError extends Error {}
@@ -60,7 +62,7 @@ export function openBackup(SQL: SqlJsStatic, bytes: Uint8Array): { db: Database;
   return { db, schema };
 }
 
-export function summarize(db: AppDatabase): Omit<RestoreSummary, 'schema'> {
+export function summarize(db: AppDatabase): Omit<RestoreSummary, 'schema' | 'persistError'> {
   return {
     exercises: db.scalar('SELECT COUNT(*) FROM exercise'),
     workouts: db.scalar('SELECT COUNT(DISTINCT date) FROM training_log'),
@@ -85,8 +87,9 @@ export async function restoreBackup(
     throw err;
   }
   // `replaceDatabase` adopts the backup, or closes it when the database was handed over meanwhile.
-  await app.replaceDatabase(db);
-  return { ...summarize(app), schema };
+  // Once adopted the restore happened, even if saving it to this device failed: say that instead.
+  const persistError = await app.replaceDatabase(db);
+  return { ...summarize(app), schema, persistError };
 }
 
 /** File name in FitNotes' timestamped style: FitNotes_Backup_2026_09_12_18_30_00.fitnotes */

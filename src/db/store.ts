@@ -26,6 +26,7 @@ export class AppDatabase {
   private readonly persist: Persist;
   private readonly persistDelayMs: number;
   private listeners = new Set<() => void>();
+  private persistListeners = new Set<() => void>();
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private dirty = false;
   private persisting: Promise<void> | null = null;
@@ -35,7 +36,7 @@ export class AppDatabase {
   version = 0;
   /** ISO timestamp of the last successful persist, for the settings screen. */
   lastPersistedAt: string | null = null;
-  lastPersistError: string | null = null;
+  private persistError: string | null = null;
 
   constructor(db: Database, options: AppDatabaseOptions = {}) {
     this.db = db;
@@ -89,14 +90,38 @@ export class AppDatabase {
     return () => this.listeners.delete(listener);
   }
 
+  /**
+   * Why the last persist failed, or null once one succeeds. While it is set, changes live only in
+   * memory; the app says so (`SaveFailedBanner`) rather than leaving it to Settings.
+   */
+  get lastPersistError(): string | null {
+    return this.persistError;
+  }
+
+  /** Called whenever `lastPersistError` changes (a persist fails, or succeeds after failing). */
+  subscribePersist(listener: () => void): () => void {
+    this.persistListeners.add(listener);
+    return () => this.persistListeners.delete(listener);
+  }
+
+  private setPersistError(error: string | null): void {
+    if (error === this.persistError) return;
+    this.persistError = error;
+    for (const l of this.persistListeners) l();
+  }
+
   /** Full database bytes (a valid `.fitnotes` file). Must not be called inside `mutate`. */
   export(): Uint8Array {
     if (this.mutateDepth > 0) throw new Error('export() called inside a transaction');
     return this.db.export();
   }
 
-  /** Swap in a different database (after a restore). Persists immediately. */
-  async replaceDatabase(next: Database): Promise<void> {
+  /**
+   * Swap in a different database (after a restore). Persists immediately. Rejects only when nothing
+   * was swapped (the database was handed over); once it is swapped a failed persist resolves with
+   * its message instead, because the new data is live and must not be reported as not restored.
+   */
+  async replaceDatabase(next: Database): Promise<string | null> {
     if (this.state !== 'open') {
       next.close();
       throw new Error(HANDED_OVER_MESSAGE);
@@ -105,7 +130,12 @@ export class AppDatabase {
     this.db = next;
     old.close();
     this.changed();
-    await this.flush();
+    try {
+      await this.flush();
+      return null;
+    } catch (err) {
+      return err instanceof Error ? err.message : String(err);
+    }
   }
 
   /**
@@ -128,11 +158,11 @@ export class AppDatabase {
       this.persisting = this.persist(bytes)
         .then(() => {
           this.lastPersistedAt = new Date().toISOString();
-          this.lastPersistError = null;
+          this.setPersistError(null);
         })
         .catch((err: unknown) => {
           this.dirty = true;
-          this.lastPersistError = err instanceof Error ? err.message : String(err);
+          this.setPersistError(err instanceof Error ? err.message : String(err));
           throw err;
         })
         .finally(() => {

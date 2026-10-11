@@ -66,6 +66,7 @@ describe('backup round trip', () => {
     const result = await restoreBackup(app, SQL, backupBytes);
     expect(result.sets).toBe(10);
     expect(result.workouts).toBe(3);
+    expect(result.persistError).toBeNull();
     expect(summarize(app).routines).toBe(1);
     const snaps = await listSnapshots();
     expect(snaps).toHaveLength(1);
@@ -121,6 +122,30 @@ describe('backup round trip', () => {
     }
     expect(app.scalar('SELECT COUNT(*) FROM Routine')).toBe(1);
     expect(app.hasUnsavedChanges).toBe(true);
+  });
+
+  it('reports a restore whose data is live but could not be saved to this device', async () => {
+    let fail = false;
+    const app = new AppDatabase(createEmptyDatabase(SQL), {
+      persist: async () => {
+        if (fail) throw new Error('quota');
+      },
+    });
+    const backup = createEmptyDatabase(SQL);
+    seedSampleWorkouts(backup);
+    const bytes = backup.export();
+    backup.close();
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    // The flush (its write starts synchronously) and the snapshot before the swap work; only saving
+    // the swapped-in data fails.
+    const restoring = restoreBackup(app, SQL, bytes);
+    fail = true;
+    const result = await restoring;
+    expect(result.persistError).toBe('quota');
+    expect(result.sets).toBe(10);
+    expect(app.scalar('SELECT COUNT(*) FROM training_log')).toBe(10);
+    expect(app.hasUnsavedChanges).toBe(true);
+    expect((await listSnapshots()).map((s) => s.label)).toContain('Before restore');
   });
 
   it('still opens and reconciles legacy-shaped and newer backups', () => {

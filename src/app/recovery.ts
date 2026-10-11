@@ -79,9 +79,14 @@ export async function recoverFromSnapshot(SQL: SqlJsStatic, key: string, damaged
 /**
  * Replace the live database with a rollback snapshot (Settings > Rollback snapshots). The snapshot
  * is opened first so an unreadable one fails before the "Before rollback" snapshot is written,
- * which would have pruned the oldest recovery point for nothing.
+ * which would have pruned the oldest recovery point for nothing. Resolves with the error of saving
+ * the rolled-back data to this device, or null (see `AppDatabase.replaceDatabase`).
  */
-export async function rollbackToSnapshot(app: AppDatabase, SQL: SqlJsStatic, key: string): Promise<void> {
+export async function rollbackToSnapshot(
+  app: AppDatabase,
+  SQL: SqlJsStatic,
+  key: string,
+): Promise<string | null> {
   const bytes = await readBlob(key);
   if (!bytes) throw new Error('Snapshot not found');
   const next = openStoredDatabase(SQL, bytes);
@@ -91,7 +96,7 @@ export async function rollbackToSnapshot(app: AppDatabase, SQL: SqlJsStatic, key
     next.close();
     throw err;
   }
-  await app.replaceDatabase(next);
+  return app.replaceDatabase(next);
 }
 
 /** Replace the stored database with an empty one, keeping the damaged bytes as a snapshot. */

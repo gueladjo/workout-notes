@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useDb, useQuery } from '@/app/db-context';
+import { useDb, usePersistError, useQuery } from '@/app/db-context';
 import { useSql } from '@/app/sql-context';
 import { useSettings } from '@/app/hooks';
 import { updateSettings } from '@/db/repo/settings';
@@ -29,6 +29,7 @@ export function SettingsScreen() {
   const toast = useToast();
   const settings = useSettings();
   const counts = useQuery((d) => summarize(d));
+  const persistError = usePersistError();
   const [busy, setBusy] = useState<string | null>(null);
   const [restoreResult, setRestoreResult] = useState<RestoreSummary | null>(null);
   const [pendingRestore, setPendingRestore] = useState<{ name: string; bytes: Uint8Array } | null>(null);
@@ -97,8 +98,12 @@ export function SettingsScreen() {
     if (!rollback) return;
     setBusy('Restoring snapshot…');
     try {
-      await rollbackToSnapshot(db, SQL, rollback.key);
-      toast('Snapshot restored');
+      const saveError = await rollbackToSnapshot(db, SQL, rollback.key);
+      toast(
+        saveError
+          ? `Snapshot restored, but saving it to this device failed (${saveError}). Save a backup to keep it.`
+          : 'Snapshot restored',
+      );
       setRestoreResult(null);
       setSnapshots(await listSnapshots());
     } catch (err) {
@@ -337,7 +342,7 @@ export function SettingsScreen() {
                   : ''}
                 {storage?.usage !== undefined ? `Using ${(storage.usage / 1024 / 1024).toFixed(1)} MB` : ''}
                 {storage?.quota ? ` of ${(storage.quota / 1024 / 1024).toFixed(0)} MB.` : ''}
-                {db.lastPersistError ? ` Last save failed: ${db.lastPersistError}` : ''}
+                {persistError ? ` Last save failed: ${persistError}` : ''}
               </div>
             </div>
           </div>
@@ -405,6 +410,12 @@ export function SettingsScreen() {
               <span className="muted">Body measurements</span>
               <b>{restoreResult.measurements}</b>
             </div>
+            {restoreResult.persistError && (
+              <div className="banner banner--danger" style={{ margin: 0 }}>
+                Restored, but saving it to this device failed ({restoreResult.persistError}). Save a backup to
+                keep it.
+              </div>
+            )}
             {(restoreResult.schema.createdTables.length > 0 ||
               restoreResult.schema.addedColumns.length > 0 ||
               restoreResult.schema.migrations.length > 0) && (
