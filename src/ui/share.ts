@@ -1,11 +1,12 @@
 /**
- * Text representation of a workout for "Share Workout".
+ * Text representation of a workout for "Share Workout". Lives next to `format.ts`: it is display
+ * text, built from the same set formatting the screens use, so nothing under `domain` depends on `ui`.
  */
 import type { Settings } from '@/db/repo/settings';
 import type { Workout } from '@/db/types';
-import { formatLongDate } from './dates';
-import { formatSet, weightUnitFor } from '@/ui/format';
-import { fmt, kgToDisplay } from './units';
+import { formatLongDate } from '@/domain/dates';
+import { fmt, kgToDisplay } from '@/domain/units';
+import { formatSet, weightUnitFor } from './format';
 
 export function workoutToText(
   workout: Workout,

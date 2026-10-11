@@ -21,7 +21,7 @@ import {
 import { setWorkoutComment } from '@/db/repo/comments';
 import { HomeScreenCategoryVisibility, HomeScreenSetLimitType } from '@/db/constants';
 import { weightUnitFor } from '@/ui/format';
-import { workoutToText } from '@/domain/share';
+import { workoutToText } from '@/ui/share';
 import { TopBar } from '@/ui/components/TopBar';
 import { Button, IconButton } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
