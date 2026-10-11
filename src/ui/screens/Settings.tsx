@@ -479,6 +479,13 @@ function NumberRow({
   onChange: (v: number) => void;
 }) {
   const [text, setText] = useState(String(value));
+  // Follow the stored value when it changes under the field (a restore or rollback on this screen),
+  // so a later blur cannot write the old text back (state adjustment during render).
+  const [seenValue, setSeenValue] = useState(value);
+  if (value !== seenValue) {
+    setSeenValue(value);
+    setText(String(value));
+  }
   return (
     <label className="toggle">
       <div className="list__text">
@@ -492,8 +499,8 @@ function NumberRow({
         onChange={(e) => setText(e.target.value)}
         onBlur={() => {
           const n = parseDecimal(text);
-          if (Number.isFinite(n) && n > 0) onChange(n);
-          else setText(String(value));
+          if (!(Number.isFinite(n) && n > 0)) setText(String(value));
+          else if (n !== value) onChange(n);
         }}
       />
     </label>

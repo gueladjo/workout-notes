@@ -792,6 +792,30 @@ test('restores a FitNotes backup and exports one', async ({ page }) => {
   expect(bytes.subarray(0, 15).toString()).toBe('SQLite format 3');
 });
 
+test('the weight increment field shows a restored value and does not write the old one back', async ({
+  page,
+}) => {
+  await openApp(page);
+  await page.goto('/#/settings');
+  const increment = page.getByRole('textbox', { name: /Default Weight Increment/ });
+  await increment.fill('5');
+  await increment.blur();
+  // Restore the fixture (increment 2.5) without leaving Settings.
+  const chooser = page.waitForEvent('filechooser');
+  await page.getByRole('button', { name: 'Restore Backup…' }).click();
+  await (await chooser).setFiles(FIXTURE);
+  await page.getByRole('button', { name: 'Restore', exact: true }).click();
+  await expect(page.getByText('Backup restored')).toBeVisible({ timeout: 30_000 });
+  await page.getByRole('dialog').press('Escape');
+  await expect(page).toHaveURL(/#\/settings$/);
+  await expect(increment).toHaveValue('2.5');
+  await increment.focus();
+  await increment.blur();
+  await page.waitForTimeout(1200);
+  await page.reload();
+  await expect(increment).toHaveValue('2.5', { timeout: 30_000 });
+});
+
 test('Copy Previous Workout picks the workout on the calendar first', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/settings');
