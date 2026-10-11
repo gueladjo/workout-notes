@@ -816,6 +816,18 @@ test('the weight increment field shows a restored value and does not write the o
   await expect(increment).toHaveValue('2.5', { timeout: 30_000 });
 });
 
+test('Delete Workout History lists its rollback snapshot without leaving Settings', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await page.goto('/#/settings');
+  await expect(page.getByText(/^Before restore · /)).toBeVisible();
+  await page.getByRole('button', { name: /Delete Workout History/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete…' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByRole('status')).toHaveText('Deleted 10 sets');
+  await expect(page.getByText(/^Before deleting history · /)).toBeVisible();
+});
+
 test('Copy Previous Workout picks the workout on the calendar first', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/settings');

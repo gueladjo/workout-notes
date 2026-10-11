@@ -39,10 +39,13 @@ export function SettingsScreen() {
   const [deleteHistoryOpen, setDeleteHistoryOpen] = useState(false);
   const [lastBackup, setLastBackup] = useState<string | null>(() => lastBackupAt());
 
+  // Bumped whenever a snapshot may have been written outside this screen's restore and rollback.
+  const [snapshotsChanged, setSnapshotsChanged] = useState(0);
+
   useEffect(() => {
     void listSnapshots().then(setSnapshots);
     void storageStatus().then(setStorage);
-  }, [restoreResult]);
+  }, [restoreResult, snapshotsChanged]);
 
   const exportBackup = async (mode: 'save' | 'share') => {
     setBusy('Preparing backup…');
@@ -83,6 +86,8 @@ export function SettingsScreen() {
       const result = await restoreBackup(db, SQL, pendingRestore.bytes);
       setRestoreResult(result);
     } catch (err) {
+      // A restore can fail after its "Before restore" snapshot was written.
+      setSnapshotsChanged((n) => n + 1);
       toast(
         err instanceof BackupError
           ? err.message
@@ -432,7 +437,13 @@ export function SettingsScreen() {
         )}
       </Dialog>
       {/* Mounted only while open so its range and exercise start afresh every time. */}
-      {deleteHistoryOpen && <DeleteHistoryDialog open onClose={() => setDeleteHistoryOpen(false)} />}
+      {deleteHistoryOpen && (
+        <DeleteHistoryDialog
+          open
+          onClose={() => setDeleteHistoryOpen(false)}
+          onSnapshotSaved={() => setSnapshotsChanged((n) => n + 1)}
+        />
+      )}
     </div>
   );
 }
@@ -507,7 +518,16 @@ function NumberRow({
   );
 }
 
-function DeleteHistoryDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+/** `onSnapshotSaved` lets Settings list the "Before deleting history" snapshot right away. */
+function DeleteHistoryDialog({
+  open,
+  onClose,
+  onSnapshotSaved,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onSnapshotSaved: () => void;
+}) {
   const db = useDb();
   const toast = useToast();
   const exercises = useQuery((d) => exercisesWithHistory(d));
@@ -580,6 +600,7 @@ function DeleteHistoryDialog({ open, onClose }: { open: boolean; onClose: () => 
               toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
               return;
             }
+            onSnapshotSaved();
             const n = deleteWorkoutHistory(db, {
               from: from || undefined,
               to: to || undefined,
