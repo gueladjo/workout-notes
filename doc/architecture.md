@@ -95,8 +95,12 @@ background). Once the user has interacted it keeps that box's colour only while 
 stays in the document, and with no box it falls back to the page background. So `App` mounts a
 permanent `.status-bar-fill` strip in the bar colour above the bars as the one box WebKit samples
 (`.topbar` and `.tabs` sit in normal flow above the scroller, `.screen__content`, so they are not
-candidates), and `body` carries the bar colour while `#root` carries the page ground
-(`src/ui/styles.css`).
+candidates), while `body` stays on the page ground (`--color-bg`): painting `body` in the bar
+colour exposed a dark band at the bottom of the screen on iOS whenever the canvas showed below
+`.screen` (for instance on launch before scrolling). In `@media (display-mode: standalone)` the
+shell (`html`, `body`, `#root`, `.screen`) also uses `100lvh` (with `100vh` fallback) rather than
+`100%` / `100dvh`, since there is no collapsible browser toolbar and iOS standalone launches can
+otherwise evaluate `100%` / `100dvh` short until the user scrolls up (`src/ui/styles.css`).
 
 The same system chrome can blur the app bar. iOS 26 and later draw Liquid Glass's scroll-edge
 effect, a progressive blur reaching about 40pt below the status bar, over the top of the installed
