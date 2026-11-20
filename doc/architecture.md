@@ -91,16 +91,15 @@ also picks up the new colour.
 iOS 26 adds a rule of its own. The installed app may sit below an opaque status bar
 (`env(safe-area-inset-top)` is then 0) and WebKit colours that strip from the fixed or sticky box it
 finds at the top edge of the page (at least 90% of the viewport wide, taller than 10px, opaque
-background). Once the user has interacted it keeps that box's colour only while the same element
-stays in the document, and with no box it falls back to the page background. So `App` mounts a
-permanent `.status-bar-fill` strip in the bar colour above the bars as the one box WebKit samples
-(`.topbar` and `.tabs` sit in normal flow above the scroller, `.screen__content`, so they are not
-candidates), while `body` stays on the page ground (`--color-bg`): painting `body` in the bar
-colour exposed a dark band at the bottom of the screen on iOS whenever the canvas showed below
-`.screen` (for instance on launch before scrolling). In `@media (display-mode: standalone)` the
-shell (`html`, `body`, `#root`, `.screen`) also uses `100lvh` (with `100vh` fallback) rather than
-`100%` / `100dvh`, since there is no collapsible browser toolbar and iOS standalone launches can
-otherwise evaluate `100%` / `100dvh` short until the user scrolls up (`src/ui/styles.css`).
+background) or falls back to the page background (`body`). So `App` mounts a permanent
+`.status-bar-fill` strip in the bar colour above the bars (`.topbar` and `.tabs` sit in normal flow
+above the scroller, `.screen__content`, so they are not candidates), and `body` carries the bar
+colour while `#root` carries the page ground (`src/ui/styles.css`). To keep `body`'s dark canvas
+from showing as a band at the bottom on iOS launch (where `100%` and `100dvh` can start short until
+the user scrolls up) or during overscroll, `@media (display-mode: standalone)` sizes the shell
+(`html`, `body`, `#root`, `.screen`) to `100lvh` (with `100vh` fallback) and `body::after` paints
+the page ground from below the top bar past the bottom viewport edge (`z-index: -1`), without
+touching the top edge.
 
 The same system chrome can blur the app bar. iOS 26 and later draw Liquid Glass's scroll-edge
 effect, a progressive blur reaching about 40pt below the status bar, over the top of the installed

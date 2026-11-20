@@ -99,17 +99,34 @@ body {
   font-size: 15px;
   line-height: 1.4;
   color: var(--color-text);
-  /* Keep the canvas on the page ground, not --color-bar: on iOS the canvas behind .screen can
-     show at the bottom edge (e.g. on launch before scrolling or during overscroll), which painted
-     a dark band across the bottom. The top status bar on iOS 26+ is coloured by .status-bar-fill. */
-  background: var(--color-bg);
+  /* The canvas stays the app bar colour, not the page ground: on iOS 26+ the installed app paints
+     the opaque status bar from body's background colour (even with .status-bar-fill mounted), so
+     body must stay --color-bar to keep the status bar black like .topbar. */
+  background: var(--color-bar);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
 }
 
+/* Paint the page ground over everything below the top bar — extending past the bottom edge — so
+   body's --color-bar canvas can never show as a dark band at the bottom on iOS (before scrolling,
+   after keyboard dismissal, or during overscroll). Kept below the top bar so WebKit's top-edge
+   sampler still sees only --color-bar. */
+body::after {
+  content: '';
+  position: fixed;
+  top: calc(var(--safe-top) + var(--topbar-height));
+  left: 0;
+  right: 0;
+  bottom: -200px;
+  background: var(--color-bg);
+  pointer-events: none;
+  z-index: -1;
+}
+
 #root {
   height: 100%;
+  background: var(--color-bg);
 }
 
 button,
