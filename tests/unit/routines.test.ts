@@ -2,6 +2,7 @@ import { describe, expect, it, beforeAll, beforeEach } from 'vitest';
 import { loadSqlJs, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
+import { DistanceUnit } from '../../src/db/constants';
 import { sampleExerciseIds, seedSampleWorkouts } from '../helpers/sample';
 import { addSet, listSets } from '../../src/db/repo/workouts';
 import {
@@ -196,5 +197,47 @@ describe('predefined sets', () => {
       { _id: 2, future_col: 7 },
       { _id: 3, future_col: 0 },
     ]);
+  });
+
+  it('preserves the previous distance unit when a predefined distance is blank (0)', () => {
+    const { cycling } = sampleExerciseIds(app.raw);
+    const sectionId = addSection(app, createRoutine(app, 'Cardio'), 'Ride');
+    const reId = addSectionExercise(app, sectionId, cycling);
+    // Clearing a distance box in PredefinedSetsDialog stores distanceMetres: 0 with the display unit (km).
+    setPredefinedSets(app, reId, [
+      { metricWeight: 0, reps: 0, distanceMetres: 0, durationSeconds: 0, unit: DistanceUnit.KILOMETRES },
+      { metricWeight: 0, reps: 0, distanceMetres: 10000, durationSeconds: 0, unit: DistanceUnit.KILOMETRES },
+    ]);
+    // With no prior sets before 2026-09-01, the blank set keeps its own stored unit.
+    const beforeHistory = plannedSetsForSection(app, sectionId, '2026-09-01');
+    expect(beforeHistory[0]).toMatchObject({ distanceMetres: 0, unit: DistanceUnit.KILOMETRES });
+    // Previous workout logged in metres: the blank predefined set must copy metres, not overwrite with km.
+    addSet(app, {
+      exerciseId: cycling,
+      date: '2026-09-10',
+      metricWeight: 0,
+      reps: 0,
+      distanceMetres: 5000,
+      durationSeconds: 1200,
+      unit: DistanceUnit.METRES,
+    });
+    const fromFallback = plannedSetsForSection(app, sectionId, '2026-09-15');
+    expect(fromFallback[0]).toMatchObject({ distanceMetres: 5000, unit: DistanceUnit.METRES });
+    // An explicit non-zero predefined distance keeps its own unit.
+    expect(fromFallback[1]).toMatchObject({ distanceMetres: 10000, unit: DistanceUnit.KILOMETRES });
+    // When that predefined set was logged previously in miles, copying from last preserves miles too.
+    const [firstRoutineSet] = listRoutineSets(app, reId);
+    addSet(app, {
+      exerciseId: cycling,
+      date: '2026-09-12',
+      metricWeight: 0,
+      reps: 0,
+      distanceMetres: 1609.344,
+      durationSeconds: 480,
+      unit: DistanceUnit.MILES,
+      routineSetId: firstRoutineSet!.id,
+    });
+    const fromLast = plannedSetsForSection(app, sectionId, '2026-09-15');
+    expect(fromLast[0]).toMatchObject({ distanceMetres: 1609.344, unit: DistanceUnit.MILES });
   });
 });

@@ -384,6 +384,7 @@ export function plannedSetsForSection(db: AppDatabase, sectionId: number, date: 
         [s.id, date],
       );
       const fallback = prev?.sets[i] ?? prev?.sets[prev.sets.length - 1];
+      const copiedUnit = Number(last?.unit ?? fallback?.unit ?? 0);
       result.push({
         routineExerciseId: ex.id,
         exerciseId: ex.exerciseId,
@@ -393,7 +394,7 @@ export function plannedSetsForSection(db: AppDatabase, sectionId: number, date: 
         distanceMetres: s.distanceMetres || Number(last?.distance ?? fallback?.distanceMetres ?? 0),
         durationSeconds:
           s.durationSeconds || Number(last?.duration_seconds ?? fallback?.durationSeconds ?? 0),
-        unit: s.unit || Number(last?.unit ?? fallback?.unit ?? 0),
+        unit: s.distanceMetres > 0 ? s.unit || copiedUnit : copiedUnit || s.unit,
       });
     });
   }
