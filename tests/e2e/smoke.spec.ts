@@ -579,6 +579,74 @@ test('a goal refuses an invalid target instead of saving 0', async ({ page }) =>
   await expect(page.getByText('Edit Measurement')).toBeVisible();
 });
 
+test('distance goals use the goal unit, weighted timed days show Max Weight, and 1RM cap applies across Stats, Goals and History', async ({
+  page,
+}) => {
+  await openApp(page);
+  // 1. Distance goal in metres displays current progress in metres, not km.
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Cardio' }).click();
+  await page.getByRole('button', { name: 'Running (Outdoor)' }).first().click();
+  await page.getByRole('textbox', { name: 'Distance' }).fill('250');
+  await page.getByRole('textbox', { name: 'Minutes' }).fill('1');
+  await page.getByTestId('save-set').click();
+  await page.getByRole('button', { name: 'Records, stats and goals' }).click();
+  await page.getByRole('tab', { name: 'Goals' }).click();
+  await page.getByRole('button', { name: 'Add goal' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByLabel('Type').selectOption({ label: 'Max Distance' });
+  await dialog.getByRole('combobox', { name: 'Distance unit' }).selectOption({ label: 'm' });
+  await dialog.getByRole('textbox', { name: 'Distance' }).fill('500');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  const goalCard = page.getByRole('button', { name: /Max Distance: 500 m/ });
+  await expect(goalCard).toContainText('250 m');
+  await expect(goalCard).toContainText('50%');
+
+  // 2. WEIGHT_AND_TIME exercise (Plank) shows Max Weight in the History day popup.
+  await page.goto('/#/exercises');
+  await page.getByRole('button', { name: 'Abs' }).click();
+  await page.getByRole('button', { name: 'Plank', exact: true }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('10');
+  await page.getByRole('textbox', { name: 'Minutes' }).fill('1');
+  await page.getByTestId('save-set').click();
+  await page.getByRole('tab', { name: 'History' }).click();
+  await page.getByRole('button', { name: /Current$/ }).click();
+  await expect(dialog.getByText('Max Weight')).toBeVisible();
+  await expect(dialog.getByText('10 kg (10 kg × 1:00)')).toBeVisible();
+  await page.keyboard.press('Escape');
+
+  // 3. Estimated 1RM rep cap applies consistently to Records, Stats, Goals and History day stats.
+  await page.goto('/#/exercises');
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('50');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('30');
+  await page.getByTestId('save-set').click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  await page.getByRole('button', { name: 'Records, stats and goals' }).click();
+  await page.getByRole('button', { name: 'Estimated' }).click();
+  await page.getByRole('button', { name: 'Estimated 1RM settings' }).click();
+  await dialog.getByLabel('Ignore sets with more reps than').selectOption('10');
+  await dialog.getByRole('button', { name: 'Done' }).click();
+  await expect(page.getByText('112.5 kg')).toBeVisible();
+  await page.getByRole('tab', { name: 'Stats' }).click();
+  await expect(page.getByRole('button', { name: /Max Estimated 1RM/ })).toContainText('112.5 kg');
+  await page.getByRole('tab', { name: 'Goals' }).click();
+  await page.getByRole('button', { name: 'Add goal' }).click();
+  await dialog.getByLabel('Type').selectOption({ label: 'Estimated 1RM' });
+  await dialog.getByRole('textbox', { name: 'Weight (kg)' }).fill('200');
+  await dialog.getByRole('button', { name: 'Save' }).click();
+  const ormGoal = page.getByRole('button', { name: /Estimated 1RM: 200 kg/ });
+  await expect(ormGoal).toContainText('112.5 kg');
+  await expect(ormGoal).toContainText('56%');
+  await page.goBack();
+  await page.getByRole('tab', { name: 'History' }).click();
+  await page.getByRole('button', { name: /Current$/ }).click();
+  await expect(dialog.getByText('112.5 kg (100 kg × 5 reps)')).toBeVisible();
+});
+
 test('Update keeps the exact weight of a set whose lbs field was not touched', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Start New Workout' }).click();

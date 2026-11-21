@@ -366,13 +366,14 @@ function dayStatsOf(
   settings: Settings,
 ): DayStat[] {
   const fields = exerciseTypeFields(typeId);
+  const weight = fields.includes('weight');
   const reps = fields.includes('reps');
-  const strength = fields.includes('weight') && reps;
+  const strength = weight && reps;
   const distance = fields.includes('distance');
   const time = fields.includes('time');
   const sum = (f: (s: TrainingSetWithComment) => number) => sets.reduce((a, s) => a + f(s), 0);
-  const best = (f: (s: TrainingSetWithComment) => number) =>
-    sets.reduce<TrainingSetWithComment | undefined>((b, s) => (b && f(b) >= f(s) ? b : s), undefined);
+  const best = (f: (s: TrainingSetWithComment) => number, list: TrainingSetWithComment[] = sets) =>
+    list.reduce<TrainingSetWithComment | undefined>((b, s) => (b && f(b) >= f(s) ? b : s), undefined);
   const oneRm = (s: TrainingSetWithComment) => estimatedOneRepMax(s.metricWeight, s.reps);
   const volume = (s: TrainingSetWithComment) => s.metricWeight * s.reps;
   const dist = (metres: number, unit: number) => formatDist(metres, unit, settings.metric);
@@ -394,12 +395,17 @@ function dayStatsOf(
     label: string,
     f: (s: TrainingSetWithComment) => number,
     format: (s: TrainingSetWithComment) => string,
+    list: TrainingSetWithComment[] = sets,
   ) => {
-    const set = best(f);
+    const set = best(f, list);
     if (set) stats.push({ label, value: format(set), set });
   };
   if (strength) {
-    max('Max Estimated 1RM', oneRm, (s) => formatWeightValue(oneRm(s), weightUnit));
+    const maxRepsFor1rm = settings.estimated1rmMaxReps || null;
+    const eligible1rm = maxRepsFor1rm ? sets.filter((s) => s.reps <= maxRepsFor1rm) : sets;
+    max('Max Estimated 1RM', oneRm, (s) => formatWeightValue(oneRm(s), weightUnit), eligible1rm);
+  }
+  if (weight) {
     max(
       'Max Weight',
       (s) => s.metricWeight,

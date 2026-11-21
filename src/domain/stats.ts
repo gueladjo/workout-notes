@@ -14,7 +14,11 @@ export interface StatItem {
   set?: TrainingSet;
 }
 
-export function exerciseStats(sets: readonly TrainingSet[], typeId: number): StatItem[] {
+export function exerciseStats(
+  sets: readonly TrainingSet[],
+  typeId: number,
+  maxRepsFor1rm: number | null = null,
+): StatItem[] {
   const items: StatItem[] = [];
   const w = exerciseTypeHas(typeId, 'weight');
   const r = exerciseTypeHas(typeId, 'reps');
@@ -23,10 +27,13 @@ export function exerciseStats(sets: readonly TrainingSet[], typeId: number): Sta
   const dates = new Set(sets.map((s) => s.date));
   items.push({ label: 'Workouts', value: dates.size, kind: 'count' });
   items.push({ label: 'Sets', value: sets.length, kind: 'count' });
-  const maxBy = (f: (s: TrainingSet) => number): TrainingSet | undefined => {
+  const maxBy = (
+    f: (s: TrainingSet) => number,
+    list: readonly TrainingSet[] = sets,
+  ): TrainingSet | undefined => {
     let best: TrainingSet | undefined;
     let bv = -Infinity;
-    for (const s of sets) {
+    for (const s of list) {
       const v = f(s);
       if (v > bv) {
         bv = v;
@@ -40,7 +47,8 @@ export function exerciseStats(sets: readonly TrainingSet[], typeId: number): Sta
     if (b) items.push({ label: 'Max Weight', value: b.metricWeight, kind: 'weight', date: b.date, set: b });
   }
   if (w && r) {
-    const b = maxBy((s) => estimatedOneRepMax(s.metricWeight, s.reps));
+    const eligible1rm = maxRepsFor1rm ? sets.filter((s) => s.reps <= maxRepsFor1rm) : sets;
+    const b = maxBy((s) => estimatedOneRepMax(s.metricWeight, s.reps), eligible1rm);
     if (b)
       items.push({
         label: 'Max Estimated 1RM',
@@ -111,7 +119,11 @@ export interface GoalProgress {
 }
 
 /** Current progress towards a goal, considering sets from the goal's start date onward. */
-export function goalProgress(goal: Goal, sets: readonly TrainingSet[]): GoalProgress {
+export function goalProgress(
+  goal: Goal,
+  sets: readonly TrainingSet[],
+  maxRepsFor1rm: number | null = null,
+): GoalProgress {
   const relevant = goal.startDate ? sets.filter((s) => s.date >= goal.startDate!) : sets;
   const byDate = new Map<string, TrainingSet[]>();
   for (const s of relevant) byDate.set(s.date, [...(byDate.get(s.date) ?? []), s]);
@@ -167,7 +179,9 @@ export function goalProgress(goal: Goal, sets: readonly TrainingSet[]): GoalProg
       target = goal.metricWeight;
       break;
     case GoalType.ESTIMATED_1RM:
-      current = max((s) => estimatedOneRepMax(s.metricWeight, s.reps));
+      current = relevant
+        .filter((s) => !maxRepsFor1rm || s.reps <= maxRepsFor1rm)
+        .reduce((m, s) => Math.max(m, estimatedOneRepMax(s.metricWeight, s.reps)), 0);
       target = goal.metricWeight;
       break;
     case GoalType.MAX_VOLUME:

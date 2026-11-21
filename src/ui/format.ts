@@ -167,6 +167,7 @@ export function formatStatValue(
   kind: 'weight' | 'reps' | 'distance' | 'time' | 'count' | 'speed' | 'pace',
   weightUnit: WeightUnit,
   settings: Settings,
+  distanceUnit?: DistanceUnitId,
 ): string {
   switch (kind) {
     case 'weight':
@@ -176,7 +177,7 @@ export function formatStatValue(
     case 'count':
       return fmt(value, 0);
     case 'distance': {
-      const du = resolveDistanceUnit(0, settings.metric);
+      const du = distanceUnit ?? resolveDistanceUnit(0, settings.metric);
       return `${fmt(metresToDisplay(value, du))} ${distanceUnitShort(du)}`;
     }
     case 'time':

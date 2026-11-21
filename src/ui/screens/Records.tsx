@@ -325,7 +325,10 @@ export function StatsTab({ exercise, date }: { exercise: ExerciseWithCategory; d
     }
   }, [period, anchor, workoutDate, customFrom, customTo, settings.firstDayOfWeek]);
   const filtered = useMemo(() => sets.filter((s) => s.date >= range[0] && s.date <= range[1]), [sets, range]);
-  const stats = useMemo(() => exerciseStats(filtered, exercise.typeId), [filtered, exercise.typeId]);
+  const stats = useMemo(
+    () => exerciseStats(filtered, exercise.typeId, settings.estimated1rmMaxReps || null),
+    [filtered, exercise.typeId, settings.estimated1rmMaxReps],
+  );
 
   return (
     <div className="screen__content">
@@ -450,7 +453,8 @@ export function GoalsTab({ exercise }: { exercise: ExerciseWithCategory }) {
         )}
         <div className="stack">
           {goals.map((g) => {
-            const p = goalProgress(g, sets);
+            const p = goalProgress(g, sets, settings.estimated1rmMaxReps || null);
+            const goalDu = p.kind === 'distance' ? resolveDistanceUnit(g.unit, settings.metric) : undefined;
             return (
               <button
                 key={g.id}
@@ -474,7 +478,7 @@ export function GoalsTab({ exercise }: { exercise: ExerciseWithCategory }) {
                   />
                 </div>
                 <div className="row row--between" style={{ fontSize: 13, marginTop: 4 }}>
-                  <span>{formatStatValue(p.current, p.kind, wu, settings)}</span>
+                  <span>{formatStatValue(p.current, p.kind, wu, settings, goalDu)}</span>
                   <span className="muted">{Math.round(p.fraction * 100)}%</span>
                 </div>
               </button>

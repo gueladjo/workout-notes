@@ -30,6 +30,12 @@ describe('formatStatValue', () => {
     expect(formatStatValue(1800 / 5000, 'pace', 'kg', metric)).toBe('6:00 /km');
     expect(formatStatValue(0, 'pace', 'kg', metric)).toBe('0:00 /km');
   });
+
+  it('formats distance in an explicit goal unit when given, else the settings default', () => {
+    expect(formatStatValue(250, 'distance', 'kg', metric)).toBe('0.25 km');
+    expect(formatStatValue(250, 'distance', 'kg', metric, DistanceUnit.METRES)).toBe('250 m');
+    expect(formatStatValue(1609.344, 'distance', 'kg', metric, DistanceUnit.MILES)).toBe('1 mi');
+  });
 });
 
 describe('paceDistanceUnit', () => {
