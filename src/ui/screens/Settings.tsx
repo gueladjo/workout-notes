@@ -5,7 +5,12 @@ import { useSql } from '@/app/sql-context';
 import { useSettings } from '@/app/hooks';
 import { updateSettings } from '@/db/repo/settings';
 import { recalculatePersonalRecords } from '@/db/repo/records';
-import { deleteWorkoutHistory, exercisesWithHistory } from '@/db/repo/workouts';
+import {
+  deleteWorkoutHistory,
+  exercisesWithHistory,
+  hasWorkoutHistory,
+  type DeleteHistoryOptions,
+} from '@/db/repo/workouts';
 import { AppTheme, HomeScreenCategoryVisibility, HomeScreenSetLimitType } from '@/db/constants';
 import { listSnapshots, storageStatus, type StoredFileMeta } from '@/db/persistence';
 import { HANDED_OVER_MESSAGE } from '@/db/store';
@@ -139,11 +144,19 @@ export function SettingsScreen() {
     }
   };
 
-  const doDeleteHistory = async (opts: { from?: string; to?: string; exerciseIds?: number[] }) => {
+  const doDeleteHistory = async (opts: DeleteHistoryOptions) => {
     if (busy) return;
     setBusy('Deleting workout history…');
     try {
       if (db.closed) throw new Error(HANDED_OVER_MESSAGE);
+      if (opts.from && opts.to && opts.from > opts.to) {
+        toast('Nothing deleted: invalid date range');
+        return;
+      }
+      if (!hasWorkoutHistory(db, opts)) {
+        toast('No workout history in that range');
+        return;
+      }
       try {
         await db.saveSnapshot('Before deleting history');
       } catch (err) {
@@ -153,7 +166,7 @@ export function SettingsScreen() {
       }
       setSnapshotsChanged((n) => n + 1);
       const n = deleteWorkoutHistory(db, opts);
-      toast(`Deleted ${n} sets`);
+      toast(n > 0 ? `Deleted ${n} ${n === 1 ? 'set' : 'sets'}` : 'Workout history deleted');
     } catch (err) {
       toast(`Nothing deleted: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -569,13 +582,23 @@ function DeleteHistoryDialog({
 }: {
   open: boolean;
   onClose: () => void;
-  onDelete: (opts: { from?: string; to?: string; exerciseIds?: number[] }) => void;
+  onDelete: (opts: DeleteHistoryOptions) => void;
 }) {
   const exercises = useQuery((d) => exercisesWithHistory(d));
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
   const [exerciseId, setExerciseId] = useState<number | 'all'>('all');
   const [confirm, setConfirm] = useState(false);
+  const inverted = Boolean(from && to && from > to);
+  const hasMatches = useQuery(
+    (d) =>
+      hasWorkoutHistory(d, {
+        from: from || undefined,
+        to: to || undefined,
+        exerciseIds: exerciseId === 'all' ? undefined : [exerciseId],
+      }),
+    [from, to, exerciseId],
+  );
   return (
     <>
       <Dialog
@@ -587,7 +610,7 @@ function DeleteHistoryDialog({
             <Button variant="text" onClick={onClose}>
               Cancel
             </Button>
-            <Button variant="danger" onClick={() => setConfirm(true)}>
+            <Button variant="danger" disabled={inverted || !hasMatches} onClick={() => setConfirm(true)}>
               Delete…
             </Button>
           </>
@@ -622,6 +645,15 @@ function DeleteHistoryDialog({
             ))}
           </select>
         </label>
+        {inverted ? (
+          <p style={{ fontSize: 13, marginBottom: 0, color: 'var(--color-danger)' }}>
+            From date must be on or before To date.
+          </p>
+        ) : !hasMatches ? (
+          <p className="muted" style={{ fontSize: 13, marginBottom: 0 }}>
+            No workout history in this range.
+          </p>
+        ) : null}
       </Dialog>
       <ConfirmDialog
         open={confirm}

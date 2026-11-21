@@ -86,14 +86,20 @@ export function quoteIdent(name: string): string {
  */
 export function transaction<T>(db: Database, fn: () => T): T {
   const inTransaction = txDepth.get(db) ?? 0;
-  txDepth.set(db, inTransaction + 1);
   if (inTransaction === 0) db.run('BEGIN');
+  txDepth.set(db, inTransaction + 1);
   try {
     const result = fn();
     if (inTransaction === 0) db.run('COMMIT');
     return result;
   } catch (err) {
-    if (inTransaction === 0) db.run('ROLLBACK');
+    if (inTransaction === 0) {
+      try {
+        db.run('ROLLBACK');
+      } catch {
+        // SQLite may already have rolled back the transaction; keep the original error.
+      }
+    }
     throw err;
   } finally {
     txDepth.set(db, inTransaction);

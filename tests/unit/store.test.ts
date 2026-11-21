@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeAll, vi } from 'vitest';
-import { loadSqlJs, type SqlJsStatic } from '../../src/db/sqlite';
+import { loadSqlJs, transaction, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
 
@@ -312,5 +312,38 @@ describe('AppDatabase', () => {
     expect(closed).toBe(true);
     await expect(app.saveSnapshot('After close')).rejects.toThrow(/handed over/);
     expect(saveSnapshot).toHaveBeenCalledTimes(1);
+  });
+
+  it('transaction() keeps depth clean when BEGIN fails and preserves the original error if ROLLBACK fails', () => {
+    const raw = createEmptyDatabase(SQL);
+    // A transaction is already open, so BEGIN fails; txDepth must stay at 0 afterwards.
+    raw.run('BEGIN');
+    expect(() => transaction(raw, () => {})).toThrow(/transaction/);
+    raw.run('ROLLBACK');
+    // Subsequent transactions must still begin and roll back properly.
+    expect(() =>
+      transaction(raw, () => {
+        raw.run("INSERT INTO Routine (name) VALUES ('rolled-back')");
+        throw new Error('rollback check');
+      }),
+    ).toThrow('rollback check');
+    expect(raw.exec('SELECT COUNT(*) FROM Routine')[0]!.values[0]![0]).toBe(0);
+
+    // If SQLite already rolled back inside fn(), ROLLBACK throws "no transaction is active",
+    // which must not mask the original error or leave txDepth stuck.
+    expect(() =>
+      transaction(raw, () => {
+        raw.run('ROLLBACK');
+        throw new Error('original failure');
+      }),
+    ).toThrow('original failure');
+    expect(() =>
+      transaction(raw, () => {
+        raw.run("INSERT INTO Routine (name) VALUES ('still-atomic')");
+        throw new Error('second failure');
+      }),
+    ).toThrow('second failure');
+    expect(raw.exec('SELECT COUNT(*) FROM Routine')[0]!.values[0]![0]).toBe(0);
+    raw.close();
   });
 });

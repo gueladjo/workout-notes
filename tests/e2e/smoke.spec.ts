@@ -960,7 +960,23 @@ test('Delete Workout History lists its rollback snapshot without leaving Setting
   await page.goto('/#/settings');
   await expect(page.getByText(/^Before restore · /)).toBeVisible();
   await page.getByRole('button', { name: /Delete Workout History/ }).click();
-  await page.getByRole('dialog').getByRole('button', { name: 'Delete…' }).click();
+  const dialog = page.getByRole('dialog');
+  const deleteBtn = dialog.getByRole('button', { name: 'Delete…' });
+  // Inverted and empty ranges are refused before taking a rollback snapshot.
+  await dialog.getByLabel('From').fill('2026-09-10');
+  await dialog.getByLabel('To').fill('2026-09-01');
+  await expect(dialog.getByText('From date must be on or before To date.')).toBeVisible();
+  await expect(deleteBtn).toBeDisabled();
+  await dialog.getByLabel('From').fill('2020-01-01');
+  await dialog.getByLabel('To').fill('2020-01-31');
+  await expect(dialog.getByText('No workout history in this range.')).toBeVisible();
+  await expect(deleteBtn).toBeDisabled();
+  await expect(page.getByText(/^Before deleting history · /)).toHaveCount(0);
+  // Clearing the dates restores the full-history match and takes a snapshot once confirmed.
+  await dialog.getByLabel('From').fill('');
+  await dialog.getByLabel('To').fill('');
+  await expect(deleteBtn).toBeEnabled();
+  await deleteBtn.click();
   await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
   await expect(page.getByRole('status')).toHaveText('Deleted 10 sets');
   await expect(page.getByText(/^Before deleting history · /)).toBeVisible();

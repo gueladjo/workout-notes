@@ -20,6 +20,7 @@ import {
   updateSet,
   workoutDates,
   deleteWorkoutHistory,
+  hasWorkoutHistory,
 } from '../../src/db/repo/workouts';
 import { getSetComment, setSetComment, setWorkoutComment } from '../../src/db/repo/comments';
 import {
@@ -350,6 +351,52 @@ describe('sets and workouts', () => {
     expect(app.scalar('SELECT COUNT(*) FROM WorkoutGroupExercise WHERE date = ?', ['2026-09-12'])).toBe(0);
     expect(app.all('SELECT * FROM WorkoutTime')).toHaveLength(1);
     expect(getWorkout(app, '2026-09-04').time?.start).toBe('2026-09-04T10:00:00');
+  });
+
+  it('scopes exercise-filtered history deletion group cleanup to the selected date range and ignores inverted ranges', () => {
+    // Bench Press is grouped on 2026-09-04 (with sets) and on 2026-09-21 (without sets, e.g. from
+    // an imported FitNotes backup). Also include an empty routine group and an empty later-day group.
+    createGroup(app, { date: '2026-09-04', name: 'Group 1', colour: -1, exerciseIds: [BENCH] });
+    const sep21 = createGroup(app, {
+      date: '2026-09-21',
+      name: 'Group 1',
+      colour: -1,
+      exerciseIds: [BENCH],
+    });
+    app.mutate(() => {
+      app.run(
+        "INSERT INTO WorkoutGroup (name, date, colour, routine_section_id, auto_jump_enabled) VALUES ('Empty Routine', '', -1, 1, 1)",
+      );
+      app.run(
+        "INSERT INTO WorkoutGroup (name, date, colour, routine_section_id, auto_jump_enabled) VALUES ('Empty Sep25', '2026-09-25', -1, NULL, 1)",
+      );
+    });
+
+    // An inverted range matches nothing and leaves everything untouched (without mutating).
+    const versionBefore = app.version;
+    expect(hasWorkoutHistory(app, { from: '2026-09-10', to: '2026-09-01', exerciseIds: [BENCH] })).toBe(
+      false,
+    );
+    expect(deleteWorkoutHistory(app, { from: '2026-09-10', to: '2026-09-01', exerciseIds: [BENCH] })).toBe(0);
+    expect(app.version).toBe(versionBefore);
+    expect(listGroups(app, '2026-09-21').map((g) => [g.id, g.exerciseIds])).toEqual([[sep21, [BENCH]]]);
+
+    // Deleting Bench Press history for 2026-09-04 only drops the 2026-09-04 group, leaving the
+    // 2026-09-21 group and out-of-range empty groups intact.
+    expect(hasWorkoutHistory(app, { from: '2026-09-04', to: '2026-09-04', exerciseIds: [BENCH] })).toBe(true);
+    expect(deleteWorkoutHistory(app, { from: '2026-09-04', to: '2026-09-04', exerciseIds: [BENCH] })).toBe(2);
+    expect(listGroups(app, '2026-09-04')).toHaveLength(0);
+    expect(listGroups(app, '2026-09-21').map((g) => [g.id, g.exerciseIds])).toEqual([[sep21, [BENCH]]]);
+    expect(app.scalar("SELECT COUNT(*) FROM WorkoutGroup WHERE name = 'Empty Routine'")).toBe(1);
+    expect(app.scalar("SELECT COUNT(*) FROM WorkoutGroup WHERE name = 'Empty Sep25'")).toBe(1);
+
+    // An empty range reports no history, while a comment-only date still counts for all-exercises.
+    expect(hasWorkoutHistory(app, { from: '2020-01-01', to: '2020-01-31' })).toBe(false);
+    setWorkoutComment(app, '2026-10-01', 'Rest day note');
+    expect(hasWorkoutHistory(app, { from: '2026-10-01', to: '2026-10-01', exerciseIds: [BENCH] })).toBe(
+      false,
+    );
+    expect(hasWorkoutHistory(app, { from: '2026-10-01', to: '2026-10-01' })).toBe(true);
   });
 });
 

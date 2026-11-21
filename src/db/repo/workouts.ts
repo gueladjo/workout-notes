@@ -399,52 +399,102 @@ export function exercisesWithHistory(db: AppDatabase) {
     .map(toExercise);
 }
 
-/** Delete workout history in a date range (optionally only some exercises), keeping configuration. */
-export function deleteWorkoutHistory(
-  db: AppDatabase,
-  opts: { from?: string; to?: string; exerciseIds?: number[] },
-): number {
-  return db.mutate(() => {
-    const where: string[] = [];
-    const params: (string | number)[] = [];
-    if (opts.from) {
-      where.push('date >= ?');
-      params.push(opts.from);
-    }
-    if (opts.to) {
-      where.push('date <= ?');
-      params.push(opts.to);
-    }
-    if (opts.exerciseIds && opts.exerciseIds.length) {
-      where.push(`exercise_id IN (${opts.exerciseIds.map(() => '?').join(',')})`);
-      params.push(...opts.exerciseIds);
-    }
-    const clause = where.length ? ' WHERE ' + where.join(' AND ') : '';
-    const count = Number(db.scalar(`SELECT COUNT(*) FROM training_log${clause}`, params));
-    db.run(
-      `DELETE FROM Comment WHERE owner_type_id = ${CommentOwnerType.TRAINING_LOG_SET} AND owner_id IN (SELECT _id FROM training_log${clause})`,
-      params,
+export interface DeleteHistoryOptions {
+  from?: string;
+  to?: string;
+  exerciseIds?: number[];
+}
+
+function historyFilter(opts: DeleteHistoryOptions) {
+  const inverted = Boolean(opts.from && opts.to && opts.from > opts.to);
+  // Routine supersets share WorkoutGroup / WorkoutGroupExercise with `date = ''`: an open or
+  // upper-bound-only range must not match them, so every workout-date predicate excludes `''`.
+  const dateWhere = ["date != ''"];
+  const dateParams: string[] = [];
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+  if (opts.from) {
+    dateWhere.push('date >= ?');
+    dateParams.push(opts.from);
+    where.push('date >= ?');
+    params.push(opts.from);
+  }
+  if (opts.to) {
+    dateWhere.push('date <= ?');
+    dateParams.push(opts.to);
+    where.push('date <= ?');
+    params.push(opts.to);
+  }
+  const exIds = opts.exerciseIds?.length ? opts.exerciseIds : null;
+  const exClause = exIds ? `exercise_id IN (${exIds.map(() => '?').join(',')})` : '';
+  if (exIds) {
+    where.push(exClause);
+    params.push(...exIds);
+  }
+  return {
+    inverted,
+    clause: where.length ? ' WHERE ' + where.join(' AND ') : '',
+    params,
+    dateClause: dateWhere.join(' AND '),
+    dateParams,
+    exIds,
+    exClause,
+  };
+}
+
+/** True when `deleteWorkoutHistory(db, opts)` would remove at least one row. */
+export function hasWorkoutHistory(db: AppDatabase, opts: DeleteHistoryOptions): boolean {
+  const f = historyFilter(opts);
+  if (f.inverted) return false;
+  if (Number(db.scalar(`SELECT COUNT(*) FROM training_log${f.clause}`, f.params)) > 0) return true;
+  if (f.exIds) {
+    return (
+      Number(
+        db.scalar(
+          `SELECT COUNT(*) FROM WorkoutGroupExercise WHERE ${f.dateClause} AND ${f.exClause} AND NOT EXISTS (
+             SELECT 1 FROM training_log t WHERE t.date = WorkoutGroupExercise.date AND t.exercise_id = WorkoutGroupExercise.exercise_id)`,
+          [...f.dateParams, ...f.exIds],
+        ),
+      ) > 0
     );
-    db.run(`DELETE FROM training_log${clause}`, params);
-    if (opts.exerciseIds?.length) {
-      // Sets of only some exercises were removed: drop their group membership on dates where they
-      // have no sets left, then any group that became empty.
-      const exClause = `exercise_id IN (${opts.exerciseIds.map(() => '?').join(',')})`;
+  }
+  const timeClause = f.dateClause.replace(/date/g, 'workout_date');
+  return (
+    Number(db.scalar(`SELECT COUNT(*) FROM WorkoutComment WHERE ${f.dateClause}`, f.dateParams)) > 0 ||
+    Number(db.scalar(`SELECT COUNT(*) FROM WorkoutGroupExercise WHERE ${f.dateClause}`, f.dateParams)) > 0 ||
+    Number(db.scalar(`SELECT COUNT(*) FROM WorkoutGroup WHERE ${f.dateClause}`, f.dateParams)) > 0 ||
+    Number(db.scalar(`SELECT COUNT(*) FROM WorkoutTime WHERE ${timeClause}`, f.dateParams)) > 0
+  );
+}
+
+/** Delete workout history in a date range (optionally only some exercises), keeping configuration. */
+export function deleteWorkoutHistory(db: AppDatabase, opts: DeleteHistoryOptions): number {
+  const f = historyFilter(opts);
+  if (f.inverted) return 0;
+  return db.mutate(() => {
+    const count = Number(db.scalar(`SELECT COUNT(*) FROM training_log${f.clause}`, f.params));
+    db.run(
+      `DELETE FROM Comment WHERE owner_type_id = ${CommentOwnerType.TRAINING_LOG_SET} AND owner_id IN (SELECT _id FROM training_log${f.clause})`,
+      f.params,
+    );
+    db.run(`DELETE FROM training_log${f.clause}`, f.params);
+    if (f.exIds) {
+      // Sets of only some exercises were removed: drop their group membership on dates in the
+      // selected range where they have no sets left, then any group in that range that became empty.
       db.run(
-        `DELETE FROM WorkoutGroupExercise WHERE date != '' AND ${exClause} AND NOT EXISTS (
+        `DELETE FROM WorkoutGroupExercise WHERE ${f.dateClause} AND ${f.exClause} AND NOT EXISTS (
            SELECT 1 FROM training_log t WHERE t.date = WorkoutGroupExercise.date AND t.exercise_id = WorkoutGroupExercise.exercise_id)`,
-        opts.exerciseIds,
+        [...f.dateParams, ...f.exIds],
       );
-      deleteEmptyGroups(db);
+      db.run(
+        `DELETE FROM WorkoutGroup WHERE ${f.dateClause} AND _id NOT IN (SELECT workout_group_id FROM WorkoutGroupExercise)`,
+        f.dateParams,
+      );
     } else {
-      // Routine supersets share WorkoutGroup / WorkoutGroupExercise with `date = ''`: an open or
-      // upper-bound-only range must not match them, so every date predicate excludes the empty date.
-      const dateClause = ["date != ''", ...where.filter((w) => w.startsWith('date'))].join(' AND ');
-      const dateParams = params.filter((p) => typeof p === 'string');
-      db.run(`DELETE FROM WorkoutComment WHERE ${dateClause}`, dateParams);
-      db.run(`DELETE FROM WorkoutGroupExercise WHERE ${dateClause}`, dateParams);
-      db.run(`DELETE FROM WorkoutGroup WHERE ${dateClause}`, dateParams);
-      db.run(`DELETE FROM WorkoutTime WHERE ${dateClause.replace(/date/g, 'workout_date')}`, dateParams);
+      db.run(`DELETE FROM WorkoutComment WHERE ${f.dateClause}`, f.dateParams);
+      db.run(`DELETE FROM WorkoutGroupExercise WHERE ${f.dateClause}`, f.dateParams);
+      db.run(`DELETE FROM WorkoutGroup WHERE ${f.dateClause}`, f.dateParams);
+      db.run(`DELETE FROM WorkoutTime WHERE ${f.dateClause.replace(/date/g, 'workout_date')}`, f.dateParams);
     }
     recalculatePersonalRecords(db);
     return count;
