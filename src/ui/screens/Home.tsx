@@ -1,4 +1,11 @@
-import { useMemo, useRef, useState } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useRouteDate, useSettings } from '@/app/hooks';
@@ -370,6 +377,9 @@ function SelectionBar({
   );
 }
 
+const LONG_PRESS_MS = 450;
+const LONG_PRESS_MOVE_PX = 8;
+
 /** Card that distinguishes tap from press-and-hold (selection mode). */
 export function LongPressCard({
   children,
@@ -382,18 +392,42 @@ export function LongPressCard({
   onClick: () => void;
   onLongPress: () => void;
 }) {
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const press = useRef<{
+    timer: ReturnType<typeof setTimeout>;
+    x: number;
+    y: number;
+    pointerId: number;
+  } | null>(null);
   const fired = useRef(false);
-  const start = () => {
+  const cancel = useCallback(() => {
+    if (press.current) clearTimeout(press.current.timer);
+    press.current = null;
+  }, []);
+  useEffect(() => cancel, [cancel]);
+  const start = (e: ReactPointerEvent) => {
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    cancel();
     fired.current = false;
-    timer.current = setTimeout(() => {
-      fired.current = true;
-      onLongPress();
-    }, 450);
+    press.current = {
+      x: e.clientX,
+      y: e.clientY,
+      pointerId: e.pointerId,
+      timer: setTimeout(() => {
+        press.current = null;
+        fired.current = true;
+        onLongPress();
+      }, LONG_PRESS_MS),
+    };
   };
-  const cancel = () => {
-    if (timer.current) clearTimeout(timer.current);
-    timer.current = null;
+  const move = (e: ReactPointerEvent) => {
+    const p = press.current;
+    if (
+      p &&
+      p.pointerId === e.pointerId &&
+      Math.hypot(e.clientX - p.x, e.clientY - p.y) > LONG_PRESS_MOVE_PX
+    ) {
+      cancel();
+    }
   };
   return (
     <div
@@ -401,6 +435,7 @@ export function LongPressCard({
       role="button"
       tabIndex={0}
       onPointerDown={start}
+      onPointerMove={move}
       onPointerUp={cancel}
       onPointerLeave={cancel}
       onPointerCancel={cancel}

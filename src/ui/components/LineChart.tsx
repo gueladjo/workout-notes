@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { tickDecimals } from '@/domain/graphs';
 
 export interface ChartPoint {
@@ -39,19 +39,21 @@ export function LineChart({
   height?: number;
   fill?: boolean;
 }) {
+  const boxRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
   const [size, setSize] = useState({ w: 360, h: height });
-  const measured = useRef(false);
-  const ref = (el: HTMLDivElement | null) => {
-    if (el && !measured.current) {
-      measured.current = true;
-      const ro = new ResizeObserver((entries) => {
-        const r = entries[0]?.contentRect;
-        if (r && r.width > 0 && r.height > 0) setSize({ w: r.width, h: r.height });
-      });
-      ro.observe(el);
-    }
-  };
+  useEffect(() => {
+    const el = boxRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver((entries) => {
+      const r = entries[0]?.contentRect;
+      if (r && r.width > 0 && r.height > 0) {
+        setSize((prev) => (prev.w === r.width && prev.h === r.height ? prev : { w: r.width, h: r.height }));
+      }
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   const width = size.w;
   const h = fill ? size.h : height;
   const pad = { l: 46, r: 14, t: 14, b: 28 };
@@ -94,7 +96,7 @@ export function LineChart({
 
   if (!scale || points.length === 0) {
     return (
-      <div ref={ref} className={`${className} chart--empty`} style={boxStyle}>
+      <div ref={boxRef} className={`${className} chart--empty`} style={boxStyle}>
         No data to graph yet.
       </div>
     );
@@ -140,7 +142,7 @@ export function LineChart({
   };
 
   return (
-    <div ref={ref} className={className} style={boxStyle}>
+    <div ref={boxRef} className={className} style={boxStyle}>
       <svg
         ref={svgRef}
         className="chart__svg"

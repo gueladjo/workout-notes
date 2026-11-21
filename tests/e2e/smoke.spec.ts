@@ -168,6 +168,95 @@ test('reorders sets on the Track tab with press-and-hold drag', async ({ page })
     'true',
   );
   await expect(page.getByRole('button', { name: 'Move set up' })).toBeEnabled();
+
+  // Releasing outside the list before the hold completes (moving <8 px across its edge) must not
+  // activate a stuck drag state.
+  const listBox = await list.boundingBox();
+  if (!listBox) throw new Error('set list not laid out');
+  await page.mouse.move(listBox.x + listBox.width / 2, listBox.y + 2);
+  await page.mouse.down();
+  await page.mouse.move(listBox.x + listBox.width / 2, listBox.y - 3);
+  await page.mouse.up();
+  await page.waitForTimeout(600);
+  await expect(list).not.toHaveClass(/list--dragging/);
+
+  // Even if pointer capture is unavailable, releasing outside the list still ends an active drag.
+  await page.evaluate(() => {
+    const orig = Element.prototype.setPointerCapture;
+    (window as unknown as { restoreCapture: () => void }).restoreCapture = () => {
+      Element.prototype.setPointerCapture = orig;
+    };
+    Element.prototype.setPointerCapture = () => {
+      throw new DOMException('capture unavailable', 'InvalidStateError');
+    };
+  });
+  const rowBox = await list.getByRole('button', { name: 'Set 2: 80 kg × 8 reps' }).boundingBox();
+  if (!rowBox) throw new Error('set row not laid out');
+  await page.mouse.move(rowBox.x + rowBox.width / 2, rowBox.y + rowBox.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await expect(list).toHaveClass(/list--dragging/);
+  await page.mouse.move(10, 10);
+  await page.mouse.up();
+  await expect(list).not.toHaveClass(/list--dragging/);
+  await page.evaluate(() => (window as unknown as { restoreCapture: () => void }).restoreCapture());
+});
+
+test('Home LongPressCard cancels on scroll movement and LineChart disconnects ResizeObserver on unmount', async ({
+  page,
+}) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await page.goto('/#/workout/2026-09-01');
+  const card = page.locator('.exercise-card').first();
+  await expect(card).toBeVisible();
+  const box = await card.boundingBox();
+  if (!box) throw new Error('exercise card not laid out');
+  // Moving >8 px inside the card cancels the hold so slow scrolling does not trigger selection mode.
+  await page.mouse.move(box.x + box.width / 2, box.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width / 2, box.y + 36, { steps: 4 });
+  await page.waitForTimeout(600);
+  await expect(page.getByText('1 selected')).toHaveCount(0);
+  // Release outside the card so the synthetic mouse sequence does not click-navigate.
+  await page.mouse.move(10, 10);
+  await page.mouse.up();
+  // Holding still still enters selection mode.
+  await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await page.mouse.up();
+  await expect(page.getByText('1 selected')).toBeVisible();
+  await page.getByRole('button', { name: 'Cancel selection' }).click();
+
+  // Opening and leaving the Graph tab disconnects LineChart's ResizeObserver.
+  await card.click();
+  await page.evaluate(() => {
+    const w = window as unknown as { roStats: { observed: number; disconnected: number } };
+    w.roStats = { observed: 0, disconnected: 0 };
+    const origObserve = ResizeObserver.prototype.observe;
+    const origDisconnect = ResizeObserver.prototype.disconnect;
+    ResizeObserver.prototype.observe = function (...args) {
+      w.roStats.observed++;
+      return origObserve.apply(this, args);
+    };
+    ResizeObserver.prototype.disconnect = function () {
+      w.roStats.disconnected++;
+      return origDisconnect.call(this);
+    };
+  });
+  await page.getByRole('tab', { name: 'Graph' }).click();
+  await expect(page.locator('.chart__svg')).toBeVisible();
+  const whileOpen = await page.evaluate(
+    () => (window as unknown as { roStats: { observed: number; disconnected: number } }).roStats,
+  );
+  expect(whileOpen.observed).toBeGreaterThan(0);
+  await page.getByRole('tab', { name: 'Track' }).click();
+  await expect(page.locator('.chart__svg')).toHaveCount(0);
+  const afterClose = await page.evaluate(
+    () => (window as unknown as { roStats: { observed: number; disconnected: number } }).roStats,
+  );
+  expect(afterClose.disconnected).toBeGreaterThanOrEqual(afterClose.observed);
 });
 
 test('1RM Calculator opens from the History and Graph tabs and stays closed afterwards', async ({ page }) => {

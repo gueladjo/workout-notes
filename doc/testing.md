@@ -97,7 +97,10 @@ fresh database starts in kilograms unless the locale is `en-US`, see `defaultMet
   Imperial keeps its unit and distance when saved untouched under Metric; a measurement goal typed
   with a unit change is saved as typed; a body measurement record refuses a blank value (a typed 0
   saves).
-- **Screens and navigation:** press-and-hold drag reorders sets on the Track tab; the 1RM
+- **Screens and navigation:** press-and-hold drag reorders sets on the Track tab (and releasing
+  outside the list does not leave a drag stuck); moving across a Home card cancels its long-press
+  timer while holding still enters selection mode, and leaving the Graph tab disconnects
+  `LineChart`'s `ResizeObserver`; the 1RM
   Calculator opens from the History and Graph tabs and stays closed on later tab switches; superset
   groups from the Training screen (refused with a toast before Set 1 is logged so no orphan group
   or `?` member renders) and from the routine editor (numbering scoped per routine day); skipping
