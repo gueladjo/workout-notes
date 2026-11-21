@@ -70,7 +70,8 @@ export function TrainingScreen() {
   const setTab = (t: Tab) => setSearch({ tab: t }, { replace: true });
   const [drawer, setDrawer] = useState(false);
   const [showGroups, setShowGroups] = useState(false);
-  const [oneRmSignal, setOneRmSignal] = useState(0);
+  const routeKey = `${exerciseId}:${date}`;
+  const [oneRmFor, setOneRmFor] = useState<string | null>(null);
   useKeepScreenOn(useSettings().keepScreenOn);
 
   if (!exercise) return <div className="empty">Exercise not found.</div>;
@@ -102,7 +103,7 @@ export function TrainingScreen() {
                   icon: 'calculator',
                   onSelect: () => {
                     setTab('track');
-                    setOneRmSignal((n) => n + 1);
+                    setOneRmFor(routeKey);
                   },
                 },
                 {
@@ -123,10 +124,19 @@ export function TrainingScreen() {
           { id: 'graph', label: 'Graph' },
         ]}
         value={tab}
-        onChange={setTab}
+        onChange={(t) => {
+          setOneRmFor(null);
+          setTab(t);
+        }}
       />
       {tab === 'track' && (
-        <TrackTab key={`${exerciseId}:${date}`} exercise={exercise} date={date} oneRmSignal={oneRmSignal} />
+        <TrackTab
+          key={routeKey}
+          exercise={exercise}
+          date={date}
+          show1rm={oneRmFor === routeKey}
+          onClose1rm={() => setOneRmFor(null)}
+        />
       )}
       {tab === 'history' && <HistoryTab exercise={exercise} date={date} />}
       {tab === 'graph' && <GraphTab exercise={exercise} />}
@@ -212,11 +222,13 @@ function valuesFrom(
 function TrackTab({
   exercise,
   date,
-  oneRmSignal,
+  show1rm,
+  onClose1rm,
 }: {
   exercise: ExerciseWithCategory;
   date: string;
-  oneRmSignal: number;
+  show1rm: boolean;
+  onClose1rm: () => void;
 }) {
   const db = useDb();
   const navigate = useNavigate();
@@ -237,12 +249,6 @@ function TrackTab({
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [commentSet, setCommentSet] = useState<TrainingSetWithComment | null>(null);
   const [nextPrompt, setNextPrompt] = useState<number | null>(null);
-  const [show1rm, setShow1rm] = useState(false);
-  const [seenSignal, setSeenSignal] = useState(oneRmSignal);
-  if (oneRmSignal !== seenSignal) {
-    setSeenSignal(oneRmSignal);
-    setShow1rm(true);
-  }
   const set = (patch: Partial<FieldValues>) => setValues((v) => ({ ...v, ...patch }));
 
   const readValues = () => {
@@ -495,7 +501,7 @@ function TrackTab({
       />
       <OneRepMaxDialog
         open={show1rm}
-        onClose={() => setShow1rm(false)}
+        onClose={onClose1rm}
         weightUnit={wu}
         weightStep={increment}
         initialWeight={values.weight}

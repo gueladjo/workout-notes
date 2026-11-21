@@ -170,6 +170,29 @@ test('reorders sets on the Track tab with press-and-hold drag', async ({ page })
   await expect(page.getByRole('button', { name: 'Move set up' })).toBeEnabled();
 });
 
+test('1RM Calculator opens from the History and Graph tabs and stays closed afterwards', async ({ page }) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'Start New Workout' }).click();
+  await page.getByRole('button', { name: 'Chest' }).click();
+  await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
+  await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
+  await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
+  await page.getByTestId('save-set').click();
+  const dialog = page.getByRole('dialog');
+  for (const tab of ['History', 'Graph'] as const) {
+    await page.getByRole('tab', { name: tab }).click();
+    await page.getByRole('button', { name: 'More options' }).first().click();
+    await page.getByRole('menuitem', { name: '1RM Calculator' }).click();
+    await expect(dialog.getByText('1RM Calculator')).toBeVisible();
+    await expect(dialog.getByText('112.5 kg')).toBeVisible();
+    await dialog.getByRole('button', { name: 'Close' }).click();
+    await expect(dialog).toHaveCount(0);
+  }
+  await page.getByRole('tab', { name: 'History' }).click();
+  await page.getByRole('tab', { name: 'Track' }).click();
+  await expect(dialog).toHaveCount(0);
+});
+
 test('creates a superset group from the Training screen', async ({ page }) => {
   await openApp(page);
   await page.getByRole('button', { name: 'Start New Workout' }).click();

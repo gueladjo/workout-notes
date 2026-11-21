@@ -95,8 +95,10 @@ fresh database starts in kilograms unless the locale is `en-US`, see `defaultMet
   Imperial keeps its unit and distance when saved untouched under Metric; a measurement goal typed
   with a unit change is saved as typed; a body measurement record refuses a blank value (a typed 0
   saves).
-- **Screens and navigation:** press-and-hold drag reorders sets on the Track tab; superset groups
-  from the Training screen and from the routine editor; skipping predefined sets keeps the exercise
+- **Screens and navigation:** press-and-hold drag reorders sets on the Track tab; the 1RM
+  Calculator opens from the History and Graph tabs and stays closed on later tab switches; superset
+  groups from the Training screen and from the routine editor; skipping predefined sets keeps the
+  exercise
   and editing then offers Cancel only; a swipe inside a Home dialog does not change the day it
   writes to, and a dialog closed by the date moving on does not reopen on the way back; Exercise
   Overview history is read-only; the Exercise List's History entry opens the tracked day's History
