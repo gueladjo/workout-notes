@@ -180,4 +180,107 @@ describe('AppDatabase', () => {
     expect(app.hasUnsavedChanges).toBe(true);
     expect(app.lastPersistError).toBe('quota');
   });
+
+  it('keeps the dirty flag and records the persist error when export() throws during flush()', async () => {
+    const app = new AppDatabase(createEmptyDatabase(SQL), { persist: async () => {} });
+    const seen: (string | null)[] = [];
+    app.subscribePersist(() => seen.push(app.lastPersistError));
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    const realExport = app.export.bind(app);
+    let fail = true;
+    app.export = () => {
+      if (fail) throw new Error('wasm oom');
+      return realExport();
+    };
+    await expect(app.flush()).rejects.toThrow('wasm oom');
+    expect(app.hasUnsavedChanges).toBe(true);
+    expect(app.lastPersistError).toBe('wasm oom');
+    expect(seen).toEqual(['wasm oom']);
+    fail = false;
+    await app.flush();
+    expect(app.hasUnsavedChanges).toBe(false);
+    expect(app.lastPersistError).toBeNull();
+    expect(seen).toEqual(['wasm oom', null]);
+  });
+
+  it('retries newer changes during close() and replaceDatabase() after a stale in-flight persist fails', async () => {
+    const written: Uint8Array[] = [];
+    let rejectFirst!: (err: Error) => void;
+    let calls = 0;
+    const persist = vi.fn((bytes: Uint8Array) => {
+      calls++;
+      if (calls === 1) {
+        return new Promise<void>((_, reject) => {
+          rejectFirst = reject;
+        });
+      }
+      written.push(bytes);
+      return Promise.resolve();
+    });
+    const app = new AppDatabase(createEmptyDatabase(SQL), { persist, persistDelayMs: 1 });
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    const firstFlush = app.flush();
+    // A second mutation supersedes the in-flight persist before it rejects transiently.
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('b')"));
+    const closing = app.close();
+    rejectFirst(new Error('transient'));
+    await expect(firstFlush).rejects.toThrow('transient');
+    await closing;
+    expect(persist).toHaveBeenCalledTimes(2);
+    expect(app.hasUnsavedChanges).toBe(false);
+    expect(app.lastPersistError).toBeNull();
+    const saved = new SQL.Database(written[0]);
+    expect(saved.exec('SELECT COUNT(*) FROM Routine')[0]!.values[0]![0]).toBe(2);
+    saved.close();
+
+    // Same for replaceDatabase(): a stale persist failure must not skip persisting the restored db.
+    let rejectStale!: (err: Error) => void;
+    let restoreCalls = 0;
+    const restoredWritten: Uint8Array[] = [];
+    const app2 = new AppDatabase(createEmptyDatabase(SQL), {
+      persist: (bytes) => {
+        restoreCalls++;
+        if (restoreCalls === 1) {
+          return new Promise<void>((_, reject) => {
+            rejectStale = reject;
+          });
+        }
+        restoredWritten.push(bytes);
+        return Promise.resolve();
+      },
+      persistDelayMs: 1,
+    });
+    app2.mutate(() => app2.run("INSERT INTO Routine (name) VALUES ('old')"));
+    const staleFlush = app2.flush();
+    const next = createEmptyDatabase(SQL);
+    next.run("INSERT INTO Routine (name) VALUES ('restored')");
+    const replacing = app2.replaceDatabase(next);
+    rejectStale(new Error('stale'));
+    await expect(staleFlush).rejects.toThrow('stale');
+    await expect(replacing).resolves.toBeNull();
+    expect(app2.hasUnsavedChanges).toBe(false);
+    expect(app2.lastPersistError).toBeNull();
+    const saved2 = new SQL.Database(restoredWritten[0]);
+    expect(saved2.exec('SELECT name FROM Routine')[0]!.values[0]![0]).toBe('restored');
+    saved2.close();
+  });
+
+  it('does not retry a failed in-flight persist when no newer change superseded it', async () => {
+    let rejectFirst!: (err: Error) => void;
+    const persist = vi.fn(
+      () =>
+        new Promise<void>((_, reject) => {
+          rejectFirst = reject;
+        }),
+    );
+    const app = new AppDatabase(createEmptyDatabase(SQL), { persist, persistDelayMs: 1 });
+    app.mutate(() => app.run("INSERT INTO Routine (name) VALUES ('a')"));
+    const first = app.flush();
+    const waiter = app.flush();
+    rejectFirst(new Error('quota'));
+    await expect(first).rejects.toThrow('quota');
+    await expect(waiter).rejects.toThrow('quota');
+    expect(persist).toHaveBeenCalledTimes(1);
+    expect(app.hasUnsavedChanges).toBe(true);
+  });
 });

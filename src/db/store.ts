@@ -30,6 +30,7 @@ export class AppDatabase {
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private dirty = false;
   private persisting: Promise<void> | null = null;
+  private persistingVersion = -1;
   /** `closing` refuses writes while the last persist runs; `closed` never persists again. */
   private state: 'open' | 'closing' | 'closed' = 'open';
   /** Incremented on every mutation; used by React to re-run queries. */
@@ -150,11 +151,29 @@ export class AppDatabase {
       this.persistTimer = null;
     }
     for (;;) {
-      while (this.persisting) await this.persisting;
+      while (this.persisting) {
+        const inFlight = this.persisting;
+        const inFlightVersion = this.persistingVersion;
+        try {
+          await inFlight;
+        } catch (err) {
+          // If no newer change superseded the failed write, report the failure; otherwise continue
+          // so the newer state (e.g. a subsequent mutation, handover, or replaceDatabase) is tried.
+          if (this.version === inFlightVersion) throw err;
+        }
+      }
       if (!this.dirty) return;
       if (this.state === 'closed') throw new Error(HANDED_OVER_MESSAGE);
+      let bytes: Uint8Array;
+      try {
+        bytes = this.export();
+      } catch (err) {
+        this.setPersistError(err instanceof Error ? err.message : String(err));
+        throw err;
+      }
+      const attemptVersion = this.version;
       this.dirty = false;
-      const bytes = this.export();
+      this.persistingVersion = attemptVersion;
       this.persisting = this.persist(bytes)
         .then(() => {
           this.lastPersistedAt = new Date().toISOString();
@@ -167,6 +186,7 @@ export class AppDatabase {
         })
         .finally(() => {
           this.persisting = null;
+          this.persistingVersion = -1;
         });
       await this.persisting;
     }

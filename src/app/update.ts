@@ -16,3 +16,20 @@ export function reloadIfUpdatePending(): void {
   updatePending = false;
   window.location.reload();
 }
+
+/**
+ * Flush pending changes on page hide and apply a waiting update unless another window took over
+ * meanwhile (reloading a hidden tab after handover would steal the instance lock back from the
+ * active window).
+ */
+export function flushOnHide(
+  app: { flush(): Promise<void>; readonly closed: boolean },
+  isReleased: () => boolean,
+): Promise<void> {
+  return app.flush().then(
+    () => {
+      if (!app.closed && !isReleased()) reloadIfUpdatePending();
+    },
+    () => {},
+  );
+}

@@ -8,7 +8,7 @@ import { createEmptyDatabase, ensureSchema } from '@/db/schema';
 import { AppDatabase } from '@/db/store';
 import { MAIN_KEY, readBlob, requestPersistentStorage, writeBlob } from '@/db/persistence';
 import { defaultMetric, openStoredDatabase } from './recovery';
-import { reloadIfUpdatePending } from './update';
+import { flushOnHide } from './update';
 import { acquireInstanceLock, TAKEN_OVER_MESSAGE } from './instance';
 
 export interface BootResult {
@@ -72,7 +72,7 @@ export async function bootstrap(options: BootOptions = {}): Promise<BootResult> 
     'visibilitychange',
     () => {
       if (document.visibilityState !== 'hidden') return;
-      live.flush().then(reloadIfUpdatePending, () => {});
+      void flushOnHide(live, () => lock.released);
     },
     { signal },
   );
