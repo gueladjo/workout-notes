@@ -138,8 +138,8 @@ export function TrainingScreen() {
           onClose1rm={() => setOneRmFor(null)}
         />
       )}
-      {tab === 'history' && <HistoryTab exercise={exercise} date={date} />}
-      {tab === 'graph' && <GraphTab exercise={exercise} />}
+      {tab === 'history' && <HistoryTab key={routeKey} exercise={exercise} date={date} />}
+      {tab === 'graph' && <GraphTab key={exercise.id} exercise={exercise} />}
       {drawer && (
         <NavPanel
           date={date}

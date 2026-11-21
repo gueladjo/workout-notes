@@ -99,9 +99,9 @@ export function RecordsTabs({
         value={tab}
         onChange={onTab}
       />
-      {tab === 'records' && <RecordsTab exercise={exercise} />}
-      {tab === 'stats' && <StatsTab exercise={exercise} date={date} />}
-      {tab === 'goals' && <GoalsTab exercise={exercise} />}
+      {tab === 'records' && <RecordsTab key={exercise.id} exercise={exercise} />}
+      {tab === 'stats' && <StatsTab key={`${exercise.id}:${date}`} exercise={exercise} date={date} />}
+      {tab === 'goals' && <GoalsTab key={exercise.id} exercise={exercise} />}
     </>
   );
 }

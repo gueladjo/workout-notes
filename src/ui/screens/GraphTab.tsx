@@ -52,7 +52,8 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
       ? exercise.defaultGraphId
       : defaultGraphForType(exercise.typeId)
   ) as GraphTypeId;
-  const [graph, setGraph] = useState<GraphTypeId>(defaultGraph);
+  const [selectedGraph, setSelectedGraph] = useState<GraphTypeId>(defaultGraph);
+  const graph = options.some((o) => o.id === selectedGraph) ? selectedGraph : defaultGraph;
   const [repCount, setRepCount] = useState(5);
   const [period, setPeriod] = useState('all');
   const [custom, setCustom] = useState<{ from: string; to: string } | null>(null);
@@ -99,7 +100,7 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
           className="select"
           value={graph}
           onChange={(e) => {
-            setGraph(Number(e.target.value) as GraphTypeId);
+            setSelectedGraph(Number(e.target.value) as GraphTypeId);
             setSelected(null);
           }}
           aria-label="Graph type"
@@ -170,7 +171,7 @@ export function GraphTab({ exercise }: { exercise: ExerciseWithCategory }) {
       </div>
       <LineChart
         points={points}
-        selectedIndex={selected}
+        selectedIndex={sel ? selected : null}
         onSelect={setSelected}
         showPoints={settings.graphShowPoints}
         trend={trend}

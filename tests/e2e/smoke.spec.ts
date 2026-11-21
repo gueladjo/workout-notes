@@ -303,6 +303,33 @@ test('Exercise Overview history is read-only and never copies into the viewed da
   await expect(page.getByText('2 exercises · 3 sets')).toBeVisible();
 });
 
+test('navigating between exercises on Graph resets graph type and selection cleanly', async ({ page }) => {
+  await openApp(page);
+  await restoreFixture(page);
+  await page.goto('/#/calendar?date=2026-09-04');
+  await page.getByRole('button', { name: '2026-09-04' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Flat Barbell Bench Press' }).click();
+  await page.getByRole('tab', { name: 'Graph' }).click();
+  const graphSelect = page.getByRole('combobox', { name: 'Graph type' });
+  await expect(graphSelect).toHaveValue('0');
+  // Select the 4 Sep 2026 point and jump to Cycling via View Workout.
+  await page.getByRole('button', { name: 'Next point' }).click();
+  await page.getByRole('button', { name: 'Next point' }).click();
+  await page.getByRole('button', { name: /4 September 2026/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Cycling' }).click();
+  await page.getByRole('tab', { name: 'Graph' }).click();
+  await expect(graphSelect).toHaveValue('7');
+  await page.getByRole('button', { name: 'Next point' }).click();
+  await expect(page.getByText('12 km', { exact: true })).toBeVisible();
+  // Browser Back returns straight to Bench Press on ?tab=graph: GraphTab must remount with Estimated 1RM.
+  await page.goBack();
+  await expect(page.getByText('Flat Barbell Bench Press')).toBeVisible();
+  await expect(graphSelect).toHaveValue('0');
+  await expect(page.getByText(/Tap a point for details/)).toBeVisible();
+  await page.getByRole('button', { name: 'Next point' }).click();
+  await expect(page.getByText('90 kg', { exact: true })).toBeVisible();
+});
+
 test('a body measurement record refuses a blank value instead of saving 0', async ({ page }) => {
   await openApp(page);
   await page.goto('/#/body');

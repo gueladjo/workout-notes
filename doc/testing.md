@@ -101,7 +101,8 @@ fresh database starts in kilograms unless the locale is `en-US`, see `defaultMet
   exercise
   and editing then offers Cancel only; a swipe inside a Home dialog does not change the day it
   writes to, and a dialog closed by the date moving on does not reopen on the way back; Exercise
-  Overview history is read-only; the Exercise List's History entry opens the tracked day's History
+  Overview history is read-only; navigating between exercises on the Graph tab resets the graph type
+  and point selection; the Exercise List's History entry opens the tracked day's History
   tab; the set-row trophy opens that rep count's record history; Stats' Workout period shows and
   computes the same date; Copy Previous Workout picks the workout on the calendar first, and
   entering copy mode by URL forgets the day tapped in the popup; the custom unit dialog starts
