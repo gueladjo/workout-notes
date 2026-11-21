@@ -112,7 +112,9 @@ fresh database starts in kilograms unless the locale is `en-US`, see `defaultMet
   entering copy mode by URL forgets the day tapped in the popup; the custom unit dialog starts
   empty and the Calendar exercise filter shows the current filter when reopened; the body graph day
   popup hides disabled measurements; the graph y-axis shows time ticks as minutes:seconds; Log All
-  on today returns to the Home route.
+  on today returns to the Home route; Share Workout Copy handles a denied clipboard with a toast,
+  the Routine Editor exercise menu anchors to its row even when focus stays on `document.body`, and
+  Settings survives snapshot-listing IndexedDB errors without unhandled rejections.
 - **Content Security Policy:** the built page carries the policy (`connect-src 'self'`); one test
   logs a set and saves a backup under it and fails on any violation logged to the console.
 

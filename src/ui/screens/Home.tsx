@@ -493,18 +493,27 @@ function ShareDialog({ open, onClose, workout }: { open: boolean; onClose: () =>
   const [includeVolume, setIncludeVolume] = useState(false);
   const [includeSets, setIncludeSets] = useState(false);
   const text = workoutToText(workout, settings, { includeVolume, includeSets });
-  const share = async () => {
+  const copy = async () => {
     try {
-      if (navigator.share) {
-        await navigator.share({ title: `Workout ${workout.date}`, text });
-      } else {
-        await navigator.clipboard.writeText(text);
-        toast('Copied to clipboard');
-      }
+      if (!navigator.clipboard?.writeText) throw new Error('Clipboard unavailable');
+      await navigator.clipboard.writeText(text);
+      toast('Copied to clipboard');
+      onClose();
     } catch {
-      /* cancelled */
+      toast('Could not copy to clipboard');
     }
-    onClose();
+  };
+  const share = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Workout ${workout.date}`, text });
+      } catch {
+        /* cancelled */
+      }
+      onClose();
+      return;
+    }
+    await copy();
   };
   return (
     <Dialog
@@ -517,14 +526,7 @@ function ShareDialog({ open, onClose, workout }: { open: boolean; onClose: () =>
           <Button variant="text" onClick={onClose}>
             Cancel
           </Button>
-          <Button
-            variant="text"
-            onClick={async () => {
-              await navigator.clipboard.writeText(text);
-              toast('Copied to clipboard');
-              onClose();
-            }}
-          >
+          <Button variant="text" onClick={copy}>
             Copy
           </Button>
           <Button onClick={share}>Share</Button>

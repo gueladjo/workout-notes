@@ -1184,6 +1184,68 @@ test('handover waits for an in-flight destructive snapshot and leaves no unhandl
   expect(pageErrors).toEqual([]);
 });
 
+test('Settings snapshot errors and blocked clipboard leave no unhandled rejections, and routine menu anchors to its row', async ({
+  page,
+}) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (err) => pageErrors.push(err.message));
+  await openApp(page);
+  await restoreFixture(page);
+
+  // 1. Share Workout Copy handles a denied/missing clipboard cleanly instead of throwing.
+  await page.goto('/#/workout/2026-09-08');
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText: () => Promise.reject(new DOMException('Denied', 'NotAllowedError')) },
+    });
+  });
+  await page.getByRole('button', { name: 'More options' }).click();
+  await page.getByRole('menuitem', { name: 'Share Workout' }).click();
+  const dialog = page.getByRole('dialog');
+  await dialog.getByRole('button', { name: 'Copy' }).click();
+  await expect(page.getByRole('status')).toHaveText('Could not copy to clipboard');
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
+
+  // 2. Routine Editor exercise menu anchors to the tapped row even when focus stays on document.body (iOS Safari).
+  await page.goto('/#/routine/1/edit');
+  const row = page.getByRole('button', { name: /^Flat Barbell Bench Press/ });
+  const rowBox = await row.boundingBox();
+  if (!rowBox) throw new Error('routine exercise row not laid out');
+  const activeWasBody = await row.evaluate((el) => {
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    return document.activeElement === document.body;
+  });
+  expect(activeWasBody).toBe(true);
+  const menu = page.getByRole('menu');
+  await expect(menu).toBeVisible();
+  const menuBox = await menu.boundingBox();
+  if (!menuBox) throw new Error('exercise menu not laid out');
+  expect(menuBox.y).toBeGreaterThanOrEqual(rowBox.y + rowBox.height - 2);
+  expect(menuBox.y).toBeLessThan(rowBox.y + rowBox.height + 20);
+  await page.keyboard.press('Escape');
+
+  // 3. Settings survives IndexedDB failure while listing snapshots without an unhandled rejection.
+  await page.evaluate(() => {
+    indexedDB.open = () => {
+      const req = {
+        error: new DOMException('IndexedDB unavailable', 'UnknownError'),
+        onerror: null as ((e: Event) => void) | null,
+        onsuccess: null as ((e: Event) => void) | null,
+        onupgradeneeded: null as ((e: Event) => void) | null,
+        onblocked: null as ((e: Event) => void) | null,
+      };
+      queueMicrotask(() => req.onerror?.(new Event('error')));
+      return req as unknown as IDBOpenDBRequest;
+    };
+  });
+  await page.goto('/#/settings');
+  await expect(page.getByText('96 exercises · 3 workouts · 10 sets')).toBeVisible();
+  await page.waitForTimeout(100);
+  expect(pageErrors).toEqual([]);
+});
+
 test('a window on the Recovery screen hands the database over to a new one', async ({ page, context }) => {
   await openApp(page);
   // Replace the stored database with garbage, then reload into the Recovery screen.

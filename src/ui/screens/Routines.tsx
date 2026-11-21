@@ -293,7 +293,7 @@ function RoutineExerciseRow({
 }: {
   ex: RoutineExerciseDetail;
   date: string;
-  onClick?: () => void;
+  onClick?: (anchor: HTMLElement) => void;
   trailing?: React.ReactNode;
 }) {
   const settings = useSettings();
@@ -316,7 +316,12 @@ function RoutineExerciseRow({
         className="group-bar"
         style={{ background: ex.group ? androidColourToHex(ex.group.colour) : 'transparent', minHeight: 28 }}
       />
-      <button className="list__text" style={{ textAlign: 'left' }} onClick={onClick} disabled={!onClick}>
+      <button
+        className="list__text"
+        style={{ textAlign: 'left' }}
+        onClick={onClick ? (e) => onClick(e.currentTarget) : undefined}
+        disabled={!onClick}
+      >
         <div className="list__primary">{ex.exercise.name}</div>
         <div className="list__secondary">{summary}</div>
       </button>
@@ -466,7 +471,7 @@ export function RoutineEditorScreen() {
                     key={ex.id}
                     ex={ex}
                     date={date}
-                    onClick={() => setExerciseMenuFor(ex)}
+                    onClick={(anchor) => setExerciseMenu({ ex, anchor })}
                     trailing={
                       <div className="row" style={{ gap: 0 }}>
                         <IconButton
@@ -611,12 +616,6 @@ export function RoutineEditorScreen() {
       </Dialog>
     </div>
   );
-
-  function setExerciseMenuFor(ex: RoutineExerciseDetail) {
-    // Tapping an exercise shows its options; anchor to the document body centre for simplicity.
-    const el = document.activeElement as HTMLElement | null;
-    setExerciseMenu({ ex, anchor: el ?? document.body });
-  }
 }
 
 /**

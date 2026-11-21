@@ -44,8 +44,20 @@ export function SettingsScreen() {
   const [snapshotsChanged, setSnapshotsChanged] = useState(0);
 
   useEffect(() => {
-    void listSnapshots().then(setSnapshots);
-    void storageStatus().then(setStorage);
+    let cancelled = false;
+    void listSnapshots()
+      .then((list) => {
+        if (!cancelled) setSnapshots(list);
+      })
+      .catch(() => {
+        if (!cancelled) setSnapshots([]);
+      });
+    void storageStatus().then((status) => {
+      if (!cancelled) setStorage(status);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [restoreResult, snapshotsChanged]);
 
   const exportBackup = async (mode: 'save' | 'share') => {
@@ -113,8 +125,13 @@ export function SettingsScreen() {
           : 'Snapshot restored',
       );
       setRestoreResult(null);
-      setSnapshots(await listSnapshots());
+      try {
+        setSnapshots(await listSnapshots());
+      } catch {
+        setSnapshots([]);
+      }
     } catch (err) {
+      setSnapshotsChanged((n) => n + 1);
       toast(`Rollback failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
       setBusy(null);
