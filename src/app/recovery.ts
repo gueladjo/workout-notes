@@ -5,9 +5,9 @@
  * No browser-only imports, so the whole path is unit-tested in Node with fake-indexeddb.
  */
 import type { Database, SqlJsStatic } from '@/db/sqlite';
-import { checkIntegrity } from '@/db/sqlite';
+import { checkIntegrity, looksLikeSqlite } from '@/db/sqlite';
 import type { AppDatabase } from '@/db/store';
-import { createEmptyDatabase, ensureSchema } from '@/db/schema';
+import { createEmptyDatabase, ensureSchema, validateBackupDatabase } from '@/db/schema';
 import { MAIN_KEY, readBlob, saveSnapshot, writeBlob } from '@/db/persistence';
 
 /** Snapshot label given to the bytes the app could not open. */
@@ -31,20 +31,26 @@ export function defaultMetric(): boolean {
 }
 
 /**
- * Open stored bytes, check them and reconcile the schema. Any failure (corrupt file, a damaged
- * data page, a table shadowed by a view, ...) is wrapped in `UnreadableDatabaseError` carrying the
- * bytes so the caller can recover. Snapshots are opened through here too (`recoverFromSnapshot`,
- * `rollbackToSnapshot`), so a damaged snapshot is refused the same way.
+ * Open stored bytes, check them and reconcile the schema. Any failure (truncated/non-SQLite bytes,
+ * a database missing the FitNotes tables, a damaged data page, a table shadowed by a view, ...) is
+ * wrapped in `UnreadableDatabaseError` carrying the bytes so the caller can recover. Snapshots are
+ * opened through here too (`recoverFromSnapshot`, `rollbackToSnapshot`), so a damaged or truncated
+ * snapshot is refused the same way.
  */
 export function openStoredDatabase(SQL: SqlJsStatic, bytes: Uint8Array): Database {
   let db: Database | undefined;
   try {
+    // Reject truncated (including 0-byte, which sql.js opens as an empty database) or non-SQLite
+    // blobs before opening so Recovery is offered instead of booting into an empty schema.
+    if (!looksLikeSqlite(bytes)) throw new Error('The stored file is not a database');
     db = new SQL.Database(new Uint8Array(bytes));
     // Opening reads nothing and reconciling reads only the schema page: a damaged data page would
     // otherwise be found by the first screen that queries it, past the point where the Recovery
     // screen can be offered. Checked before reconciling, on the bytes as stored.
     const damage = checkIntegrity(db);
     if (damage) throw new Error(`The database is damaged: ${damage}`);
+    const problem = validateBackupDatabase(db);
+    if (problem) throw new Error(problem);
     ensureSchema(db);
     return db;
   } catch (err) {

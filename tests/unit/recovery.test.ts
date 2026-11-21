@@ -57,14 +57,48 @@ describe('start-up recovery', () => {
     expect((caught as UnreadableDatabaseError).bytes).toBe(garbage);
     expect((caught as UnreadableDatabaseError).message).toMatch(/malformed|not a database/);
     // A table shadowed by a view cannot be reconciled either.
-    const shadowed = new SQL.Database();
+    const shadowed = createEmptyDatabase(SQL);
+    shadowed.run('DROP TABLE Plate');
     shadowed.run('CREATE VIEW Plate AS SELECT 1 AS _id');
     expect(() => openStoredDatabase(SQL, shadowed.export())).toThrow(UnreadableDatabaseError);
+    shadowed.close();
     // Sound bytes open and are not modified.
     const good = goodBytes();
     const copy = new Uint8Array(good);
     openStoredDatabase(SQL, good).close();
     expect(good).toEqual(copy);
+  });
+
+  it('rejects 0-byte and non-FitNotes SQLite blobs in openStoredDatabase, recovery and rollback', async () => {
+    const empty = new Uint8Array(0);
+    const otherDb = new SQL.Database();
+    otherDb.run('CREATE TABLE unrelated (x INTEGER)');
+    const nonFitNotes = otherDb.export();
+    otherDb.close();
+
+    for (const bad of [empty, nonFitNotes]) {
+      let caught: unknown;
+      try {
+        openStoredDatabase(SQL, bad);
+      } catch (err) {
+        caught = err;
+      }
+      expect(caught).toBeInstanceOf(UnreadableDatabaseError);
+      expect((caught as UnreadableDatabaseError).bytes).toBe(bad);
+
+      globalThis.indexedDB = new IDBFactory();
+      await writeBlob(MAIN_KEY, garbage, 'live database');
+      const key = await saveSnapshot(bad, 'Bad snapshot');
+      await expect(recoverFromSnapshot(SQL, key, garbage)).rejects.toThrow(UnreadableDatabaseError);
+      expect(await readBlob(MAIN_KEY)).toEqual(garbage);
+      expect((await listSnapshots()).map((s) => s.label)).toEqual(['Bad snapshot']);
+
+      const app = new AppDatabase(openStoredDatabase(SQL, goodBytes()));
+      await expect(rollbackToSnapshot(app, SQL, key)).rejects.toThrow(UnreadableDatabaseError);
+      expect(app.scalar('SELECT COUNT(*) FROM training_log')).toBe(10);
+      expect(app.hasUnsavedChanges).toBe(false);
+      expect((await listSnapshots()).map((s) => s.label)).toEqual(['Bad snapshot']);
+    }
   });
 
   it('wraps a database whose data pages are damaged behind an intact header and schema', () => {
