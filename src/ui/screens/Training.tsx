@@ -151,12 +151,9 @@ export function TrainingScreen() {
           }}
         />
       )}
-      <GroupDialog
-        open={showGroups}
-        onClose={() => setShowGroups(false)}
-        date={date}
-        currentExerciseId={exerciseId}
-      />
+      {showGroups && (
+        <GroupDialog open onClose={() => setShowGroups(false)} date={date} currentExerciseId={exerciseId} />
+      )}
     </div>
   );
 }
@@ -547,9 +544,11 @@ function NavPanel({
   onGroups: () => void;
 }) {
   const navigate = useNavigate();
+  const toast = useToast();
   const settings = useSettings();
   const workout: Workout = useQuery((d) => getWorkout(d, date), [date]);
-  const inGroup = workout.exercises.find((e) => e.exercise.id === currentExerciseId)?.group;
+  const currentInWorkout = workout.exercises.some((e) => e.exercise.id === currentExerciseId);
+  const inGroup = useQuery((d) => groupForExercise(d, date, currentExerciseId), [date, currentExerciseId]);
   return (
     <>
       <div className="drawer-backdrop" onClick={onClose} />
@@ -591,7 +590,17 @@ function NavPanel({
             <Icon name="add" style={{ color: 'var(--color-primary)' }} />
             <div className="list__text">Add Exercise</div>
           </button>
-          <button className="list__item" onClick={onGroups}>
+          <button
+            className="list__item"
+            onClick={() => {
+              if (!currentInWorkout && !inGroup) {
+                onClose();
+                toast('Log a set first to add this exercise to a group');
+                return;
+              }
+              onGroups();
+            }}
+          >
             <Icon name="group" />
             <div className="list__text">{inGroup ? 'Edit Group' : 'Add To Group'}</div>
           </button>

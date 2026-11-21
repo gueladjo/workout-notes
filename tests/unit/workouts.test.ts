@@ -280,6 +280,10 @@ describe('sets and workouts', () => {
     const r2 = routineGroup('B', [SQUAT]);
     updateGroup(app, r2, { exerciseIds: [SQUAT, BENCH] });
     expect(membership(listRoutineSectionGroups(app, sectionId))).toEqual([[r2, [SQUAT, BENCH]]]);
+    // Routine group numbering is scoped per routine section, not across all routines/days.
+    expect(nextGroupName(app, '', sectionId)).toBe('Group 2');
+    const otherSection = addSection(app, createRoutine(app, 'Upper Lower'), 'Upper');
+    expect(nextGroupName(app, '', otherSection)).toBe('Group 1');
     // Logging a routine day recreates its groups on that date, taking the exercises out of a group
     // made by hand; that group goes when it has nothing left.
     group('2026-09-12', [BENCH, SQUAT]);

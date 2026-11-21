@@ -199,6 +199,11 @@ test('creates a superset group from the Training screen', async ({ page }) => {
   await page.getByRole('button', { name: 'Chest' }).click();
   await page.getByRole('button', { name: 'Flat Barbell Bench Press' }).first().click();
   await expect(page.getByRole('tab', { name: 'Track' })).toBeVisible();
+  // Before any set is logged on this date, Add To Group refuses to create an orphan group.
+  await page.getByRole('button', { name: 'Navigation panel' }).click();
+  await page.getByRole('button', { name: 'Add To Group' }).click();
+  await expect(page.getByRole('status')).toHaveText('Log a set first to add this exercise to a group');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
   // A logged set makes the exercise part of today's workout, and so of the group's exercise list.
   await page.getByRole('textbox', { name: /^Weight/ }).fill('100');
   await page.getByRole('textbox', { name: 'Reps', exact: true }).fill('5');
@@ -212,6 +217,7 @@ test('creates a superset group from the Training screen', async ({ page }) => {
   await expect(dialog.getByLabel('Name')).toHaveValue('Group 1');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog.getByText('Group 1')).toBeVisible();
+  await expect(dialog.getByText('Flat Barbell Bench Press')).toBeVisible();
   await expect(dialog.getByRole('button', { name: 'Edit group' })).toBeVisible();
   await dialog.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
@@ -240,6 +246,20 @@ test('creates a superset group in the routine editor', async ({ page }) => {
   await expect(dialog.getByLabel('Name')).toHaveValue('Group 1');
   await dialog.getByRole('button', { name: 'Save' }).click();
   await expect(dialog.getByText('Group 1')).toBeVisible();
+  await dialog.getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  // A second day in the routine starts its own numbering at Group 1, not Group 2.
+  await page.getByPlaceholder('Day name (e.g. Push, Monday…)').fill('Pull');
+  await page.getByRole('button', { name: 'Create day' }).click();
+  await page.getByRole('button', { name: 'Add exercise to day' }).last().click();
+  await page.getByRole('button', { name: 'Legs' }).click();
+  await page.getByRole('button', { name: 'Barbell Squat' }).first().click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Skip' }).click();
+  await page.getByRole('button', { name: /^Barbell Squat/ }).click();
+  await page.getByRole('menuitem', { name: 'Add To Group' }).click();
+  await dialog.getByRole('button', { name: 'New Group' }).click();
+  await expect(dialog.getByLabel('Name')).toHaveValue('Group 1');
+  await dialog.getByRole('button', { name: 'Cancel' }).click();
   await dialog.getByRole('button', { name: 'Close' }).click();
   await expect(page.getByRole('dialog')).toHaveCount(0);
 });

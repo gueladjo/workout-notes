@@ -10,6 +10,7 @@ import {
   updateGroup,
   type GroupWithExercises,
 } from '@/db/repo/groups';
+import { getExercise } from '@/db/repo/exercises';
 import { getWorkout } from '@/db/repo/workouts';
 import { listSectionExercises } from '@/db/repo/routines';
 import { listRoutineSectionGroups } from '@/db/repo/groups';
@@ -37,20 +38,45 @@ export function GroupDialog({
   routineSectionId?: number;
 }) {
   const db = useDb();
-  const groups = useQuery(
-    (d) => (routineSectionId ? listRoutineSectionGroups(d, routineSectionId) : listGroups(d, date)),
-    [date, routineSectionId],
-  );
-  const exercises = useQuery(
-    (d) =>
-      routineSectionId
+  const { groups, exercises, exerciseNames } = useQuery(
+    (d) => {
+      const gs = routineSectionId ? listRoutineSectionGroups(d, routineSectionId) : listGroups(d, date);
+      const rawExercises = routineSectionId
         ? listSectionExercises(d, routineSectionId).map((e) => e.exercise)
-        : getWorkout(d, date).exercises.map((e) => e.exercise),
+        : getWorkout(d, date).exercises.map((e) => e.exercise);
+      const seenIds = new Set<number>();
+      const exs = rawExercises.filter((e) => {
+        if (seenIds.has(e.id)) return false;
+        seenIds.add(e.id);
+        return true;
+      });
+      const names = new Map<number, string>();
+      for (const e of exs) names.set(e.id, e.name);
+      for (const g of gs) {
+        for (const id of g.exerciseIds) {
+          if (!names.has(id)) {
+            const ex = getExercise(d, id);
+            if (ex) names.set(id, ex.name);
+          }
+        }
+      }
+      return { groups: gs, exercises: exs, exerciseNames: names };
+    },
     [date, routineSectionId],
   );
   const [editing, setEditing] = useState<GroupWithExercises | 'new' | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<number | null>(null);
   const current = groups.find((g) => g.exerciseIds.includes(currentExerciseId));
+  const currentSelectable = exercises.some((e) => e.id === currentExerciseId);
+  const editingGroup = editing === 'new' ? null : editing;
+  const editorExercises = editingGroup
+    ? [
+        ...exercises,
+        ...editingGroup.exerciseIds
+          .filter((id) => !exercises.some((e) => e.id === id))
+          .map((id) => ({ id, name: exerciseNames.get(id) ?? '?' })),
+      ]
+    : exercises;
 
   return (
     <>
@@ -64,7 +90,7 @@ export function GroupDialog({
             <Button variant="text" onClick={onClose}>
               Close
             </Button>
-            <Button icon="add" onClick={() => setEditing('new')}>
+            <Button icon="add" disabled={exercises.length === 0} onClick={() => setEditing('new')}>
               New Group
             </Button>
           </>
@@ -83,15 +109,15 @@ export function GroupDialog({
               <button
                 className="list__text"
                 style={{ textAlign: 'left' }}
-                onClick={() =>
-                  member
-                    ? removeExerciseFromGroup(db, g.id, currentExerciseId)
-                    : updateGroup(db, g.id, { exerciseIds: [...g.exerciseIds, currentExerciseId] })
-                }
+                onClick={() => {
+                  if (member) removeExerciseFromGroup(db, g.id, currentExerciseId);
+                  else if (currentSelectable)
+                    updateGroup(db, g.id, { exerciseIds: [...g.exerciseIds, currentExerciseId] });
+                }}
               >
                 <div className="list__primary">{g.name}</div>
                 <div className="list__secondary">
-                  {g.exerciseIds.map((id) => exercises.find((e) => e.id === id)?.name ?? '?').join(', ')}
+                  {g.exerciseIds.map((id) => exerciseNames.get(id) ?? '?').join(', ')}
                 </div>
               </button>
               {member && (
@@ -106,9 +132,9 @@ export function GroupDialog({
       <GroupEditor
         open={editing !== null}
         onClose={() => setEditing(null)}
-        group={editing === 'new' ? null : editing}
-        exercises={exercises}
-        defaultName={nextGroupName(db, date)}
+        group={editingGroup}
+        exercises={editorExercises}
+        defaultName={nextGroupName(db, date, routineSectionId)}
         suggestedColour={GROUP_COLOURS[groups.length % GROUP_COLOURS.length]!}
         currentExerciseId={currentExerciseId}
         onSave={(name, colour, ids) => {
@@ -162,7 +188,9 @@ function GroupEditor({
     setSeen(true);
     setName(group?.name ?? defaultName);
     setColour(group?.colour ?? suggestedColour);
-    setIds(group?.exerciseIds ?? [currentExerciseId]);
+    setIds(
+      group?.exerciseIds ?? (exercises.some((e) => e.id === currentExerciseId) ? [currentExerciseId] : []),
+    );
   }
   if (!open && seen) setSeen(false);
   return (

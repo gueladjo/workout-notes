@@ -97,8 +97,9 @@ fresh database starts in kilograms unless the locale is `en-US`, see `defaultMet
   saves).
 - **Screens and navigation:** press-and-hold drag reorders sets on the Track tab; the 1RM
   Calculator opens from the History and Graph tabs and stays closed on later tab switches; superset
-  groups from the Training screen and from the routine editor; skipping predefined sets keeps the
-  exercise
+  groups from the Training screen (refused with a toast before Set 1 is logged so no orphan group
+  or `?` member renders) and from the routine editor (numbering scoped per routine day); skipping
+  predefined sets keeps the exercise
   and editing then offers Cancel only; a swipe inside a Home dialog does not change the day it
   writes to, and a dialog closed by the date moving on does not reopen on the way back; Exercise
   Overview history is read-only; navigating between exercises on the Graph tab resets the graph type

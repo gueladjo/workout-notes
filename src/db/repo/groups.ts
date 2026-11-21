@@ -188,7 +188,15 @@ export const GROUP_COLOURS = [
   -13330213, -1618884, -14176672, -812014, -7453523, -11226442, -1671646, -13877680,
 ];
 
-export function nextGroupName(db: AppDatabase, date: string): string {
-  const n = Number(db.scalar('SELECT COUNT(*) FROM WorkoutGroup WHERE date = ?', [date]));
+export function nextGroupName(db: AppDatabase, date: string, routineSectionId?: number | null): string {
+  const n =
+    routineSectionId !== undefined && routineSectionId !== null
+      ? Number(
+          db.scalar('SELECT COUNT(*) FROM WorkoutGroup WHERE routine_section_id = ? AND date = ?', [
+            routineSectionId,
+            '',
+          ]),
+        )
+      : Number(db.scalar('SELECT COUNT(*) FROM WorkoutGroup WHERE date = ?', [date]));
   return `Group ${n + 1}`;
 }
