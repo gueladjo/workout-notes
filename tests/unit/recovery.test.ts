@@ -180,6 +180,14 @@ describe('start-up recovery', () => {
     await expect(rollbackToSnapshot(app, SQL, 'snapshot:missing')).rejects.toThrow('Snapshot not found');
   });
 
+  it('refuses rollbackToSnapshot on a closed database without writing a snapshot', async () => {
+    const key = await saveSnapshot(goodBytes(), 'Before restore');
+    const app = new AppDatabase(openStoredDatabase(SQL, goodBytes()));
+    await app.close();
+    await expect(rollbackToSnapshot(app, SQL, key)).rejects.toThrow(/handed over/);
+    expect((await listSnapshots()).map((s) => s.label)).toEqual(['Before restore']);
+  });
+
   it('starts fresh with an empty database, keeping the damaged bytes', async () => {
     await writeBlob(MAIN_KEY, garbage, 'live database');
     await startFresh(SQL, garbage, false);

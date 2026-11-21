@@ -93,24 +93,79 @@ export async function deleteBlob(key: string): Promise<void> {
   }
 }
 
+/** Sort stored file metadata newest-first (deterministic when timestamps tie). */
+function compareMetaDesc(a: StoredFileMeta, b: StoredFileMeta): number {
+  if (a.savedAt !== b.savedAt) return a.savedAt < b.savedAt ? 1 : -1;
+  return a.key < b.key ? 1 : a.key > b.key ? -1 : 0;
+}
+
 export async function listStoredFiles(): Promise<StoredFileMeta[]> {
   const idb = await openIdb();
   try {
     const tx = idb.transaction(META, 'readonly');
     const rows = await requestToPromise(tx.objectStore(META).getAll());
-    return (rows as StoredFileMeta[]).sort((a, b) => (a.savedAt < b.savedAt ? 1 : -1));
+    return (rows as StoredFileMeta[]).sort(compareMetaDesc);
   } finally {
     idb.close();
   }
 }
 
-/** Save a rollback snapshot and prune old ones so at most MAX_SNAPSHOTS remain. */
+/**
+ * Save a rollback snapshot and prune old ones so at most MAX_SNAPSHOTS remain. Write and prune
+ * share one readwrite transaction so concurrent callers serialize cleanly, same-millisecond calls
+ * never overwrite each other, and a backward clock jump cannot prune the snapshot just written.
+ */
 export async function saveSnapshot(bytes: Uint8Array, label: string): Promise<string> {
-  const key = SNAPSHOT_PREFIX + new Date().toISOString();
-  await writeBlob(key, bytes, label);
-  const snapshots = (await listStoredFiles()).filter((f) => f.key.startsWith(SNAPSHOT_PREFIX));
-  for (const old of snapshots.slice(MAX_SNAPSHOTS)) await deleteBlob(old.key);
-  return key;
+  const idb = await openIdb();
+  try {
+    const tx = idb.transaction([BLOBS, META], 'readwrite');
+    const blobs = tx.objectStore(BLOBS);
+    const metaStore = tx.objectStore(META);
+    let key = '';
+    let putError: unknown = null;
+    // Queue every write synchronously inside onsuccess so WebKit cannot auto-commit the transaction
+    // across a Promise microtask between getAll() and put().
+    const getAllReq = metaStore.getAll();
+    getAllReq.onsuccess = () => {
+      const existing = getAllReq.result as StoredFileMeta[];
+      const savedAt = new Date().toISOString();
+      const base = SNAPSHOT_PREFIX + savedAt;
+      let maxSeq = -1;
+      for (const f of existing) {
+        if (f.key === base) maxSeq = Math.max(maxSeq, 0);
+        else if (f.key.startsWith(`${base}-`)) {
+          const seq = Number(f.key.slice(base.length + 1));
+          if (Number.isInteger(seq) && seq > maxSeq) maxSeq = seq;
+        }
+      }
+      key = maxSeq < 0 ? base : `${base}-${String(maxSeq + 1).padStart(4, '0')}`;
+      const entry: StoredFileMeta = { key, savedAt, label, size: bytes.byteLength };
+      try {
+        blobs.put(bytes, key);
+        metaStore.put(entry);
+        const others = existing.filter((f) => f.key.startsWith(SNAPSHOT_PREFIX)).sort(compareMetaDesc);
+        for (const old of others.slice(MAX_SNAPSHOTS - 1)) {
+          blobs.delete(old.key);
+          metaStore.delete(old.key);
+        }
+      } catch (err) {
+        putError = err;
+        try {
+          tx.abort();
+        } catch {
+          // Already aborting or finished.
+        }
+      }
+    };
+    try {
+      await txDone(tx);
+    } catch (err) {
+      throw putError ?? err;
+    }
+    return key;
+  } finally {
+    idb.close();
+  }
 }
 
 export async function listSnapshots(): Promise<StoredFileMeta[]> {

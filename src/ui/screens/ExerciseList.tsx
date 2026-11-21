@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useDb, useQuery } from '@/app/db-context';
 import { useRouteDate, useSettings } from '@/app/hooks';
@@ -19,9 +19,9 @@ import { TopBar } from '@/ui/components/TopBar';
 import { IconButton } from '@/ui/components/Button';
 import { Icon } from '@/ui/components/Icon';
 import { Menu, MenuButton, type MenuItem } from '@/ui/components/Menu';
-import { ConfirmDialog } from '@/ui/components/Dialog';
+import { ConfirmDialog, Dialog } from '@/ui/components/Dialog';
 import { useToast } from '@/ui/components/Toast';
-import { saveSnapshot } from '@/db/persistence';
+import { HANDED_OVER_MESSAGE } from '@/db/store';
 import { EmptyState } from '@/ui/components/EmptyState';
 import type { ExerciseWithCategory } from '@/db/types';
 import { completeReturnTo } from '@/app/return-to';
@@ -48,6 +48,14 @@ export function ExerciseListScreen() {
   const [confirm, setConfirm] = useState<{ kind: 'exercise' | 'category'; id: number; name: string } | null>(
     null,
   );
+  const [busy, setBusy] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
   const returnTo = search.get('returnTo'); // e.g. a routine editor wanting an exercise id
 
   const categories = useQuery(
@@ -409,23 +417,38 @@ export function ExerciseListScreen() {
         confirmLabel="Delete"
         danger
         onConfirm={() => {
-          if (!confirm) return;
+          if (!confirm || busy) return;
           const target = confirm;
+          setBusy(true);
           void (async () => {
             try {
-              await saveSnapshot(db.export(), `Before deleting ${target.kind} "${target.name}"`);
+              if (db.closed) throw new Error(HANDED_OVER_MESSAGE);
+              try {
+                await db.saveSnapshot(`Before deleting ${target.kind} "${target.name}"`);
+              } catch (err) {
+                if (db.closed) throw err;
+                toast(
+                  `Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`,
+                );
+                return;
+              }
+              if (target.kind === 'category') {
+                deleteCategory(db, target.id);
+                if (mounted.current && categoryId === target.id)
+                  navigate(`/exercises?date=${date}`, { replace: true });
+              } else deleteExercise(db, target.id);
+              toast(`Deleted ${target.name}`);
             } catch (err) {
-              toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
-              return;
+              toast(`Nothing deleted: ${err instanceof Error ? err.message : String(err)}`);
+            } finally {
+              if (mounted.current) setBusy(false);
             }
-            if (target.kind === 'category') {
-              deleteCategory(db, target.id);
-              if (categoryId === target.id) navigate(`/exercises?date=${date}`, { replace: true });
-            } else deleteExercise(db, target.id);
-            toast(`Deleted ${target.name}`);
           })();
         }}
       />
+      <Dialog open={busy} onClose={() => {}} title="Deleting…">
+        <div className="spinner" />
+      </Dialog>
     </div>
   );
 }

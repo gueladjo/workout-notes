@@ -7,7 +7,6 @@ import type { Database, SqlJsStatic } from '@/db/sqlite';
 import { checkIntegrity, looksLikeSqlite, scalar } from '@/db/sqlite';
 import { ensureSchema, validateBackupDatabase, type SchemaReport } from '@/db/schema';
 import type { AppDatabase } from '@/db/store';
-import { saveSnapshot } from '@/db/persistence';
 
 export interface RestoreSummary {
   exercises: number;
@@ -81,7 +80,7 @@ export async function restoreBackup(
   const { db, schema } = openBackup(SQL, bytes);
   try {
     await app.flush();
-    await saveSnapshot(app.export(), 'Before restore');
+    await app.saveSnapshot('Before restore');
   } catch (err) {
     db.close();
     throw err;

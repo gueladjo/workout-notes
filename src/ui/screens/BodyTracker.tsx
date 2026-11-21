@@ -20,7 +20,7 @@ import {
 } from '@/db/repo/measurements';
 import { MeasurementGoalType } from '@/db/constants';
 import { updateSettings } from '@/db/repo/settings';
-import { saveSnapshot } from '@/db/persistence';
+import { HANDED_OVER_MESSAGE } from '@/db/store';
 import type { MeasurementRecord, MeasurementWithUnit } from '@/db/types';
 import {
   daysBetween,
@@ -597,6 +597,7 @@ export function MeasurementEditorScreen() {
   const keepGoal =
     goalType === MeasurementGoalType.SPECIFIC && !goalTouched && (existing?.goalValue ?? 0) > 0;
   const save = (convertValues?: boolean) => {
+    if (busy) return;
     if (!name.trim() && !isDefault) return toast('Enter a name');
     const gv = goalType === MeasurementGoalType.SPECIFIC ? parseDecimal(goalValue) : 0;
     // A specific goal without a positive target is refused rather than saved as 0.
@@ -620,7 +621,7 @@ export function MeasurementEditorScreen() {
       <TopBar
         back
         title={id ? 'Edit Measurement' : 'New Measurement'}
-        actions={<IconButton icon="save" label="Save" primary onClick={() => save()} />}
+        actions={<IconButton icon="save" label="Save" primary disabled={busy} onClick={() => save()} />}
       />
       <div className="screen__content">
         <div className="container">
@@ -679,7 +680,7 @@ export function MeasurementEditorScreen() {
               </label>
             )}
           </div>
-          <Button block large onClick={() => save()}>
+          <Button block large disabled={busy} onClick={() => save()}>
             Save
           </Button>
           {id && (
@@ -707,10 +708,12 @@ export function MeasurementEditorScreen() {
             <Button variant="text" onClick={() => setUnitChange(false)}>
               Cancel
             </Button>
-            <Button variant="outline" onClick={() => save(false)}>
+            <Button variant="outline" disabled={busy} onClick={() => save(false)}>
               Just change unit
             </Button>
-            <Button onClick={() => save(true)}>Convert values</Button>
+            <Button disabled={busy} onClick={() => save(true)}>
+              Convert values
+            </Button>
           </>
         }
       >
@@ -742,24 +745,31 @@ export function MeasurementEditorScreen() {
           setBusy(true);
           void (async () => {
             try {
-              await saveSnapshot(
-                db.export(),
-                `Before ${action === 'delete' ? 'deleting' : 'resetting'} measurement "${label}"`,
-              );
+              if (db.closed) throw new Error(HANDED_OVER_MESSAGE);
+              try {
+                await db.saveSnapshot(
+                  `Before ${action === 'delete' ? 'deleting' : 'resetting'} measurement "${label}"`,
+                );
+              } catch (err) {
+                if (db.closed) throw err;
+                toast(
+                  `Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`,
+                );
+                return;
+              }
+              if (action === 'delete') {
+                deleteMeasurement(db, id);
+                toast(`Deleted ${label}`);
+                // The snapshot took a moment: only leave if the user has not already left the editor.
+                if (mounted.current) navigate(-1);
+              } else {
+                resetMeasurement(db, id);
+                toast(`Reset ${label}`);
+              }
             } catch (err) {
-              toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
-              setBusy(false);
-              return;
-            }
-            if (action === 'delete') {
-              deleteMeasurement(db, id);
-              toast(`Deleted ${label}`);
-              // The snapshot took a moment: only leave if the user has not already left the editor.
-              if (mounted.current) navigate(-1);
-            } else {
-              resetMeasurement(db, id);
-              toast(`Reset ${label}`);
-              setBusy(false);
+              toast(`Nothing deleted: ${err instanceof Error ? err.message : String(err)}`);
+            } finally {
+              if (mounted.current) setBusy(false);
             }
           })();
         }}

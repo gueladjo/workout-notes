@@ -6,10 +6,10 @@ import sqlWasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 import { loadSqlJs, type SqlJsStatic } from '@/db/sqlite';
 import { createEmptyDatabase, ensureSchema } from '@/db/schema';
 import { AppDatabase } from '@/db/store';
-import { MAIN_KEY, readBlob, requestPersistentStorage, writeBlob } from '@/db/persistence';
+import { MAIN_KEY, readBlob, requestPersistentStorage, saveSnapshot, writeBlob } from '@/db/persistence';
 import { defaultMetric, openStoredDatabase } from './recovery';
 import { flushOnHide } from './update';
-import { acquireInstanceLock, TAKEN_OVER_MESSAGE } from './instance';
+import { acquireInstanceLock, holdInstanceLock, TAKEN_OVER_MESSAGE } from './instance';
 
 export interface BootResult {
   app: AppDatabase;
@@ -54,7 +54,10 @@ export async function bootstrap(options: BootOptions = {}): Promise<BootResult> 
   if (lock.released) throw new Error(TAKEN_OVER_MESSAGE);
   const db = saved ? openStoredDatabase(SQL, saved) : createEmptyDatabase(SQL, { metric: defaultMetric() });
   if (!saved) ensureSchema(db);
-  app = new AppDatabase(db, { persist: (bytes) => writeBlob(MAIN_KEY, bytes, 'live database') });
+  app = new AppDatabase(db, {
+    persist: (bytes) => writeBlob(MAIN_KEY, bytes, 'live database'),
+    saveSnapshot: (bytes, label) => holdInstanceLock(() => saveSnapshot(bytes, label)),
+  });
   if (!saved) {
     app.changed();
     await app.flush();

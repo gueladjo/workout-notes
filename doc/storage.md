@@ -5,7 +5,7 @@
 | What               | Where                                                                                | Notes                                                                                 |
 | ------------------ | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------- |
 | Live database      | IndexedDB `workoutnotes` / store `blobs`, key `main`                                 | Full SQLite file as `Uint8Array`                                                      |
-| Rollback snapshots | same store, keys `snapshot:<ISO time>`                                               | Kept: newest `MAX_SNAPSHOTS` (5)                                                      |
+| Rollback snapshots | same store, keys `snapshot:<ISO time>` (with `-NNNN` suffix on same-ms ties)         | Kept: newest `MAX_SNAPSHOTS` (5); written and pruned in one `readwrite` transaction   |
 | Metadata           | store `meta`                                                                         | `{ key, savedAt, label, size }`, lets the UI list snapshots without loading bytes     |
 | Last backup time   | `localStorage` `workoutnotes.lastBackupAt`                                           | Drives the "last backup" note (shown on its local calendar day) and the Home reminder |
 | Backup reminder    | `localStorage` `workoutnotes.firstUsedAt`, `workoutnotes.backupReminderSnoozedUntil` | `src/backup/reminder.ts`: the "never backed up" clock and the "Not now" snooze        |
@@ -64,7 +64,10 @@ home-screen apps; Chrome grants it to installed apps and engaged sites.
   type** (it clears the history fields the new type lacks; `updateExerciseWithSnapshot` in
   `src/db/repo/exercises.ts`) and **reset / delete measurement** (Body Tracker) snapshot first, too
   (labelled with what is about to be deleted or changed); if the snapshot cannot be written nothing
-  is deleted or changed.
+  is deleted or changed. Every live-app snapshot (restore, rollback, and all destructive operations)
+  goes through `AppDatabase.saveSnapshot()`, which refuses to start once the database is closing or
+  closed, runs under `holdInstanceLock()`, and is drained by `AppDatabase.close()` before handover
+  so no snapshot write or prune can race another window.
   Delete workout history removes the sets, set and workout comments, supersets and workout times of
   the range; routine supersets (the same group tables with `date = ''`) and all other configuration
   stay, whatever the range.

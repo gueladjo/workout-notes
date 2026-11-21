@@ -1,5 +1,6 @@
-import { describe, expect, it, beforeAll, vi } from 'vitest';
+import { describe, expect, it, beforeAll, beforeEach, vi } from 'vitest';
 import 'fake-indexeddb/auto';
+import { IDBFactory } from 'fake-indexeddb';
 import { loadSqlJs, scalar, type SqlJsStatic } from '../../src/db/sqlite';
 import { createEmptyDatabase } from '../../src/db/schema';
 import { AppDatabase } from '../../src/db/store';
@@ -27,6 +28,9 @@ import { ExerciseWeightUnit } from '../../src/db/constants';
 let SQL: SqlJsStatic;
 beforeAll(async () => {
   SQL = await loadSqlJs();
+});
+beforeEach(() => {
+  globalThis.indexedDB = new IDBFactory();
 });
 
 describe('backup round trip', () => {
@@ -221,6 +225,23 @@ describe('backup round trip', () => {
     expect(imperial[0]).toBe('Date,Exercise,Category,Weight (lbs),Reps,Distance,Distance Unit,Time,Comment');
     expect(imperial[1]).toBe('2026-09-01,Flat Barbell Bench Press,Chest,132.277,10,,,,');
   });
+
+  it('refuses to restore into a closed database without writing a snapshot or leaking the handle', async () => {
+    const app = new AppDatabase(createEmptyDatabase(SQL));
+    await app.close();
+    const backup = createEmptyDatabase(SQL);
+    seedSampleWorkouts(backup);
+    const bytes = backup.export();
+    backup.close();
+    const closed = vi.spyOn(SQL.Database.prototype, 'close');
+    try {
+      await expect(restoreBackup(app, SQL, bytes)).rejects.toThrow(/handed over/);
+      expect(closed).toHaveBeenCalledTimes(1);
+    } finally {
+      closed.mockRestore();
+    }
+    expect(await listSnapshots()).toEqual([]);
+  });
 });
 
 describe('persistence snapshots', () => {
@@ -233,5 +254,36 @@ describe('persistence snapshots', () => {
     expect(snaps.length).toBe(MAX_SNAPSHOTS);
     await writeBlob('main', new Uint8Array([1, 2, 3]));
     expect(await readBlob('main')).toEqual(new Uint8Array([1, 2, 3]));
+  });
+
+  it('generates distinct keys within the same millisecond and never prunes a snapshot on backward clock skew', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] });
+    try {
+      vi.setSystemTime(new Date('2026-10-01T12:00:00.000Z'));
+      const keys: string[] = [];
+      for (let i = 0; i < MAX_SNAPSHOTS + 2; i++) {
+        keys.push(await saveSnapshot(new Uint8Array([i]), `same-ms-${i}`));
+      }
+      expect(new Set(keys).size).toBe(MAX_SNAPSHOTS + 2);
+      const snaps = await listSnapshots();
+      expect(snaps).toHaveLength(MAX_SNAPSHOTS);
+      expect(snaps.map((s) => s.label)).toEqual([
+        'same-ms-6',
+        'same-ms-5',
+        'same-ms-4',
+        'same-ms-3',
+        'same-ms-2',
+      ]);
+
+      // Backward clock jump: the brand-new snapshot must still be kept instead of pruned immediately.
+      vi.setSystemTime(new Date('2026-09-01T00:00:00.000Z'));
+      const backKey = await saveSnapshot(new Uint8Array([99]), 'after-clock-jump');
+      const afterJump = await listSnapshots();
+      expect(afterJump).toHaveLength(MAX_SNAPSHOTS);
+      expect(afterJump.map((s) => s.key)).toContain(backKey);
+      expect(await readBlob(backKey)).toEqual(new Uint8Array([99]));
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

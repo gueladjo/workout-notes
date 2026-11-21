@@ -6,7 +6,7 @@
  */
 import type { Database, SqlJsStatic } from '@/db/sqlite';
 import { checkIntegrity, looksLikeSqlite } from '@/db/sqlite';
-import type { AppDatabase } from '@/db/store';
+import { HANDED_OVER_MESSAGE, type AppDatabase } from '@/db/store';
 import { createEmptyDatabase, ensureSchema, validateBackupDatabase } from '@/db/schema';
 import { MAIN_KEY, readBlob, saveSnapshot, writeBlob } from '@/db/persistence';
 
@@ -93,11 +93,12 @@ export async function rollbackToSnapshot(
   SQL: SqlJsStatic,
   key: string,
 ): Promise<string | null> {
+  if (app.closed) throw new Error(HANDED_OVER_MESSAGE);
   const bytes = await readBlob(key);
   if (!bytes) throw new Error('Snapshot not found');
   const next = openStoredDatabase(SQL, bytes);
   try {
-    await saveSnapshot(app.export(), 'Before rollback');
+    await app.saveSnapshot('Before rollback');
   } catch (err) {
     next.close();
     throw err;

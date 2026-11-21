@@ -1,4 +1,4 @@
-import type { AppDatabase } from '../store';
+import { HANDED_OVER_MESSAGE, type AppDatabase } from '../store';
 import type { ExerciseWithCategory } from '../types';
 import {
   ExerciseWeightUnit,
@@ -8,7 +8,6 @@ import {
   type ExerciseTypeId,
 } from '../constants';
 import { goalTypesForExercise } from '@/domain/stats';
-import { saveSnapshot } from '../persistence';
 import { recalculatePersonalRecords } from './records';
 import { deleteEmptyGroups } from './groups';
 
@@ -197,9 +196,11 @@ export async function updateExerciseWithSnapshot(
   const current = getExercise(db, id);
   if (!current) throw new Error(`exercise ${id} not found`);
   if (patch.typeId !== undefined && patch.typeId !== current.typeId) {
+    if (db.closed) throw new Error(HANDED_OVER_MESSAGE);
     try {
-      await saveSnapshot(db.export(), `Before changing type of exercise "${current.name}"`);
+      await db.saveSnapshot(`Before changing type of exercise "${current.name}"`);
     } catch (err) {
+      if (db.closed) throw err;
       throw new Error(`snapshot failed (${err instanceof Error ? err.message : String(err)})`, {
         cause: err,
       });

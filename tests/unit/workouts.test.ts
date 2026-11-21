@@ -435,6 +435,16 @@ describe('exercises and categories', () => {
     globalThis.indexedDB = new IDBFactory();
   });
 
+  it('refuses a type change on a closed database without writing a snapshot', async () => {
+    globalThis.indexedDB = new IDBFactory();
+    await app.close();
+    await expect(updateExerciseWithSnapshot(app, BENCH, { typeId: ExerciseType.REPS })).rejects.toThrow(
+      /handed over/,
+    );
+    expect(await listSnapshots()).toEqual([]);
+    expect(getExercise(app, BENCH)!.typeId).toBe(ExerciseType.WEIGHT_AND_REPS);
+  });
+
   it('"just change unit" rescales stored kilograms so displayed numbers stay the same', () => {
     updateExercise(app, BENCH, {
       weightUnitId: 2,

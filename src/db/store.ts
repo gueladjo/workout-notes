@@ -9,8 +9,10 @@
  */
 import type { BindParams, Database, Row } from './sqlite';
 import { all, get, scalar, transaction } from './sqlite';
+import { saveSnapshot as writeSnapshot } from './persistence';
 
 export type Persist = (bytes: Uint8Array) => Promise<void>;
+export type SnapshotWriter = (bytes: Uint8Array, label: string) => Promise<string>;
 
 export const HANDED_OVER_MESSAGE = 'The database was handed over to another WorkoutNotes window';
 
@@ -19,18 +21,22 @@ export interface AppDatabaseOptions {
   persist?: Persist;
   /** Debounce delay in ms for persistence. */
   persistDelayMs?: number;
+  /** Writes a rollback snapshot before destructive operations; defaults to IndexedDB (`saveSnapshot`). */
+  saveSnapshot?: SnapshotWriter;
 }
 
 export class AppDatabase {
   private db: Database;
   private readonly persist: Persist;
   private readonly persistDelayMs: number;
+  private readonly writeSnapshot: SnapshotWriter;
   private listeners = new Set<() => void>();
   private persistListeners = new Set<() => void>();
   private persistTimer: ReturnType<typeof setTimeout> | null = null;
   private dirty = false;
   private persisting: Promise<void> | null = null;
   private persistingVersion = -1;
+  private pendingSnapshots = new Set<Promise<void>>();
   /** `closing` refuses writes while the last persist runs; `closed` never persists again. */
   private state: 'open' | 'closing' | 'closed' = 'open';
   /** Incremented on every mutation; used by React to re-run queries. */
@@ -43,6 +49,7 @@ export class AppDatabase {
     this.db = db;
     this.persist = options.persist ?? (async () => {});
     this.persistDelayMs = options.persistDelayMs ?? 400;
+    this.writeSnapshot = options.saveSnapshot ?? writeSnapshot;
   }
 
   /** Raw sql.js handle for read-only use by repositories. */
@@ -115,6 +122,27 @@ export class AppDatabase {
   export(): Uint8Array {
     if (this.mutateDepth > 0) throw new Error('export() called inside a transaction');
     return this.db.export();
+  }
+
+  /**
+   * Write a rollback snapshot of the live database before a destructive operation. Refuses to
+   * start once the database is closing or closed (handed over), and tracks the in-flight write so
+   * `close()` waits for it to finish before releasing the instance lock to another window.
+   */
+  async saveSnapshot(label: string): Promise<string> {
+    if (this.state !== 'open') throw new Error(HANDED_OVER_MESSAGE);
+    const bytes = this.export();
+    const task = this.writeSnapshot(bytes, label);
+    const settled = task.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.pendingSnapshots.add(settled);
+    try {
+      return await task;
+    } finally {
+      this.pendingSnapshots.delete(settled);
+    }
   }
 
   /**
@@ -193,15 +221,21 @@ export class AppDatabase {
   }
 
   /**
-   * Hand the stored bytes over to another instance: refuse further writes, then persist whatever is
-   * still unsaved. Resolves once nothing is unsaved; rejects when that last persist fails, leaving
-   * `hasUnsavedChanges` true so the caller can say so (`export()` still gives the bytes for a copy).
-   * Either way nothing is written to storage afterwards.
+   * Hand the stored bytes over to another instance: refuse further writes and snapshots, then
+   * persist whatever is still unsaved and wait for any in-flight snapshot writes to finish so no
+   * IndexedDB write outlives handover. Resolves once nothing is unsaved; rejects when that last
+   * persist fails, leaving `hasUnsavedChanges` true so the caller can say so (`export()` still
+   * gives the bytes for a copy). Either way nothing is written to storage afterwards.
    */
   async close(): Promise<void> {
     if (this.state === 'open') this.state = 'closing';
     try {
-      await this.flush();
+      const snapshots = Promise.all([...this.pendingSnapshots]);
+      try {
+        await this.flush();
+      } finally {
+        await snapshots;
+      }
     } finally {
       this.state = 'closed';
       if (this.persistTimer) {

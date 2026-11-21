@@ -982,6 +982,70 @@ test('a third window opened during a slow handover gets the database after the s
   await expect(second.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
 });
 
+test('handover waits for an in-flight destructive snapshot and leaves no unhandled rejection', async ({
+  page,
+  context,
+}) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (err) => pageErrors.push(err.message));
+  await openApp(page);
+  await restoreFixture(page);
+  await page.goto('/#/settings');
+  await expect(page.getByText(/^Before restore · /)).toBeVisible();
+  // Hold the next IndexedDB open so Delete Workout History's snapshot stays in flight while a
+  // second window asks to take over.
+  await page.evaluate(() => {
+    const realOpen = indexedDB.open.bind(indexedDB);
+    const gate = new Promise<void>((resolve) => {
+      (window as unknown as { resumeSnapshot: () => void }).resumeSnapshot = resolve;
+    });
+    indexedDB.open = (name: string, version?: number) => {
+      const req = {
+        result: undefined as unknown,
+        error: null as unknown,
+        onsuccess: null as ((e: Event) => void) | null,
+        onerror: null as ((e: Event) => void) | null,
+        onupgradeneeded: null as ((e: Event) => void) | null,
+        onblocked: null as ((e: Event) => void) | null,
+      };
+      void gate.then(() => {
+        const real = realOpen(name, version);
+        real.onupgradeneeded = (e) => {
+          req.result = real.result;
+          req.onupgradeneeded?.(e);
+        };
+        real.onblocked = (e) => req.onblocked?.(e);
+        real.onsuccess = (e) => {
+          req.result = real.result;
+          req.onsuccess?.(e);
+        };
+        real.onerror = (e) => {
+          req.error = real.error;
+          req.onerror?.(e);
+        };
+      });
+      return req as unknown as IDBOpenDBRequest;
+    };
+  });
+  await page.getByRole('button', { name: /Delete Workout History/ }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete…' }).click();
+  await page.getByRole('dialog').getByRole('button', { name: 'Delete', exact: true }).click();
+  await expect(page.getByText('Deleting workout history…')).toBeVisible();
+
+  const second = await context.newPage();
+  await second.goto('/#/settings');
+  await expect(second.getByText('Waiting for the other WorkoutNotes window to save…')).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await page.evaluate(() => (window as unknown as { resumeSnapshot: () => void }).resumeSnapshot());
+  await expect(page.getByText('WorkoutNotes is open in another window')).toBeVisible({ timeout: 30_000 });
+  // The second window took over only after the snapshot finished; the history was not deleted.
+  await expect(second.getByText(/^Before deleting history · /)).toBeVisible({ timeout: 30_000 });
+  await expect(second.getByText('96 exercises · 3 workouts · 10 sets')).toBeVisible();
+  expect(pageErrors).toEqual([]);
+});
+
 test('a window on the Recovery screen hands the database over to a new one', async ({ page, context }) => {
   await openApp(page);
   // Replace the stored database with garbage, then reload into the Recovery screen.

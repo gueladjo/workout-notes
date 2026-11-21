@@ -7,7 +7,8 @@ import { updateSettings } from '@/db/repo/settings';
 import { recalculatePersonalRecords } from '@/db/repo/records';
 import { deleteWorkoutHistory, exercisesWithHistory } from '@/db/repo/workouts';
 import { AppTheme, HomeScreenCategoryVisibility, HomeScreenSetLimitType } from '@/db/constants';
-import { listSnapshots, saveSnapshot, storageStatus, type StoredFileMeta } from '@/db/persistence';
+import { listSnapshots, storageStatus, type StoredFileMeta } from '@/db/persistence';
+import { HANDED_OVER_MESSAGE } from '@/db/store';
 import { rollbackToSnapshot } from '@/app/recovery';
 import { BackupError, prepareBackup, restoreBackup, summarize, type RestoreSummary } from '@/backup/fitnotes';
 import { pickFile, shareOrDownload, downloadBlob } from '@/backup/download';
@@ -48,6 +49,7 @@ export function SettingsScreen() {
   }, [restoreResult, snapshotsChanged]);
 
   const exportBackup = async (mode: 'save' | 'share') => {
+    if (busy) return;
     setBusy('Preparing backup…');
     try {
       const { blob, name, persistError } = await prepareBackup(db);
@@ -70,6 +72,7 @@ export function SettingsScreen() {
   };
 
   const chooseRestore = async () => {
+    if (busy) return;
     try {
       const file = await pickFile('.fitnotes,application/octet-stream,application/x-sqlite3,*/*');
       if (file) setPendingRestore(file);
@@ -80,7 +83,7 @@ export function SettingsScreen() {
   };
 
   const doRestore = async () => {
-    if (!pendingRestore) return;
+    if (!pendingRestore || busy) return;
     setBusy('Restoring backup…');
     try {
       const result = await restoreBackup(db, SQL, pendingRestore.bytes);
@@ -100,7 +103,7 @@ export function SettingsScreen() {
   };
 
   const doRollback = async () => {
-    if (!rollback) return;
+    if (!rollback || busy) return;
     setBusy('Restoring snapshot…');
     try {
       const saveError = await rollbackToSnapshot(db, SQL, rollback.key);
@@ -119,7 +122,30 @@ export function SettingsScreen() {
     }
   };
 
+  const doDeleteHistory = async (opts: { from?: string; to?: string; exerciseIds?: number[] }) => {
+    if (busy) return;
+    setBusy('Deleting workout history…');
+    try {
+      if (db.closed) throw new Error(HANDED_OVER_MESSAGE);
+      try {
+        await db.saveSnapshot('Before deleting history');
+      } catch (err) {
+        if (db.closed) throw err;
+        toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
+        return;
+      }
+      setSnapshotsChanged((n) => n + 1);
+      const n = deleteWorkoutHistory(db, opts);
+      toast(`Deleted ${n} sets`);
+    } catch (err) {
+      toast(`Nothing deleted: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBusy(null);
+    }
+  };
+
   const exportCsv = async (kind: 'workout' | 'body') => {
+    if (busy) return;
     setBusy('Preparing export…');
     try {
       const csv = kind === 'workout' ? workoutCsv(db) : bodyTrackerCsv(db);
@@ -441,7 +467,7 @@ export function SettingsScreen() {
         <DeleteHistoryDialog
           open
           onClose={() => setDeleteHistoryOpen(false)}
-          onSnapshotSaved={() => setSnapshotsChanged((n) => n + 1)}
+          onDelete={(opts) => void doDeleteHistory(opts)}
         />
       )}
     </div>
@@ -518,18 +544,16 @@ function NumberRow({
   );
 }
 
-/** `onSnapshotSaved` lets Settings list the "Before deleting history" snapshot right away. */
+/** Runs `onDelete` through Settings' busy lock so snapshots and destructive ops never overlap. */
 function DeleteHistoryDialog({
   open,
   onClose,
-  onSnapshotSaved,
+  onDelete,
 }: {
   open: boolean;
   onClose: () => void;
-  onSnapshotSaved: () => void;
+  onDelete: (opts: { from?: string; to?: string; exerciseIds?: number[] }) => void;
 }) {
-  const db = useDb();
-  const toast = useToast();
   const exercises = useQuery((d) => exercisesWithHistory(d));
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -591,23 +615,13 @@ function DeleteHistoryDialog({
         danger
         onConfirm={() => {
           // Close the form first: once the confirmation is gone it would show again while the
-          // snapshot is being written.
+          // snapshot is being written under Settings' busy spinner.
           onClose();
-          void (async () => {
-            try {
-              await saveSnapshot(db.export(), 'Before deleting history');
-            } catch (err) {
-              toast(`Nothing deleted: snapshot failed (${err instanceof Error ? err.message : String(err)})`);
-              return;
-            }
-            onSnapshotSaved();
-            const n = deleteWorkoutHistory(db, {
-              from: from || undefined,
-              to: to || undefined,
-              exerciseIds: exerciseId === 'all' ? undefined : [exerciseId],
-            });
-            toast(`Deleted ${n} sets`);
-          })();
+          onDelete({
+            from: from || undefined,
+            to: to || undefined,
+            exerciseIds: exerciseId === 'all' ? undefined : [exerciseId],
+          });
         }}
       />
     </>

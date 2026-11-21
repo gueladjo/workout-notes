@@ -283,4 +283,34 @@ describe('AppDatabase', () => {
     expect(persist).toHaveBeenCalledTimes(1);
     expect(app.hasUnsavedChanges).toBe(true);
   });
+
+  it('close() waits for an in-flight saveSnapshot() and refuses snapshots once closing or closed', async () => {
+    let finishSnapshot!: (key: string) => void;
+    const saveSnapshot = vi.fn(
+      () =>
+        new Promise<string>((resolve) => {
+          finishSnapshot = resolve;
+        }),
+    );
+    const app = new AppDatabase(createEmptyDatabase(SQL), { saveSnapshot });
+    const snap = app.saveSnapshot('Before delete');
+    expect(saveSnapshot).toHaveBeenCalledTimes(1);
+
+    let closed = false;
+    const closing = app.close().then(() => {
+      closed = true;
+    });
+    // No new snapshot may start while handover is draining.
+    await expect(app.saveSnapshot('Too late')).rejects.toThrow(/handed over/);
+    expect(saveSnapshot).toHaveBeenCalledTimes(1);
+    await Promise.resolve();
+    expect(closed).toBe(false);
+
+    finishSnapshot('snapshot:1');
+    await expect(snap).resolves.toBe('snapshot:1');
+    await closing;
+    expect(closed).toBe(true);
+    await expect(app.saveSnapshot('After close')).rejects.toThrow(/handed over/);
+    expect(saveSnapshot).toHaveBeenCalledTimes(1);
+  });
 });
